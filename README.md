@@ -8,7 +8,7 @@ authorisation, and reimbursement.
 Sources include arXiv, PubMed, openFDA, ClinicalTrials.gov, the Federal Register, EMA,
 NICE and ISPOR, alongside trade and research press. Items are tiered Daily / Weekly /
 Monthly and filterable across six pipeline stages: AI research & models, clinical evidence
-& trials, health economics & HTA, regulation & authorisation, reimbursement & coverage, and
+& trials, health economics & HTA, regulatory & authorisation, reimbursement & coverage, and
 industry & funding.
 
 ## Clearance → coverage

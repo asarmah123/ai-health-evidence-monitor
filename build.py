@@ -694,10 +694,10 @@ def _digest(o):
             seen.add(i["id"])
             picks.append((why, i))
 
-    add(o["clears"], "Device authorised")
-    add(o["econ"], "Trial · economic endpoint")
+    add(o["clears"], "Device authorisations")
+    add(o["econ"], "Trials · economic endpoint")
     add([i for i in o["reg"] if any(b in i["source"] for b in ("FDA", "CMS", "EMA", "NICE"))],
-        "Regulatory action")
+        "Regulatory actions")
     return picks[:8]
 
 
@@ -705,7 +705,7 @@ def overview_html(items, agg, o, history=None, take=""):
     # ---- pipeline pulse: one cell per category, mirrors the Feed tabs
     prior = (history or [])[:-1]
     SHORT = {"research": "Research", "clinical": "Clinical", "heor": "HEOR",
-             "regulation": "Regulation", "access": "Reimbursement", "industry": "Industry"}
+             "regulation": "Regulatory", "access": "Reimbursement", "industry": "Industry"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
         if len(base) < 2:
@@ -747,13 +747,20 @@ def overview_html(items, agg, o, history=None, take=""):
     # must-not-miss digest
     picks = _digest(o)
     if picks:
-        rows = "".join(
-            f'<a class="dig" href="{i["url"]}" target="_blank" rel="noopener">'
-            f'<span class="dwhy">{why}</span>'
-            f'<span class="dttl">{html.escape(i["title"])}</span>'
-            f'<span class="dsrc">{html.escape(i["source"])} · {i["date"]}</span></a>'
-            for why, i in picks)
-        digest = f'<div class="sec">Worth a closer look</div><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digest">{rows}</div>'
+        from collections import OrderedDict
+        groups = OrderedDict()
+        for why, i in picks:
+            groups.setdefault(why, []).append(i)
+        boxes = ""
+        for why, gitems in groups.items():
+            grows = "".join(
+                f'<a class="dig" href="{i["url"]}" target="_blank" rel="noopener">'
+                f'<span class="dttl">{html.escape(i["title"])}</span>'
+                f'<span class="dsrc">{html.escape(i["source"])} · {i["date"]}</span></a>'
+                for i in gitems)
+            boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
+                      f'<span class="digbox-n">{len(gitems)}</span></div>{grows}</div>')
+        digest = f'<div class="sec">Worth a closer look</div><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div>'
     else:
         digest = ('<div class="sec">Worth a closer look</div>'
                   '<div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
@@ -1034,8 +1041,8 @@ def coverage_html(agg, sample=False, draft=False):
         return ('<div class="dnote">The clearance-to-coverage tracker is in preparation and will '
                 'appear here once the underlying data has been verified.</div>')
     if not agg:
-        return ('<div class="dnote">No devices logged yet. Add rows to <code>coverage.yaml</code> '
-                'in the private data repo and the tracker appears here.</div>')
+        return ('<div class="dnote">The clearance-to-coverage tracker is in preparation and will '
+                'appear here.</div>')
     banner = ('<div class="cov-sample">Sample data — these are illustrative placeholder rows, '
               'not real devices. Remove <code>sample: true</code> from coverage.yaml once real '
               'devices are logged.</div>') if sample else ''
@@ -1099,12 +1106,14 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 .tv{font-size:22px;font-weight:650;margin-top:3px}
 .ts{font-size:10.5px;color:#a5a5a5;margin-top:2px;line-height:1.35}
 /* digest */
-.digest{display:flex;flex-direction:column;gap:1px;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.dig{display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:baseline;
+.digboxes{display:flex;flex-direction:column;gap:10px}
+.digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.digbox-h{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);background:#fafafa;padding:7px 13px;border-bottom:1px solid #f0f0f0}
+.digbox-n{color:#b3b3b3;margin-left:5px}
+.dig{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;
  padding:10px 13px;text-decoration:none;color:var(--ink);border-bottom:1px solid #f4f4f4}
 .dig:last-child{border-bottom:none}
 .dig:hover{background:#fafafa}
-.dwhy{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.04em;color:var(--accent)}
 .dttl{font-size:13px;font-weight:500;line-height:1.35}
 .dsrc{font-size:10.5px;color:#a0a0a0;white-space:nowrap}
 .dnote{border:1px dashed var(--line);border-radius:9px;padding:16px;font-size:12.5px;color:#8a8a8a}
@@ -1260,7 +1269,7 @@ render();
 """
 
 LAYER_LABEL = {"research": "AI research & models", "clinical": "Clinical evidence & trials",
-               "heor": "Health economics & HTA", "regulation": "Regulation & authorisation",
+               "heor": "Health economics & HTA", "regulation": "Regulatory & authorisation",
                "access": "Reimbursement & coverage", "industry": "Industry & funding"}
 
 # how the six layers cluster on the Feed tab
@@ -1283,7 +1292,7 @@ LAYER_NAV = {
         "Is it worth it? Cost-effectiveness, value assessment and HTA methods — Value in "
         "Health, PharmacoEconomics, OHDSI, ISPOR, and PubMed queries on AI in health "
         "technology assessment."),
-    "regulation": ("Regulation & authorisation",
+    "regulation": ("Regulatory & authorisation",
         "Can it be marketed? FDA and EMA guidance, plus AI-enabled device authorisations "
         "(510(k) and PMA) via openFDA."),
     "access": ("Reimbursement & coverage",
