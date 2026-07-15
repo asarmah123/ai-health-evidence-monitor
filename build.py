@@ -120,6 +120,14 @@ def uid(url: str) -> str:
     return hashlib.sha1(url.encode()).hexdigest()[:12]
 
 
+def safe_url(u: str) -> str:
+    """Only allow http(s) links; block javascript:/data: and escape for attribute use."""
+    u = (u or "").strip()
+    if not (u.startswith("http://") or u.startswith("https://")):
+        return "#"
+    return html.escape(u, quote=True)
+
+
 def clean(text: str, limit: int = 320) -> str:
     if not text:
         return ""
@@ -582,6 +590,95 @@ def add_lens(items, token=None, model="claude-haiku-4-5-20251001", batch=12):
 # deterministic and auditable — you can always see why something spiked.
 
 # --------------------------------------------------------- overview analytics
+MACRO = {
+    "United States": "North America", "Canada": "North America",
+    "United Kingdom": "Europe", "European Union": "Europe", "Germany": "Europe", "France": "Europe",
+    "Japan": "Asia-Pacific", "China": "Asia-Pacific", "Australia": "Asia-Pacific",
+    "South Korea": "Asia-Pacific", "India": "Asia-Pacific", "Singapore": "Asia-Pacific",
+    "Thailand": "Asia-Pacific", "Canada": "North America",
+    "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
+    "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
+}
+
+# body -> role. Regulators gate market authorisation; HTA/payers gate reimbursement;
+# professional societies set standards but make no binding decisions.
+BODY_ROLE = {
+    # regulators (market authorisation)
+    "FDA": "regulator", "EMA": "regulator", "MHRA": "regulator",
+    "PMDA": "regulator", "NMPA": "regulator", "TGA": "regulator", "MFDS": "regulator",
+    "HSA": "regulator", "CDSCO": "regulator", "SFDA": "regulator", "SAHPRA": "regulator",
+    # HTA & payer bodies (coverage / assessment)
+    "CMS": "payer", "NICE": "payer", "G-BA": "payer", "IQWIG": "payer", "HAS": "payer", "BfArM": "payer",
+    "PBAC": "payer", "MSAC": "payer", "HIRA": "payer", "NECA": "payer", "Chuikyo": "payer",
+    "HITAP": "payer", "ACE": "payer", "CADTH": "payer", "MOHAP": "regulator", "HITAP Thailand": "payer",
+    # professional societies (no binding decisions)
+    "ISPOR": "professional", "HTAi": "professional",
+}
+
+# bodies distinctive enough to match safely in free text (no source feed of their own).
+# Ambiguous acronyms (HAS, NICE, CMS, FDA, ACE) are matched by SOURCE only, never text.
+SAFE_TEXT_BODIES = {"PMDA", "NMPA", "TGA", "MFDS", "HSA", "CDSCO", "SFDA", "SAHPRA",
+                    "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWIG",
+                    "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP", "PBAC", "MSAC"}
+
+
+def country_of(i):
+    """Best-effort country/jurisdiction for a regulatory or reimbursement item."""
+    src = i.get("source", "")
+    if any(k in src for k in ("FDA", "CMS")):
+        return "United States"
+    if "NICE" in src:
+        return "United Kingdom"
+    if "EMA" in src:
+        return "European Union"
+    if "DiGA" in src:
+        return "Germany"
+    blob = (i.get("title", "") + " " + i.get("summary", "")).lower()
+    checks = [
+        ("United States", ["ntap", "medicare", "medicaid", "510(k)", "de novo", "u.s. food and drug"]),
+        ("Germany", ["diga", "bfarm", "g-ba", "nub-"]),
+        ("France", ["pecan", "cnedimts", "lppr", "haute autorite"]),
+        ("Japan", ["pmda", "japan", "chuikyo", "mhlw"]),
+        ("China", ["nmpa", "china"]),
+        ("Australia", ["tga", "pbac", "msac", "australia"]),
+        ("South Korea", ["mfds", "hira", "neca", "south korea", "korea"]),
+        ("India", ["cdsco", "india"]),
+        ("Singapore", ["hsa singapore", "singapore", "agency for care effectiveness"]),
+        ("Thailand", ["hitap", "thailand", "thai fda"]),
+        ("Canada", ["cadth", "health canada", "canada"]),
+        ("Saudi Arabia", ["sfda", "saudi"]),
+        ("South Africa", ["sahpra", "south africa"]),
+        ("United Arab Emirates", ["uae", "united arab emirates", "mohap", "dubai health", "abu dhabi"]),
+        ("Israel", ["israel", "israeli"]),
+        ("United Kingdom", ["nice ", " nhs", "mhra", "ukca", "early value assessment"]),
+        ("European Union", ["ema ", "ce mark", "ce-mark", "eudamed", "european commission", "eu ai act", "joint clinical assessment"]),
+    ]
+    for label, keys in checks:
+        if any(k in blob for k in keys):
+            return label
+    return None
+
+
+def _body_role_counts(items):
+    """Count items by named body, split into regulators / payers / professional.
+    Distinctive bodies (SAFE_TEXT_BODIES) are also matched in title/summary, so
+    APAC/MEA bodies surfacing via standing queries are captured even without a
+    dedicated source feed. One body per role per item, to avoid over-counting."""
+    from collections import Counter
+    out = {"regulator": Counter(), "payer": Counter(), "professional": Counter()}
+    for i in items:
+        src = i.get("source", "")
+        text = (src + " " + i.get("title", "") + " " + i.get("summary", "")).lower()
+        matched = set()
+        for b, role in BODY_ROLE.items():
+            if role in matched:
+                continue
+            if (b in src) or (b in SAFE_TEXT_BODIES and b.lower() in text):
+                out[role][b] += 1
+                matched.add(role)
+    return {k: v.most_common() for k, v in out.items()}
+
+
 def _econ_endpoint(i):
     econ = ("cost", "economic", "utilisation", "utilization", "budget", "resource",
             "length of stay", "quality-adjusted", "qaly", "cost-effective", "resource use")
@@ -661,25 +758,25 @@ def overview_stats(items):
             pathways.append((label, n))
     pathways.sort(key=lambda x: -x[1])
 
-    # regulatory tempo by body
-    def body(src):
-        for b in ("FDA", "CMS", "EMA", "NICE", "ISPOR"):
-            if b in src:
-                return b
-        return "Other"
-    tempo = {}
-    for i in reg:
-        tempo[body(i["source"])] = tempo.get(body(i["source"]), 0) + 1
-
     layers = {k: sum(1 for i in items if i["layer"] == k) for k in LAYERS}
     # the two market-access gates, as concrete decisions
     coverage_actions = [i for i in items if i["layer"] == "access"
                         and any(k in i["source"] for k in ("CMS", "NICE", "Federal"))]
+
+    # geography: country + macro-region (over regulatory/reimbursement items)
+    from collections import Counter
+    countries = Counter(c for c in (country_of(i) for i in reg) if c)
+    macro = Counter(MACRO.get(c, "Other") for c in (country_of(i) for i in reg) if c)
+    # bodies by role (over all items, so ISPOR/HTAi in any layer are caught)
+    bodies = _body_role_counts(items)
+
     return {
         "reg": reg, "clears": clears, "trials": trials, "econ": econ, "papers": papers,
-        "research": research, "access": access, "pathways": pathways, "tempo": tempo,
+        "research": research, "access": access, "pathways": pathways,
         "layers": layers, "coverage_actions": coverage_actions,
         "focus": clinical_focus(items),
+        "countries": countries.most_common(), "macro": macro.most_common(),
+        "bodies": bodies,
     }
 
 
@@ -754,7 +851,7 @@ def overview_html(items, agg, o, history=None, take=""):
         boxes = ""
         for why, gitems in groups.items():
             grows = "".join(
-                f'<a class="dig" href="{i["url"]}" target="_blank" rel="noopener">'
+                f'<a class="dig" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
                 f'<span class="dsrc">{html.escape(i["source"])} · {i["date"]}</span></a>'
                 for i in gitems)
@@ -767,47 +864,41 @@ def overview_html(items, agg, o, history=None, take=""):
                   '<div class="dnote">No device authorisations, economic-endpoint trials, or major '
                   'regulatory actions today. A quiet day.</div>')
 
-    # regulator & HTA activity — which rule-setter moved
-    tempo = sorted(o["tempo"].items(), key=lambda x: -x[1])
-    tempo = [(k, v) for k, v in tempo if k != "Other"]
-    if tempo:
-        peak = tempo[0][1] or 1
-        bars = "".join(
-            f'<div class="trow"><div class="tn">{html.escape(k)}</div>'
-            f'<div class="tb"><div class="tf" style="width:{v/peak*100:.0f}%"></div></div>'
-            f'<div class="tp">{v}</div></div>' for k, v in tempo[:6])
-        regulator = (f'<div class="panel"><div class="ph">Regulator &amp; HTA activity</div>'
-                     f'<div class="psub">FDA / CMS / EMA / NICE / ISPOR, today</div>{bars}</div>')
-    else:
-        regulator = ('<div class="panel"><div class="ph">Regulator &amp; HTA activity</div>'
-                     '<div class="psub">No FDA / CMS / EMA / NICE / ISPOR items today.</div></div>')
+    # --- shared bar-panel builder ---
+    def bar_panel(title, sub, rows, empty):
+        if rows:
+            peak = rows[0][1] or 1
+            bars = "".join(
+                f'<div class="trow"><div class="tn">{html.escape(str(lbl))}</div>'
+                f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%"></div></div>'
+                f'<div class="tp">{n}</div></div>' for lbl, n in rows[:6])
+            return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{sub}</div>{bars}</div>'
+        return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{empty}</div></div>'
 
-    # clinical focus — where AI is concentrating
-    focus = o.get("focus", [])
-    if focus:
-        peak = focus[0][1] or 1
-        bars = "".join(
-            f'<div class="trow"><div class="tn">{html.escape(lbl)}</div>'
+    bodies = o.get("bodies", {})
+    def geo_rows(rows):
+        if not rows:
+            return '<div class="psub" style="margin-bottom:2px">none today</div>'
+        peak = rows[0][1] or 1
+        return "".join(
+            f'<div class="trow"><div class="tn">{html.escape(str(lbl))}</div>'
             f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%"></div></div>'
-            f'<div class="tp">{n}</div></div>' for lbl, n in focus[:6])
-        clinfocus = (f'<div class="panel"><div class="ph">Clinical focus</div>'
-                     f'<div class="psub">therapeutic areas mentioned today</div>{bars}</div>')
-    else:
-        clinfocus = ('<div class="panel"><div class="ph">Clinical focus</div>'
-                     '<div class="psub">No specialty clearly identified today.</div></div>')
-
-    # pathway chatter
-    if o["pathways"]:
-        peak = o["pathways"][0][1] or 1
-        bars = "".join(
-            f'<div class="trow"><div class="tn">{html.escape(lbl)}</div>'
-            f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%"></div></div>'
-            f'<div class="tp">{n}</div></div>' for lbl, n in o["pathways"][:6])
-        pathway = f'<div class="panel"><div class="ph">Reimbursement pathways in the news</div>' \
-                  f'<div class="psub">items mentioning each route, today</div>{bars}</div>'
-    else:
-        pathway = ('<div class="panel"><div class="ph">Reimbursement pathways in the news</div>'
-                   '<div class="psub">None mentioned today.</div></div>')
+            f'<div class="tp">{n}</div></div>' for lbl, n in rows[:6])
+    geo_panel = (f'<div class="panel"><div class="ph">Geography</div>'
+                 f'<div class="psub">market-access activity today</div>'
+                 f'<div class="subh">By region</div>{geo_rows(o.get("macro", []))}'
+                 f'<div class="subh" style="margin-top:9px">By country</div>{geo_rows(o.get("countries", []))}</div>')
+    regulators_panel = bar_panel("Regulators", "market-authorisation bodies (FDA, EMA)",
+                                 bodies.get("regulator", []), "No regulator activity today.")
+    payers_panel = bar_panel("HTA &amp; payer bodies", "coverage &amp; assessment (CMS, NICE)",
+                             bodies.get("payer", []), "No HTA / payer activity today.")
+    clinfocus = bar_panel("Clinical focus", "therapeutic areas mentioned today",
+                          o.get("focus", []), "No specialty clearly identified today.")
+    pathway = bar_panel("Reimbursement pathways in the news", "items mentioning each route, today",
+                        o.get("pathways", []), "None mentioned today.")
+    prof_rows = bodies.get("professional", [])
+    prof_panel = bar_panel("Professional bodies", "societies &amp; standards (ISPOR, HTAi)",
+                           prof_rows, "") if prof_rows else ""
 
     # compact coverage summary (full detail lives on the Coverage tab)
     cov_mini = ""
@@ -821,6 +912,8 @@ def overview_html(items, agg, o, history=None, take=""):
                     f'data-goto="coverage">full tracker →</a></div>'
                     f'<div class="cov-grid">{cells}</div>')
 
+    pathway_row = (f'<div class="panels" style="margin-top:8px">{pathway}{prof_panel}</div>'
+                   if prof_panel else f'<div style="margin-top:8px">{pathway}</div>')
     take_html = (f'<div class="take"><div class="take-l">Editor\'s take</div>'
                  f'<div class="take-t">{html.escape(take)}</div></div>') if take else ""
     return f'''{take_html}
@@ -833,9 +926,10 @@ def overview_html(items, agg, o, history=None, take=""):
 <div class="tiles g2">{ind_html}</div>
 {digest}
 <div class="sec">The breakdown</div>
-<div class="seccap">Today’s items by regulator, clinical area, and reimbursement route.</div>
-<div class="panels">{regulator}{clinfocus}</div>
-<div style="margin-top:8px">{pathway}</div>
+<div class="seccap">Today’s items by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
+<div class="panels">{geo_panel}{regulators_panel}</div>
+<div class="panels" style="margin-top:8px">{payers_panel}{clinfocus}</div>
+{pathway_row}
 {cov_mini}'''
 
 
@@ -1217,6 +1311,7 @@ const read=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));
 const save=()=>localStorage.setItem(KEY,JSON.stringify([...read]));
 const LABEL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const safeUrl=u=>(/^https?:\/\//i.test(u||'')?u:'#');
 
 // tab switching
 function goto(name){
@@ -1241,7 +1336,7 @@ function render(){
     <div class="card ${read.has(i.id)?'read':''}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         <span class="src">${esc(i.source)} · ${i.date}</span></div>
-      <h3><a href="${i.url}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
+      <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
       ${i.summary?`<div class="summ">${esc(i.summary)}</div>`:''}
       ${i.lens?`<div class="lens"><b>HEOR lens →</b> ${esc(i.lens)}</div>`:''}
       <div class="acts"><button data-i="${i.id}">${read.has(i.id)?'Mark unread':'Mark read'}</button></div>
@@ -1281,7 +1376,7 @@ LAYER_GROUPS = [
 # self-explanatory name + what the feed represents (shown at the top of each list)
 LAYER_NAV = {
     "research": ("AI research & models",
-        "Frontier AI research, models and methods — arXiv, the major labs, and the leading "
+        "Frontier AI research, models and methods — arXiv, the major labs, and the main "
         "AI newsletters. The upstream signal: what becomes technically possible before it "
         "reaches medicine."),
     "clinical": ("Clinical evidence & trials",
@@ -1328,11 +1423,13 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
                            f'<div class="catgrid">{cards}</div></div>')
 
     hub_html = "".join(
-        f'<a class="hub" href="{h["url"]}" target="_blank" rel="noopener">'
+        f'<a class="hub" href="{safe_url(h["url"])}" target="_blank" rel="noopener">'
         f'<div class="n">{html.escape(h["name"])}</div><div class="d">{html.escape(h["note"])}</div></a>'
         for h in hubs)
     warn = f'<div class="foot">Feeds that failed this run: {html.escape(", ".join(dead))}</div>' if dead else ""
 
+    items_json = (json.dumps(items).replace("<", "\\u003c").replace(">", "\\u003e")
+                  .replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
     DOCS.mkdir(parents=True, exist_ok=True)
     (DOCS / "index.html").write_text(f"""<!DOCTYPE html>
 <html lang="en"><head>
@@ -1389,7 +1486,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
 </div>
 
 </div>
-<script>const ITEMS={json.dumps(items)};{JS}</script>
+<script>const ITEMS={items_json};{JS}</script>
 </body></html>""", encoding="utf-8")
 
 
