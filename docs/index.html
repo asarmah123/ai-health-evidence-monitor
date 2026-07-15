@@ -21,12 +21,12 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 /* tabs */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;
  position:sticky;top:0;background:#fff;z-index:10;padding-top:2px}
-.tab{font-size:13px;padding:8px 14px;color:#777;cursor:pointer;border-bottom:2px solid transparent;
+.tab{font-size:13.5px;padding:8px 15px;color:#6a6a6a;cursor:pointer;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;
  white-space:nowrap}
 .tab:hover{color:var(--ink)}
-.tab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:650;border-bottom:2px solid var(--accent);background:#fbf6f6}
 .view{display:none}.view.on{display:block}
-.sec{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;
+.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a5a5a;
  margin:26px 0 10px;display:flex;align-items:center;gap:10px}
 .sec:first-child{margin-top:6px}
 .seeall{font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);
@@ -35,11 +35,11 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 /* tiles */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tiles.g2{grid-template-columns:repeat(2,1fr)}
-.seccap{font-size:11.5px;color:#8a8a8a;margin:-4px 0 10px;line-height:1.4}
+.seccap{font-size:12.5px;color:#5f5f5f;margin:-4px 0 10px;line-height:1.45}
 .tile{border:1px solid var(--line);border-radius:9px;padding:11px 13px}
-.tl{font-size:10px;color:#8a8a8a;text-transform:uppercase;letter-spacing:.05em}
+.tl{font-size:11px;color:#5a5a5a;text-transform:uppercase;letter-spacing:.05em}
 .tv{font-size:22px;font-weight:650;margin-top:3px}
-.ts{font-size:10.5px;color:#a5a5a5;margin-top:2px;line-height:1.35}
+.ts{font-size:11px;color:#6f6f6f;margin-top:2px;line-height:1.35}
 /* digest */
 .digboxes{display:flex;flex-direction:column;gap:10px}
 .digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -50,23 +50,23 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 .dig:last-child{border-bottom:none}
 .dig:hover{background:#fafafa}
 .dttl{font-size:13px;font-weight:500;line-height:1.35}
-.dsrc{font-size:10.5px;color:#a0a0a0;white-space:nowrap}
+.dsrc{font-size:11px;color:#767676;white-space:nowrap}
 .dnote{border:1px dashed var(--line);border-radius:9px;padding:16px;font-size:12.5px;color:#8a8a8a}
 /* panels */
 .panels{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .panel,.spark{border:1px solid var(--line);border-radius:9px;padding:12px 14px}
-.ph{font-size:12px;font-weight:600}
-.psub{font-size:10.5px;color:#8a8a8a;margin-bottom:9px}
+.ph{font-size:12.5px;font-weight:650}
+.psub{font-size:11px;color:#6a6a6a;margin-bottom:9px}
 .spark svg{width:100%;height:52px;display:block;margin-top:6px}
 .sparl{font-size:10.5px;color:#a5a5a5;margin-top:6px}
 .split{height:9px;border-radius:5px;background:#dbe6d9;overflow:hidden;margin:4px 0 6px}
 .sfill{height:9px;background:#c9d8ee}
 .slab{display:flex;justify-content:space-between;font-size:11px;color:#666}
 .trow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.tn{font-size:12px;width:150px;flex:none}.tn.dim,.tp.dim{color:#a0a0a0}
+.tn{font-size:12.5px;width:150px;flex:none}.tn.dim,.tp.dim{color:#a0a0a0}
 .tb{flex:1;height:6px;background:#f2f2f2;border-radius:3px}
 .tf{height:6px;background:var(--accent);border-radius:3px;opacity:.75}.tf.down{background:#c4c4c4}
-.tp{font-size:10.5px;color:var(--accent);width:40px;text-align:right}
+.tp{font-size:11.5px;font-weight:600;color:var(--accent);width:40px;text-align:right}
 .tsep{border-top:1px solid #f0f0f0;margin:7px 0}
 /* coverage */
 .cov{border:1px solid #d3d3d3;border-radius:10px;padding:14px 16px}
@@ -120,10 +120,16 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
  padding:12px 15px;margin-bottom:18px;background:#fbfaf9}
 .take-l{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
 .take-t{font-size:14px;line-height:1.5;color:#2c2c2c}
+.hero{border:1px solid #e6d9d9;border-left:4px solid var(--accent);background:#fcf8f8;border-radius:10px;padding:13px 16px;margin-bottom:20px}
+.hero-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.hero-n{color:#9a8a8a;font-weight:600;margin-left:6px}
+.hero-line{font-size:13.5px;color:#2c2c2c;line-height:1.5;padding:2px 0}
+.hero-line a{color:var(--ink);font-weight:600}
+.hero-tag{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:var(--accent);background:#f3e3e3;padding:1px 6px;border-radius:4px;margin-left:4px}
 .pulse{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .pulse-c{border:1px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer}
 .pulse-c:hover{border-color:#bcbcbc;background:#fafafa}
-.pl{font-size:9px;color:#8a8a8a;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;min-height:2.1em}
+.pl{font-size:10px;color:#6f6f6f;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;min-height:2.1em}
 .pv{font-size:18px;font-weight:650;margin-top:2px}
 .pd{font-size:10px;font-weight:500;margin-left:1px}
 .pd.up{color:#9c2c2c}.pd.down{color:#8a8a8a}.pd.flat{color:#b5b5b5}
@@ -134,7 +140,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .cat:hover{border-color:#bcbcbc;background:#fafafa}
 .cat-t{font-size:14px;font-weight:600;display:flex;align-items:baseline;gap:6px}
 .cat-n{font-size:11px;color:#9a9a9a;font-weight:500;margin-left:auto}
-.cat-d{font-size:11.5px;color:#777;margin-top:5px;line-height:1.4}
+.cat-d{font-size:12px;color:#5f5f5f;margin-top:5px;line-height:1.45}
 .catback{font-size:12px;color:#777;cursor:pointer;margin-bottom:12px;display:inline-block}
 .catback:hover{color:var(--ink)}
 .cat-head{font-size:18px;font-weight:650;margin:0 0 5px;letter-spacing:-.01em}
@@ -146,17 +152,17 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 </head><body><div class="wrap">
 <h1>AI in Health</h1>
 <div class="tagline">Clinical and Market Access Evidence Monitor</div>
-<div class="sub">Rebuilt every morning · 218 items · updated 15 Jul 2026 20:19 UTC</div>
+<div class="sub">Rebuilt every morning · 218 items · updated 15 Jul 2026 20:35 UTC</div>
 
 <div class="tabs">
   <div class="tab on" data-tab="overview">Overview</div>
-  <div class="tab" data-tab="feed">Feed</div>
+  <div class="tab" data-tab="feed">Feed <span class="tabbadge">218</span></div>
   <div class="tab" data-tab="coverage">Coverage</div>
   <div class="tab" data-tab="trends">Trends</div>
   <div class="tab" data-tab="sources">Sources</div>
 </div>
 
-<div id="view-overview" class="view on">
+<div id="view-overview" class="view on"><div class="hero"><div class="hero-h">At a glance <span class="hero-n">218 items today</span></div><div class="hero-line">Most consequential: <a href="https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/pmn.cfm?ID=K261461" target="_blank" rel="noopener">510(k) cleared: Omnipod 6 algorithm</a> <span class="hero-tag">device authorisations</span></div><div class="hero-line">Most active market: <b>Europe</b> (15) · leading body: <b>EMA</b> (8)</div></div>
 <div class="sec">Activity by stage</div><div class="seccap">Where today’s 218 items fall across the six stages an AI product moves through — from research to reimbursement. Arrows show the change vs the past week.</div><div class="pulse"><div class="pulse-c" data-goto="feed"><div class="pl">Research</div><div class="pv">32 </div></div><div class="pulse-c" data-goto="feed"><div class="pl">Clinical</div><div class="pv">48 </div></div><div class="pulse-c" data-goto="feed"><div class="pl">HEOR</div><div class="pv">64 </div></div><div class="pulse-c" data-goto="feed"><div class="pl">Regulatory</div><div class="pv">17 </div></div><div class="pulse-c" data-goto="feed"><div class="pl">Reimbursement</div><div class="pv">9 </div></div><div class="pulse-c" data-goto="feed"><div class="pl">Industry</div><div class="pv">48 </div></div></div>
 <div class="sec">The two gates</div>
 <div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts today’s items about that gate.</div>
@@ -167,9 +173,9 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 <div class="sec">Worth a closer look</div><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes"><div class="digbox"><div class="digbox-h">Device authorisations<span class="digbox-n">1</span></div><a class="dig" href="https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpmn/pmn.cfm?ID=K261461" target="_blank" rel="noopener"><span class="dttl">510(k) cleared: Omnipod 6 algorithm</span><span class="dsrc">FDA — AI device authorisations · 2026-06-29</span></a></div><div class="digbox"><div class="digbox-h">Regulatory actions<span class="digbox-n">7</span></div><a class="dig" href="https://www.federalregister.gov/documents/2026/07/08/2026-13778/medical-device-user-fee-amendments-public-meeting-request-for-comments" target="_blank" rel="noopener"><span class="dttl">Medical Device User Fee Amendments; Public Meeting; Request for Comments</span><span class="dsrc">FDA — digital health &amp; devices · 2026-07-08</span></a><a class="dig" href="https://www.federalregister.gov/documents/2026/07/07/2026-13656/medicare-program-hospital-outpatient-prospective-payment-and-ambulatory-surgical-center-payment" target="_blank" rel="noopener"><span class="dttl">Medicare Program: Hospital Outpatient Prospective Payment and Ambulatory Surgical Center Payment Systems; and Quality Reporting Programs; Including the Hospital Outpatient Quality Reporting Program and Ambulatory Surgic…</span><span class="dsrc">CMS — device payment &amp; new technology · 2026-07-07</span></a><a class="dig" href="https://www.nice.org.uk/news/articles/normothermic-regional-perfusion-liver-procedure-recommended" target="_blank" rel="noopener"><span class="dttl">Novel life-saving liver procedure recommended, potentially enabling hundreds more transplants</span><span class="dsrc">NICE — News · 2026-07-15</span></a><a class="dig" href="https://www.nice.org.uk/news/articles/new-technologies-for-endometriosis-diagnosis-in-primary-care" target="_blank" rel="noopener"><span class="dttl">New technologies could help cut years-long wait for endometriosis diagnosis, says NICE</span><span class="dsrc">NICE — News · 2026-07-15</span></a><a class="dig" href="https://www.nice.org.uk/news/articles/nice-recommends-annual-review-for-pmos-in-new-draft-guideline-aimed-at-improving-diagnosis-and-care" target="_blank" rel="noopener"><span class="dttl">New draft PMOS guideline recommends annual review and could mean quicker diagnosis</span><span class="dsrc">NICE — News · 2026-07-15</span></a><a class="dig" href="https://www.nice.org.uk/news/articles/new-treatment-option-recommended-for-recurrent-or-metastatic-cervical-cancer" target="_blank" rel="noopener"><span class="dttl">New treatment option recommended for recurrent or metastatic cervical cancer</span><span class="dsrc">NICE — News · 2026-07-15</span></a><a class="dig" href="https://www.nice.org.uk/news/articles/teplizumab-to-delay-the-onset-of-type-1-diabetes-recommended" target="_blank" rel="noopener"><span class="dttl">First disease-modifying therapy for NHS use to delay the onset of type 1 diabetes recommended</span><span class="dsrc">NICE — News · 2026-07-15</span></a></div></div>
 <div class="sec">The breakdown</div>
 <div class="seccap">Today’s items by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
-<div class="panels"><div class="panel"><div class="ph">Geography</div><div class="psub">market-access activity today</div><div class="subh">By region</div><div class="trow"><div class="tn">Europe</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">15</div></div><div class="trow"><div class="tn">North America</div><div class="tb"><div class="tf" style="width:20%"></div></div><div class="tp">3</div></div><div class="trow"><div class="tn">Asia-Pacific</div><div class="tb"><div class="tf" style="width:7%"></div></div><div class="tp">1</div></div><div class="subh" style="margin-top:9px">By country</div><div class="trow"><div class="tn">European Union</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">8</div></div><div class="trow"><div class="tn">United Kingdom</div><div class="tb"><div class="tf" style="width:75%"></div></div><div class="tp">6</div></div><div class="trow"><div class="tn">United States</div><div class="tb"><div class="tf" style="width:38%"></div></div><div class="tp">3</div></div><div class="trow"><div class="tn">Germany</div><div class="tb"><div class="tf" style="width:12%"></div></div><div class="tp">1</div></div><div class="trow"><div class="tn">India</div><div class="tb"><div class="tf" style="width:12%"></div></div><div class="tp">1</div></div></div><div class="panel"><div class="ph">Regulators</div><div class="psub">market-authorisation bodies (FDA, EMA)</div><div class="trow"><div class="tn">EMA</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">8</div></div><div class="trow"><div class="tn">FDA</div><div class="tb"><div class="tf" style="width:25%"></div></div><div class="tp">2</div></div></div></div>
-<div class="panels" style="margin-top:8px"><div class="panel"><div class="ph">HTA &amp; payer bodies</div><div class="psub">coverage &amp; assessment (CMS, NICE)</div><div class="trow"><div class="tn">HITAP</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">8</div></div><div class="trow"><div class="tn">NICE</div><div class="tb"><div class="tf" style="width:75%"></div></div><div class="tp">6</div></div><div class="trow"><div class="tn">CMS</div><div class="tb"><div class="tf" style="width:12%"></div></div><div class="tp">1</div></div></div><div class="panel"><div class="ph">Clinical focus</div><div class="psub">therapeutic areas mentioned today</div><div class="trow"><div class="tn">Cardiology</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">11</div></div><div class="trow"><div class="tn">Oncology</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">11</div></div><div class="trow"><div class="tn">Radiology &amp; imaging</div><div class="tb"><div class="tf" style="width:64%"></div></div><div class="tp">7</div></div><div class="trow"><div class="tn">Endocrine / diabetes</div><div class="tb"><div class="tf" style="width:64%"></div></div><div class="tp">7</div></div><div class="trow"><div class="tn">Pulmonology</div><div class="tb"><div class="tf" style="width:45%"></div></div><div class="tp">5</div></div><div class="trow"><div class="tn">Mental health</div><div class="tb"><div class="tf" style="width:36%"></div></div><div class="tp">4</div></div></div></div>
-<div class="panels" style="margin-top:8px"><div class="panel"><div class="ph">Reimbursement pathways in the news</div><div class="psub">items mentioning each route, today</div><div class="trow"><div class="tn">Reimbursement (general)</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">2</div></div><div class="trow"><div class="tn">DiGA</div><div class="tb"><div class="tf" style="width:50%"></div></div><div class="tp">1</div></div><div class="trow"><div class="tn">NICE EVA</div><div class="tb"><div class="tf" style="width:50%"></div></div><div class="tp">1</div></div></div><div class="panel"><div class="ph">Professional bodies</div><div class="psub">societies &amp; standards (ISPOR, HTAi)</div><div class="trow"><div class="tn">ISPOR</div><div class="tb"><div class="tf" style="width:100%"></div></div><div class="tp">16</div></div></div></div>
+<div class="panels"><div class="panel"><div class="ph">Geography</div><div class="psub">market-access activity today</div><div class="subh">By region</div><div class="trow"><div class="tn">Europe</div><div class="tb"><div class="tf" style="width:100%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">15</div></div><div class="trow"><div class="tn">North America</div><div class="tb"><div class="tf" style="width:20%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">3</div></div><div class="trow"><div class="tn">Asia-Pacific</div><div class="tb"><div class="tf" style="width:7%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">1</div></div><div class="subh" style="margin-top:9px">By country</div><div class="trow"><div class="tn">European Union</div><div class="tb"><div class="tf" style="width:100%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">8</div></div><div class="trow"><div class="tn">United Kingdom</div><div class="tb"><div class="tf" style="width:75%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">6</div></div><div class="trow"><div class="tn">United States</div><div class="tb"><div class="tf" style="width:38%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">3</div></div><div class="trow"><div class="tn">Germany</div><div class="tb"><div class="tf" style="width:12%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">1</div></div><div class="trow"><div class="tn">India</div><div class="tb"><div class="tf" style="width:12%;background:#2f6f9f"></div></div><div class="tp" style="color:#2f6f9f">1</div></div></div><div class="panel"><div class="ph">Regulators</div><div class="psub">market-authorisation bodies (FDA, EMA)</div><div class="trow"><div class="tn">EMA</div><div class="tb"><div class="tf" style="width:100%;background:#6a4c93"></div></div><div class="tp" style="color:#6a4c93">8</div></div><div class="trow"><div class="tn">FDA</div><div class="tb"><div class="tf" style="width:25%;background:#6a4c93"></div></div><div class="tp" style="color:#6a4c93">2</div></div></div></div>
+<div class="panels" style="margin-top:8px"><div class="panel"><div class="ph">HTA &amp; payer bodies</div><div class="psub">coverage &amp; assessment (CMS, NICE)</div><div class="trow"><div class="tn">HITAP</div><div class="tb"><div class="tf" style="width:100%;background:#1f8a70"></div></div><div class="tp" style="color:#1f8a70">8</div></div><div class="trow"><div class="tn">NICE</div><div class="tb"><div class="tf" style="width:75%;background:#1f8a70"></div></div><div class="tp" style="color:#1f8a70">6</div></div><div class="trow"><div class="tn">CMS</div><div class="tb"><div class="tf" style="width:12%;background:#1f8a70"></div></div><div class="tp" style="color:#1f8a70">1</div></div></div><div class="panel"><div class="ph">Clinical focus</div><div class="psub">therapeutic areas mentioned today</div><div class="trow"><div class="tn">Cardiology</div><div class="tb"><div class="tf" style="width:100%;background:#b5563a"></div></div><div class="tp" style="color:#b5563a">11</div></div><div class="trow"><div class="tn">Oncology</div><div class="tb"><div class="tf" style="width:100%;background:#b5563a"></div></div><div class="tp" style="color:#b5563a">11</div></div><div class="trow"><div class="tn">Radiology &amp; imaging</div><div class="tb"><div class="tf" style="width:64%;background:#b5563a"></div></div><div class="tp" style="color:#b5563a">7</div></div><div class="trow"><div class="tn">Endocrine / diabetes</div><div class="tb"><div class="tf" style="width:64%;background:#b5563a"></div></div><div class="tp" style="color:#b5563a">7</div></div><div class="trow"><div class="tn">Pulmonology</div><div class="tb"><div class="tf" style="width:45%;background:#b5563a"></div></div><div class="tp" style="color:#b5563a">5</div></div><div class="trow"><div class="tn">Mental health</div><div class="tb"><div class="tf" style="width:36%;background:#b5563a"></div></div><div class="tp" style="color:#b5563a">4</div></div></div></div>
+<div class="panels" style="margin-top:8px"><div class="panel"><div class="ph">Reimbursement pathways in the news</div><div class="psub">items mentioning each route, today</div><div class="trow"><div class="tn">Reimbursement (general)</div><div class="tb"><div class="tf" style="width:100%;background:#b0842b"></div></div><div class="tp" style="color:#b0842b">2</div></div><div class="trow"><div class="tn">DiGA</div><div class="tb"><div class="tf" style="width:50%;background:#b0842b"></div></div><div class="tp" style="color:#b0842b">1</div></div><div class="trow"><div class="tn">NICE EVA</div><div class="tb"><div class="tf" style="width:50%;background:#b0842b"></div></div><div class="tp" style="color:#b0842b">1</div></div></div><div class="panel"><div class="ph">Professional bodies</div><div class="psub">societies &amp; standards (ISPOR, HTAi)</div><div class="trow"><div class="tn">ISPOR</div><div class="tb"><div class="tf" style="width:100%;background:#64748b"></div></div><div class="tp" style="color:#64748b">16</div></div></div></div>
 </div>
 
 <div id="view-feed" class="view">
