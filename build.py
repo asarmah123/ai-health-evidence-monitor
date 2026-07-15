@@ -1494,7 +1494,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
 
 <div class="tabs">
   <div class="tab on" data-tab="overview">Overview</div>
-  <div class="tab" data-tab="feed">Feed <span class="tabbadge">{len(items)}</span></div>
+  <div class="tab" data-tab="feed">Feed <span class="tabcount">({len(items)})</span></div>
   <div class="tab" data-tab="coverage">Coverage</div>
   <div class="tab" data-tab="trends">Trends</div>
   <div class="tab" data-tab="sources">Sources</div>
