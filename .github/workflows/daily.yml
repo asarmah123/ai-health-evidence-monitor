@@ -25,6 +25,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN }}
+          PRIVATE_REPO: ${{ secrets.PRIVATE_REPO }}
         run: python build.py
 
       - name: Commit the rebuilt page
