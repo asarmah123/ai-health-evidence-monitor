@@ -865,40 +865,41 @@ def overview_html(items, agg, o, history=None, take=""):
                   'regulatory actions today. A quiet day.</div>')
 
     # --- shared bar-panel builder ---
-    def bar_panel(title, sub, rows, empty):
+    def bar_panel(title, sub, rows, empty, color="#9c2c2c"):
         if rows:
             peak = rows[0][1] or 1
             bars = "".join(
                 f'<div class="trow"><div class="tn">{html.escape(str(lbl))}</div>'
-                f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%"></div></div>'
-                f'<div class="tp">{n}</div></div>' for lbl, n in rows[:6])
+                f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%;background:{color}"></div></div>'
+                f'<div class="tp" style="color:{color}">{n}</div></div>' for lbl, n in rows[:6])
             return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{sub}</div>{bars}</div>'
         return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{empty}</div></div>'
 
     bodies = o.get("bodies", {})
+    GEO_C = "#2f6f9f"
     def geo_rows(rows):
         if not rows:
             return '<div class="psub" style="margin-bottom:2px">none today</div>'
         peak = rows[0][1] or 1
         return "".join(
             f'<div class="trow"><div class="tn">{html.escape(str(lbl))}</div>'
-            f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%"></div></div>'
-            f'<div class="tp">{n}</div></div>' for lbl, n in rows[:6])
+            f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%;background:{GEO_C}"></div></div>'
+            f'<div class="tp" style="color:{GEO_C}">{n}</div></div>' for lbl, n in rows[:6])
     geo_panel = (f'<div class="panel"><div class="ph">Geography</div>'
                  f'<div class="psub">market-access activity today</div>'
                  f'<div class="subh">By region</div>{geo_rows(o.get("macro", []))}'
                  f'<div class="subh" style="margin-top:9px">By country</div>{geo_rows(o.get("countries", []))}</div>')
     regulators_panel = bar_panel("Regulators", "market-authorisation bodies (FDA, EMA)",
-                                 bodies.get("regulator", []), "No regulator activity today.")
+                                 bodies.get("regulator", []), "No regulator activity today.", color="#6a4c93")
     payers_panel = bar_panel("HTA &amp; payer bodies", "coverage &amp; assessment (CMS, NICE)",
-                             bodies.get("payer", []), "No HTA / payer activity today.")
+                             bodies.get("payer", []), "No HTA / payer activity today.", color="#1f8a70")
     clinfocus = bar_panel("Clinical focus", "therapeutic areas mentioned today",
-                          o.get("focus", []), "No specialty clearly identified today.")
+                          o.get("focus", []), "No specialty clearly identified today.", color="#b5563a")
     pathway = bar_panel("Reimbursement pathways in the news", "items mentioning each route, today",
-                        o.get("pathways", []), "None mentioned today.")
+                        o.get("pathways", []), "None mentioned today.", color="#b0842b")
     prof_rows = bodies.get("professional", [])
     prof_panel = bar_panel("Professional bodies", "societies &amp; standards (ISPOR, HTAi)",
-                           prof_rows, "") if prof_rows else ""
+                           prof_rows, "", color="#64748b") if prof_rows else ""
 
     # compact coverage summary (full detail lives on the Coverage tab)
     cov_mini = ""
@@ -912,11 +913,48 @@ def overview_html(items, agg, o, history=None, take=""):
                     f'data-goto="coverage">full tracker →</a></div>'
                     f'<div class="cov-grid">{cells}</div>')
 
+    # ---- "At a glance" hero: deterministic executive summary (no LLM needed) ----
+    prior_h = (history or [])[:-1]
+    hero_lines = []
+    # biggest week-over-week mover (needs a little history)
+    moves = []
+    for k in LAYERS:
+        base = [h["layers"][k] for h in prior_h[-7:] if k in h.get("layers", {})]
+        if len(base) >= 2:
+            moves.append((o["layers"][k] - sum(base) / len(base), k))
+    if moves:
+        moves.sort(key=lambda x: -abs(x[0]))
+        d, k = moves[0]
+        if abs(d) >= 1.5:
+            hero_lines.append(f'<b>{SHORT[k]}</b> activity {"up" if d > 0 else "down"} '
+                              f'{abs(d):.0f} vs last week — the day\'s biggest move')
+    # single most consequential item
+    hpicks = _digest(o)
+    if hpicks:
+        why, hi = hpicks[0]
+        hero_lines.append(f'Most consequential: <a href="{safe_url(hi["url"])}" target="_blank" '
+                          f'rel="noopener">{html.escape(hi["title"])}</a> <span class="hero-tag">{why.lower()}</span>')
+    # most active market + body
+    if o.get("macro"):
+        reg = o["macro"][0]
+        allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
+        tb = max(allb, key=lambda x: x[1]) if allb else None
+        line = f'Most active market: <b>{html.escape(reg[0])}</b> ({reg[1]})'
+        if tb:
+            line += f' · leading body: <b>{html.escape(tb[0])}</b> ({tb[1]})'
+        hero_lines.append(line)
+    if hero_lines:
+        hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
+        hero = (f'<div class="hero"><div class="hero-h">At a glance '
+                f'<span class="hero-n">{len(items)} items today</span></div>{hl}</div>')
+    else:
+        hero = ""
+
     pathway_row = (f'<div class="panels" style="margin-top:8px">{pathway}{prof_panel}</div>'
                    if prof_panel else f'<div style="margin-top:8px">{pathway}</div>')
     take_html = (f'<div class="take"><div class="take-l">Editor\'s take</div>'
                  f'<div class="take-t">{html.escape(take)}</div></div>') if take else ""
-    return f'''{take_html}
+    return f'''{take_html}{hero}
 {pulse_html}
 <div class="sec">The two gates</div>
 <div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts today\u2019s items about that gate.</div>
@@ -1180,12 +1218,12 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 /* tabs */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;
  position:sticky;top:0;background:#fff;z-index:10;padding-top:2px}
-.tab{font-size:13px;padding:8px 14px;color:#777;cursor:pointer;border-bottom:2px solid transparent;
+.tab{font-size:13.5px;padding:8px 15px;color:#6a6a6a;cursor:pointer;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;
  white-space:nowrap}
 .tab:hover{color:var(--ink)}
-.tab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:650;border-bottom:2px solid var(--accent);background:#fbf6f6}
 .view{display:none}.view.on{display:block}
-.sec{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#8a8a8a;
+.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a5a5a;
  margin:26px 0 10px;display:flex;align-items:center;gap:10px}
 .sec:first-child{margin-top:6px}
 .seeall{font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);
@@ -1194,11 +1232,11 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 /* tiles */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tiles.g2{grid-template-columns:repeat(2,1fr)}
-.seccap{font-size:11.5px;color:#8a8a8a;margin:-4px 0 10px;line-height:1.4}
+.seccap{font-size:12.5px;color:#5f5f5f;margin:-4px 0 10px;line-height:1.45}
 .tile{border:1px solid var(--line);border-radius:9px;padding:11px 13px}
-.tl{font-size:10px;color:#8a8a8a;text-transform:uppercase;letter-spacing:.05em}
+.tl{font-size:11px;color:#5a5a5a;text-transform:uppercase;letter-spacing:.05em}
 .tv{font-size:22px;font-weight:650;margin-top:3px}
-.ts{font-size:10.5px;color:#a5a5a5;margin-top:2px;line-height:1.35}
+.ts{font-size:11px;color:#6f6f6f;margin-top:2px;line-height:1.35}
 /* digest */
 .digboxes{display:flex;flex-direction:column;gap:10px}
 .digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -1209,23 +1247,23 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 .dig:last-child{border-bottom:none}
 .dig:hover{background:#fafafa}
 .dttl{font-size:13px;font-weight:500;line-height:1.35}
-.dsrc{font-size:10.5px;color:#a0a0a0;white-space:nowrap}
+.dsrc{font-size:11px;color:#767676;white-space:nowrap}
 .dnote{border:1px dashed var(--line);border-radius:9px;padding:16px;font-size:12.5px;color:#8a8a8a}
 /* panels */
 .panels{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .panel,.spark{border:1px solid var(--line);border-radius:9px;padding:12px 14px}
-.ph{font-size:12px;font-weight:600}
-.psub{font-size:10.5px;color:#8a8a8a;margin-bottom:9px}
+.ph{font-size:12.5px;font-weight:650}
+.psub{font-size:11px;color:#6a6a6a;margin-bottom:9px}
 .spark svg{width:100%;height:52px;display:block;margin-top:6px}
 .sparl{font-size:10.5px;color:#a5a5a5;margin-top:6px}
 .split{height:9px;border-radius:5px;background:#dbe6d9;overflow:hidden;margin:4px 0 6px}
 .sfill{height:9px;background:#c9d8ee}
 .slab{display:flex;justify-content:space-between;font-size:11px;color:#666}
 .trow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.tn{font-size:12px;width:150px;flex:none}.tn.dim,.tp.dim{color:#a0a0a0}
+.tn{font-size:12.5px;width:150px;flex:none}.tn.dim,.tp.dim{color:#a0a0a0}
 .tb{flex:1;height:6px;background:#f2f2f2;border-radius:3px}
 .tf{height:6px;background:var(--accent);border-radius:3px;opacity:.75}.tf.down{background:#c4c4c4}
-.tp{font-size:10.5px;color:var(--accent);width:40px;text-align:right}
+.tp{font-size:11.5px;font-weight:600;color:var(--accent);width:40px;text-align:right}
 .tsep{border-top:1px solid #f0f0f0;margin:7px 0}
 /* coverage */
 .cov{border:1px solid #d3d3d3;border-radius:10px;padding:14px 16px}
@@ -1279,10 +1317,16 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
  padding:12px 15px;margin-bottom:18px;background:#fbfaf9}
 .take-l{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
 .take-t{font-size:14px;line-height:1.5;color:#2c2c2c}
+.hero{border:1px solid #e6d9d9;border-left:4px solid var(--accent);background:#fcf8f8;border-radius:10px;padding:13px 16px;margin-bottom:20px}
+.hero-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.hero-n{color:#9a8a8a;font-weight:600;margin-left:6px}
+.hero-line{font-size:13.5px;color:#2c2c2c;line-height:1.5;padding:2px 0}
+.hero-line a{color:var(--ink);font-weight:600}
+.hero-tag{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:var(--accent);background:#f3e3e3;padding:1px 6px;border-radius:4px;margin-left:4px}
 .pulse{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
 .pulse-c{border:1px solid var(--line);border-radius:8px;padding:9px 10px;cursor:pointer}
 .pulse-c:hover{border-color:#bcbcbc;background:#fafafa}
-.pl{font-size:9px;color:#8a8a8a;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;min-height:2.1em}
+.pl{font-size:10px;color:#6f6f6f;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;min-height:2.1em}
 .pv{font-size:18px;font-weight:650;margin-top:2px}
 .pd{font-size:10px;font-weight:500;margin-left:1px}
 .pd.up{color:#9c2c2c}.pd.down{color:#8a8a8a}.pd.flat{color:#b5b5b5}
@@ -1293,7 +1337,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .cat:hover{border-color:#bcbcbc;background:#fafafa}
 .cat-t{font-size:14px;font-weight:600;display:flex;align-items:baseline;gap:6px}
 .cat-n{font-size:11px;color:#9a9a9a;font-weight:500;margin-left:auto}
-.cat-d{font-size:11.5px;color:#777;margin-top:5px;line-height:1.4}
+.cat-d{font-size:12px;color:#5f5f5f;margin-top:5px;line-height:1.45}
 .catback{font-size:12px;color:#777;cursor:pointer;margin-bottom:12px;display:inline-block}
 .catback:hover{color:var(--ink)}
 .cat-head{font-size:18px;font-weight:650;margin:0 0 5px;letter-spacing:-.01em}
@@ -1450,7 +1494,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
 
 <div class="tabs">
   <div class="tab on" data-tab="overview">Overview</div>
-  <div class="tab" data-tab="feed">Feed</div>
+  <div class="tab" data-tab="feed">Feed <span class="tabbadge">{len(items)}</span></div>
   <div class="tab" data-tab="coverage">Coverage</div>
   <div class="tab" data-tab="trends">Trends</div>
   <div class="tab" data-tab="sources">Sources</div>
