@@ -26,41 +26,58 @@ except Exception:
 ROOT = Path(__file__).parent
 DOCS = ROOT / "docs"
 CACHE = ROOT / "data" / "cache.json"
-UA = {
-    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                   "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+# We identify ourselves honestly on every request. A browser UA is used ONLY as a
+# last-resort fallback when a source refuses the identifying UA — never to disguise
+# who we are. No third-party CORS proxies: we only read endpoints meant to be public.
+BOT_UA = {
+    "User-Agent": "AI-in-Health-Monitor/1.0 (+https://github.com/asarmah123/ai-heor-feed)",
     "Accept": "application/rss+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.8",
     "Accept-Language": "en-GB,en;q=0.9",
 }
+BROWSER_UA = dict(BOT_UA, **{
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
+})
+UA = BOT_UA   # default headers for the JSON-API fetchers (PubMed, Federal Register, openFDA, ctgov)
 LAYERS = ["research", "clinical", "heor", "regulation", "access", "industry"]
 TIERS = ["daily", "weekly", "monthly"]
 
-# Fetch helper with a fallback path for sources that reject the direct request.
-PROXIES = [
-    "https://api.allorigins.win/raw?url={}",
-    "https://api.codetabs.com/v1/proxy?quest={}",
-    "https://corsproxy.io/?{}",
-]
+# Respectful pacing: never fire requests faster than one every _MIN_GAP seconds.
+_MIN_GAP = 0.5
+_last_req = [0.0]
+
+
+def _throttle():
+    dt = time.time() - _last_req[0]
+    if dt < _MIN_GAP:
+        time.sleep(_MIN_GAP - dt)
+    _last_req[0] = time.time()
 
 
 def get(url, timeout=25):
-    """Fetch a URL, with a fallback path on failure."""
-    try:
-        r = requests.get(url, headers=UA, timeout=timeout)
-        r.raise_for_status()
-        return r
-    except Exception as direct_err:
-        quoted = requests.utils.quote(url, safe="")
-        for p in PROXIES:
-            try:
-                r = requests.get(p.format(quoted), headers=UA, timeout=timeout + 20)
-                r.raise_for_status()
-                if not r.content.strip():
-                    continue
-                return r
-            except Exception:
-                continue
-        raise direct_err   # original error is the informative one
+    """Fetch a URL politely: identifying UA, throttle, one transient-error retry,
+    and a single browser-UA fallback if the source refuses the bot UA (401/403/406)."""
+    for attempt in range(2):
+        _throttle()
+        try:
+            r = requests.get(url, headers=BOT_UA, timeout=timeout)
+            r.raise_for_status()
+            return r
+        except requests.HTTPError as e:
+            code = getattr(e.response, "status_code", None)
+            if code in (401, 403, 406):
+                break                       # UA refused → try a browser UA once
+            if attempt == 0 and code in (429, 500, 502, 503, 504):
+                time.sleep(2); continue     # transient server error → back off once
+            raise
+        except requests.RequestException:
+            if attempt == 0:
+                time.sleep(2); continue     # timeout / connection blip → retry once
+            raise
+    _throttle()
+    r = requests.get(url, headers=BROWSER_UA, timeout=timeout)
+    r.raise_for_status()
+    return r
 
 
 # ------------------------------------------------------------- private store
@@ -136,6 +153,19 @@ def clean(text: str, limit: int = 320) -> str:
     return text[: limit - 1] + "…" if len(text) > limit else text
 
 
+def when_from(entry):
+    """Aware datetime for a feed entry, or None if it carries no usable date.
+    We never invent a date: undated items are marked, not stamped with 'today'.
+    This keeps the site's promise that dates are read from sources, never estimated."""
+    st = entry.get("published_parsed") or entry.get("updated_parsed")
+    if not st:
+        return None
+    try:
+        return datetime.fromtimestamp(time.mktime(st), tz=timezone.utc)
+    except (OverflowError, ValueError, TypeError):
+        return None
+
+
 def load_cache(token=None) -> tuple:
     """Lens commentary cache. Once the lens is on this file IS your commentary corpus,
     so it lives in the private store, not the public repo."""
@@ -168,22 +198,21 @@ def fetch_rss(sources, cutoff, cap):
         try:
             parsed = feedparser.parse(get(s["url"]).content)
         except requests.HTTPError as e:
-            dead.append(f"{s['name']}: HTTP {e.response.status_code}")
+            dead.append(f"{s['name']}: HTTP {getattr(e.response, 'status_code', '?')} [{s['url']}]")
             continue
         except Exception as e:
-            dead.append(f"{s['name']}: {type(e).__name__}")
+            dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [{s['url']}]")
             continue
         if not parsed.entries:
-            dead.append(f"{s['name']}: no entries")
+            dead.append(f"{s['name']}: no entries [{s['url']}]")
             continue
 
         kept = 0
         for e in parsed.entries:
             if kept >= cap:
                 break
-            st = e.get("published_parsed") or e.get("updated_parsed")
-            when = datetime.fromtimestamp(time.mktime(st), tz=timezone.utc) if st else datetime.now(timezone.utc)
-            if when < cutoff:
+            when = when_from(e)
+            if when is not None and when < cutoff:
                 continue
             link = e.get("link")
             title = clean(e.get("title", ""), 200)
@@ -192,7 +221,7 @@ def fetch_rss(sources, cutoff, cap):
             items.append({
                 "id": uid(link), "title": title, "url": link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": when.strftime("%Y-%m-%d"),
+                "date": when.strftime("%Y-%m-%d") if when else "",
                 "summary": clean(e.get("summary", "")),
             })
             kept += 1
@@ -212,9 +241,8 @@ def fetch_arxiv(cfg, cutoff, cap):
     terms = [t.lower() for t in cfg["boost_terms"]]
     scored = []
     for e in parsed.entries:
-        st = e.get("published_parsed")
-        when = datetime.fromtimestamp(time.mktime(st), tz=timezone.utc) if st else datetime.now(timezone.utc)
-        if when < cutoff:
+        when = when_from(e)
+        if when is not None and when < cutoff:
             continue
         title = clean(e.get("title", ""), 200)
         blob = (title + " " + e.get("summary", "")).lower()
@@ -222,7 +250,7 @@ def fetch_arxiv(cfg, cutoff, cap):
         scored.append((score, {
             "id": uid(e.link), "title": title, "url": e.link,
             "source": "arXiv", "tier": "daily", "layer": "research",
-            "date": when.strftime("%Y-%m-%d"),
+            "date": when.strftime("%Y-%m-%d") if when else "",
             "summary": clean(e.get("summary", "")),
         }))
     scored.sort(key=lambda x: -x[0])
@@ -235,10 +263,10 @@ def fetch_scrape(sources):
         try:
             soup = BeautifulSoup(get(s["url"]).text, "html.parser")
         except requests.HTTPError as e:
-            dead.append(f"{s['name']}: HTTP {e.response.status_code}")
+            dead.append(f"{s['name']}: HTTP {getattr(e.response, 'status_code', '?')} [{s['url']}]")
             continue
         except Exception as e:
-            dead.append(f"{s['name']}: {type(e).__name__}")
+            dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [{s['url']}]")
             continue
 
         seen = set()
@@ -253,7 +281,7 @@ def fetch_scrape(sources):
             items.append({
                 "id": uid(full), "title": text, "url": full,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "date": "",   # scraped link lists carry no publication date — never invent one
                 "summary": "",
             })
             if len(seen) >= 8:
@@ -282,7 +310,7 @@ def fetch_pubmed(sources, lookback):
             r.raise_for_status()
             res = r.json()["result"]
         except Exception as e:
-            dead.append(f"{s['name']}: {type(e).__name__}")
+            dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [PubMed E-utilities]")
             continue
 
         for pmid in pmids:
@@ -291,7 +319,7 @@ def fetch_pubmed(sources, lookback):
                 continue
             url = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
             raw = (rec.get("sortpubdate") or rec.get("pubdate") or "")[:10].replace("/", "-")
-            date = raw if re.match(r"^\d{4}-\d{2}-\d{2}$", raw) else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date = raw if re.match(r"^\d{4}-\d{2}-\d{2}$", raw) else ""
             authors = ", ".join(a["name"] for a in rec.get("authors", [])[:4])
             items.append({
                 "id": uid(url), "title": clean(rec.get("title", ""), 220), "url": url,
@@ -311,23 +339,22 @@ def fetch_gnews(sources, cutoff, cap):
         try:
             parsed = feedparser.parse(get(url).content)
         except Exception as e:
-            dead.append(f"{s['name']} (via Google News): {type(e).__name__}")
+            dead.append(f"{s['name']} (via Google News): {type(e).__name__}: {str(e)[:100]}")
             continue
 
         kept = 0
         for e in parsed.entries:
             if kept >= cap:
                 break
-            st = e.get("published_parsed")
-            when = datetime.fromtimestamp(time.mktime(st), tz=timezone.utc) if st else datetime.now(timezone.utc)
-            if when < cutoff:
+            when = when_from(e)
+            if when is not None and when < cutoff:
                 continue
             title = clean(e.get("title", ""), 200)
             title = re.sub(r"\s+-\s+[^-]+$", "", title)   # strip the trailing " - Publisher"
             items.append({
                 "id": uid(e.link), "title": title, "url": e.link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": when.strftime("%Y-%m-%d"), "summary": "",
+                "date": when.strftime("%Y-%m-%d") if when else "", "summary": "",
             })
             kept += 1
     return items, dead
@@ -350,7 +377,7 @@ def fetch_federal_register(sources, lookback):
             r.raise_for_status()
             results = r.json().get("results", [])
         except Exception as e:
-            dead.append(f"{s['name']}: {type(e).__name__}")
+            dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [Federal Register API]")
             continue
 
         for d in results:
@@ -391,10 +418,10 @@ def fetch_openfda(cfg, lookback):
             r.raise_for_status()
             results = r.json().get("results", [])
         except requests.HTTPError as e:
-            dead.append(f"openFDA {label}: HTTP {e.response.status_code}")
+            dead.append(f"openFDA {label}: HTTP {getattr(e.response, 'status_code', '?')} [api.fda.gov/device/{ep}]")
             continue
         except Exception as e:
-            dead.append(f"openFDA {label}: {type(e).__name__}")
+            dead.append(f"openFDA {label}: {type(e).__name__}: {str(e)[:120]} [api.fda.gov/device/{ep}]")
             continue
 
         for d in results:
@@ -407,7 +434,7 @@ def fetch_openfda(cfg, lookback):
             elif len(raw) == 8:
                 date = f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
             else:
-                date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                date = ""
             link = f"{base_link}{num}"
             items.append({
                 "id": uid(link), "title": f"{label} {verb}: {clean(name, 150)}",
@@ -434,7 +461,7 @@ def fetch_ctgov(sources, lookback):
             r.raise_for_status()
             studies = r.json().get("studies", [])
         except Exception as e:
-            dead.append(f"{s['name']}: {type(e).__name__}")
+            dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [ClinicalTrials.gov API v2]")
             continue
 
         for st in studies:
@@ -454,15 +481,16 @@ def fetch_ctgov(sources, lookback):
                 "id": uid(nct), "title": clean(title, 200),
                 "url": f"https://clinicaltrials.gov/study/{nct}",
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": when[:10] if when else datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "date": when[:10] if when else "",
                 "summary": clean(f"{bits} — primary endpoint: {primary}" if primary else bits, 220),
             })
     return items, dead
 
 
-def log_history(items, terms, token=None):
-    """One row per build: per-layer counts and counts for each tracked term.
-    Stored in the private data repo."""
+def log_history(items, terms, token=None, health=None):
+    """One row per build: per-layer counts, counts for each tracked term, and a compact
+    per-source health snapshot. Persisted to the private data repo via the GitHub
+    Contents API (SHA-based update) — no git push from the Action, so no merge/HEAD state."""
     path = ROOT / "data" / "history.json"
     text, sha = private_get("history.json", token)
     if text:
@@ -484,6 +512,15 @@ def log_history(items, terms, token=None):
         "layers": {l: sum(1 for i in items if i["layer"] == l) for l in LAYERS},
         "terms": {t: blob.count(t.lower()) for t in terms},
     }
+    if health:
+        # compact health footprint, so "dead 1 day vs dead 5 days" becomes visible over time
+        row["health"] = {
+            "contributing": health.get("contributing"),
+            "expected": health.get("expected"),
+            "silent": health.get("zero_steady", []),
+            "failed": health.get("failed", []),
+            "undated": health.get("undated", 0),
+        }
     hist = [h for h in hist if h.get("date") != today] + [row]   # one row per day, last write wins
     hist = hist[-400:]                                            # ~13 months
     text_out = json.dumps(hist, indent=1)
@@ -596,6 +633,7 @@ MACRO = {
     "Japan": "Asia-Pacific", "China": "Asia-Pacific", "Australia": "Asia-Pacific",
     "South Korea": "Asia-Pacific", "India": "Asia-Pacific", "Singapore": "Asia-Pacific",
     "Thailand": "Asia-Pacific", "Canada": "North America",
+    "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
     "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
     "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
 }
@@ -610,16 +648,19 @@ BODY_ROLE = {
     # HTA & payer bodies (coverage / assessment)
     "CMS": "payer", "NICE": "payer", "G-BA": "payer", "IQWIG": "payer", "HAS": "payer", "BfArM": "payer",
     "PBAC": "payer", "MSAC": "payer", "HIRA": "payer", "NECA": "payer", "Chuikyo": "payer",
-    "HITAP": "payer", "ACE": "payer", "CADTH": "payer", "MOHAP": "regulator", "HITAP Thailand": "payer",
-    # professional societies (no binding decisions)
-    "ISPOR": "professional", "HTAi": "professional",
+    "HITAP": "payer", "ACE": "payer", "CADTH": "payer", "MOHAP": "regulator",
+    "ICER": "payer", "AIFA": "payer", "TLV": "payer", "Zorginstituut": "payer",
+    "Swissmedic": "regulator", "Health Canada": "regulator",
+    # professional societies & HTA networks (no binding decisions)
+    "ISPOR": "professional", "HTAi": "professional", "INAHTA": "professional",
 }
 
 # bodies distinctive enough to match safely in free text (no source feed of their own).
 # Ambiguous acronyms (HAS, NICE, CMS, FDA, ACE) are matched by SOURCE only, never text.
 SAFE_TEXT_BODIES = {"PMDA", "NMPA", "TGA", "MFDS", "HSA", "CDSCO", "SFDA", "SAHPRA",
                     "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWIG",
-                    "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP", "PBAC", "MSAC"}
+                    "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP",
+                    "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA"}
 
 
 def country_of(i):
@@ -646,6 +687,10 @@ def country_of(i):
         ("Singapore", ["hsa singapore", "singapore", "agency for care effectiveness"]),
         ("Thailand", ["hitap", "thailand", "thai fda"]),
         ("Canada", ["cadth", "health canada", "canada"]),
+        ("Switzerland", ["swissmedic", "switzerland"]),
+        ("Italy", ["aifa", "italy"]),
+        ("Sweden", ["tlv", "sweden", "tandvard"]),
+        ("Netherlands", ["zorginstituut", "netherlands"]),
         ("Saudi Arabia", ["sfda", "saudi"]),
         ("South Africa", ["sahpra", "south africa"]),
         ("United Arab Emirates", ["uae", "united arab emirates", "mohap", "dubai health", "abu dhabi"]),
@@ -853,7 +898,7 @@ def overview_html(items, agg, o, history=None, take=""):
             grows = "".join(
                 f'<a class="dig" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
-                f'<span class="dsrc">{html.escape(i["source"])} · {i["date"]}</span></a>'
+                f'<span class="dsrc">{html.escape(i["source"])} · {i["date"] or "date unknown"}</span></a>'
                 for i in gitems)
             boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
                       f'<span class="digbox-n">{len(gitems)}</span></div>{grows}</div>')
@@ -954,7 +999,24 @@ def overview_html(items, agg, o, history=None, take=""):
                    if prof_panel else f'<div style="margin-top:8px">{pathway}</div>')
     take_html = (f'<div class="take"><div class="take-l">Editor\'s take</div>'
                  f'<div class="take-t">{html.escape(take)}</div></div>') if take else ""
-    return f'''{take_html}{hero}
+
+    # ---- today's brief: level-1 scannable counts (all real, from this build) ----
+    def _bm(v, label, hot=False):
+        cls = "brief-v hot" if (hot and v) else "brief-v"
+        return (f'<div class="brief-m"><div class="{cls}">{v}</div>'
+                f'<div class="brief-l">{label}</div></div>')
+    brief = ('<div class="brief">'
+             + _bm(len(items), "items")
+             + _bm(len(o["clears"]), "device<br>authorisations", hot=True)
+             + _bm(len(o["coverage_actions"]), "coverage<br>decisions", hot=True)
+             + _bm(len(o["trials"]), "AI trials")
+             + _bm(len(o["papers"]), "HEOR<br>papers")
+             + '</div>')
+    brief_block = ('<div class="sec" style="margin-top:6px">Today’s brief</div>'
+                   '<div class="seccap">What landed in the latest build, at a glance.</div>' + brief)
+
+    return f'''{take_html}{brief_block}{hero}
+{digest}
 {pulse_html}
 <div class="sec">The two gates</div>
 <div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts today\u2019s items about that gate.</div>
@@ -962,7 +1024,6 @@ def overview_html(items, agg, o, history=None, take=""):
 <div class="sec">Leading indicators</div>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
 <div class="tiles g2">{ind_html}</div>
-{digest}
 <div class="sec">The breakdown</div>
 <div class="seccap">Today’s items by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
 <div class="panels">{geo_panel}{regulators_panel}</div>
@@ -1210,21 +1271,21 @@ CSS = """
 :root{color-scheme:light;--line:#e8e8e8;--mute:#767676;--ink:#1a1a1a;--accent:#9c2c2c}
 *{box-sizing:border-box}
 body{margin:0;padding:26px 20px 60px;background:#fff;color:var(--ink);
- font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+ font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
 .wrap{max-width:880px;margin:0 auto}
-h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
-.tagline{font-size:13px;color:#5a5a5a;margin:2px 0}
-.sub{color:var(--mute);font-size:12px;margin-bottom:16px}
+h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
+.tagline{font-size:14.5px;color:#4a4a4a;margin:3px 0}
+.sub{color:var(--mute);font-size:12.5px;margin-bottom:16px}
 /* tabs */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;
  position:sticky;top:0;background:#fff;z-index:10;padding-top:2px}
-.tab{font-size:13.5px;padding:8px 15px;color:#6a6a6a;cursor:pointer;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;
+.tab{font-size:14px;padding:9px 16px;color:#6a6a6a;cursor:pointer;border-bottom:2px solid transparent;border-radius:6px 6px 0 0;
  white-space:nowrap}
 .tab:hover{color:var(--ink)}
 .tab.on{color:var(--ink);font-weight:650;border-bottom:2px solid var(--accent);background:#fbf6f6}
 .view{display:none}.view.on{display:block}
-.sec{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a5a5a;
- margin:26px 0 10px;display:flex;align-items:center;gap:10px}
+.sec{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;
+ margin:28px 0 11px;display:flex;align-items:center;gap:10px}
 .sec:first-child{margin-top:6px}
 .seeall{font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);
  cursor:pointer;text-decoration:none}
@@ -1232,11 +1293,11 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 /* tiles */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tiles.g2{grid-template-columns:repeat(2,1fr)}
-.seccap{font-size:12.5px;color:#5f5f5f;margin:-4px 0 10px;line-height:1.45}
+.seccap{font-size:13.5px;color:#565656;margin:-4px 0 12px;line-height:1.55}
 .tile{border:1px solid var(--line);border-radius:9px;padding:11px 13px}
-.tl{font-size:11px;color:#5a5a5a;text-transform:uppercase;letter-spacing:.05em}
-.tv{font-size:22px;font-weight:650;margin-top:3px}
-.ts{font-size:11px;color:#6f6f6f;margin-top:2px;line-height:1.35}
+.tl{font-size:11.5px;color:#565656;text-transform:uppercase;letter-spacing:.05em}
+.tv{font-size:24px;font-weight:680;margin-top:4px}
+.ts{font-size:11.5px;color:#666;margin-top:3px;line-height:1.4}
 /* digest */
 .digboxes{display:flex;flex-direction:column;gap:10px}
 .digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -1246,21 +1307,21 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
  padding:10px 13px;text-decoration:none;color:var(--ink);border-bottom:1px solid #f4f4f4}
 .dig:last-child{border-bottom:none}
 .dig:hover{background:#fafafa}
-.dttl{font-size:13px;font-weight:500;line-height:1.35}
-.dsrc{font-size:11px;color:#767676;white-space:nowrap}
+.dttl{font-size:14.5px;font-weight:500;line-height:1.4}
+.dsrc{font-size:11.5px;color:#767676;white-space:nowrap}
 .dnote{border:1px dashed var(--line);border-radius:9px;padding:16px;font-size:12.5px;color:#8a8a8a}
 /* panels */
 .panels{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .panel,.spark{border:1px solid var(--line);border-radius:9px;padding:12px 14px}
-.ph{font-size:12.5px;font-weight:650}
-.psub{font-size:11px;color:#6a6a6a;margin-bottom:9px}
+.ph{font-size:13.5px;font-weight:680}
+.psub{font-size:11.5px;color:#666;margin-bottom:10px}
 .spark svg{width:100%;height:52px;display:block;margin-top:6px}
 .sparl{font-size:10.5px;color:#a5a5a5;margin-top:6px}
 .split{height:9px;border-radius:5px;background:#dbe6d9;overflow:hidden;margin:4px 0 6px}
 .sfill{height:9px;background:#c9d8ee}
 .slab{display:flex;justify-content:space-between;font-size:11px;color:#666}
 .trow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.tn{font-size:12.5px;width:150px;flex:none}.tn.dim,.tp.dim{color:#a0a0a0}
+.tn{font-size:13px;width:150px;flex:none}.tn.dim,.tp.dim{color:#a0a0a0}
 .tb{flex:1;height:6px;background:#f2f2f2;border-radius:3px}
 .tf{height:6px;background:var(--accent);border-radius:3px;opacity:.75}.tf.down{background:#c4c4c4}
 .tp{font-size:11.5px;font-weight:600;color:var(--accent);width:40px;text-align:right}
@@ -1283,7 +1344,7 @@ h1{font-size:22px;margin:0;letter-spacing:-.015em;font-weight:650}
 .cov-sample code{background:#f3ead0;padding:1px 4px;border-radius:3px}
 /* feed */
 .grp{margin-bottom:14px}
-.grp-h{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#9a9a9a;margin-bottom:7px}
+.grp-h{font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#7a7a7a;margin-bottom:8px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 button.f{border:1px solid #dcdcdc;background:#fff;color:#3a3a3a;padding:5px 11px;border-radius:999px;
  font-size:12.5px;cursor:pointer}
@@ -1299,9 +1360,9 @@ button.f .n{opacity:.55;margin-left:4px;font-variant-numeric:tabular-nums}
 .tag{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:#f0f0f0;color:#555}
 .tag.daily{background:#fdeeee;color:#9c2c2c}.tag.weekly{background:#eaf2fd;color:#1f4f8f}.tag.monthly{background:#edf6ee;color:#2b6432}
 .src{font-size:12px;color:var(--mute)}
-h3{font-size:15px;margin:0 0 6px;font-weight:600;line-height:1.35}
+h3{font-size:16px;margin:0 0 6px;font-weight:600;line-height:1.4}
 h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
-.summ{font-size:13px;color:#444;margin-bottom:9px}
+.summ{font-size:13.5px;color:#3f3f3f;margin-bottom:9px}
 .lens{border-left:3px solid #cfcfcf;background:#fafafa;padding:8px 11px;border-radius:0 6px 6px 0;font-size:12.5px;color:#3d3d3d}
 .lens b{color:var(--ink)}
 .acts{margin-top:9px}
@@ -1313,14 +1374,18 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .hub:hover{border-color:#bfbfbf;background:#fafafa}
 .hub .n{font-size:13px;font-weight:600;color:var(--ink)}.hub .d{font-size:11.5px;color:var(--mute);margin-top:2px}
 .foot{font-size:11.5px;color:#a5a5a5;margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
+.disc{font-size:11.5px;color:#8a6d1a;background:#fdfbf2;border:1px solid #ece3c4;border-radius:8px;padding:8px 12px;margin:0 0 16px;line-height:1.45}
+.pagefoot{font-size:11.5px;color:#8a8a8a;line-height:1.6;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
+.pagefoot b{color:#5f5f5f}
+.pagefoot-s{margin-top:9px;color:#b0b0b0;font-variant-numeric:tabular-nums}
 .take{border:1px solid #d8d8d8;border-left:3px solid var(--accent);border-radius:8px;
  padding:12px 15px;margin-bottom:18px;background:#fbfaf9}
 .take-l{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
-.take-t{font-size:14px;line-height:1.5;color:#2c2c2c}
+.take-t{font-size:15px;line-height:1.6;color:#2a2a2a}
 .hero{border:1px solid #e6d9d9;border-left:4px solid var(--accent);background:#fcf8f8;border-radius:10px;padding:13px 16px;margin-bottom:20px}
 .hero-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
 .hero-n{color:#9a8a8a;font-weight:600;margin-left:6px}
-.hero-line{font-size:13.5px;color:#2c2c2c;line-height:1.5;padding:2px 0}
+.hero-line{font-size:15px;color:#2a2a2a;line-height:1.6;padding:3px 0}
 .hero-line a{color:var(--ink);font-weight:600}
 .hero-tag{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:var(--accent);background:#f3e3e3;padding:1px 6px;border-radius:4px;margin-left:4px}
 .pulse{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
@@ -1335,21 +1400,36 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .catgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .cat{border:1px solid var(--line);border-radius:10px;padding:13px 14px;cursor:pointer}
 .cat:hover{border-color:#bcbcbc;background:#fafafa}
-.cat-t{font-size:14px;font-weight:600;display:flex;align-items:baseline;gap:6px}
-.cat-n{font-size:11px;color:#9a9a9a;font-weight:500;margin-left:auto}
-.cat-d{font-size:12px;color:#5f5f5f;margin-top:5px;line-height:1.45}
+.cat-t{font-size:15px;font-weight:620;display:flex;align-items:baseline;gap:6px}
+.cat-n{font-size:11.5px;color:#9a9a9a;font-weight:500;margin-left:auto}
+.cat-d{font-size:13px;color:#5a5a5a;margin-top:6px;line-height:1.5}
 .catback{font-size:12px;color:#777;cursor:pointer;margin-bottom:12px;display:inline-block}
 .catback:hover{color:var(--ink)}
 .cat-head{font-size:18px;font-weight:650;margin:0 0 5px;letter-spacing:-.01em}
 .cat-lead{font-size:12.5px;color:#666;line-height:1.5;max-width:660px}
 @media(max-width:640px){.catgrid{grid-template-columns:1fr}}
+/* today's brief — level-1 scannable summary strip */
+.brief{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;border:1px solid #e6d9d9;
+ background:#fcf9f9;border-radius:11px;padding:15px 8px;margin:4px 0 6px}
+.brief-m{text-align:center;padding:0 6px;border-right:1px solid #efe6e6}
+.brief-m:last-child{border-right:none}
+.brief-v{font-size:28px;font-weight:720;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.brief-v.hot{color:var(--accent)}
+.brief-l{font-size:11px;color:#666;margin-top:7px;line-height:1.25;text-transform:uppercase;letter-spacing:.03em}
+/* feed search */
+.searchbar{margin:2px 0 18px}
+.search{width:100%;font-size:14.5px;padding:11px 14px;border:1px solid #d5d5d5;border-radius:9px;
+ background:#fff;color:var(--ink);font-family:inherit}
+.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #f3e3e3}
+.search::placeholder{color:#9a9a9a}
 @media(max-width:640px){.tiles,.cov-grid{grid-template-columns:repeat(2,1fr)}.panels{grid-template-columns:1fr}
- .dig{grid-template-columns:1fr;gap:3px}.dsrc{white-space:normal}}
+ .dig{grid-template-columns:1fr;gap:3px}.dsrc{white-space:normal}
+ .brief{grid-template-columns:repeat(2,1fr);gap:12px 8px}.brief-m{border-right:none}}
 """
 
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let tier='all', layer='all', hideRead=false;
+let tier='all', layer='all', hideRead=false, q='';
 const KEY='aiheor_read_v1';
 const read=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));
 const save=()=>localStorage.setItem(KEY,JSON.stringify([...read]));
@@ -1364,7 +1444,7 @@ function goto(name){
   if(name==='feed'){ showDir(); }   // always land on the category directory
   window.scrollTo(0,0);
 }
-function showDir(){ $('#feed-dir').style.display='block'; $('#feed-list').style.display='none'; }
+function showDir(){ const qq=$('#q'); if(qq) qq.value=''; q=''; $('#feed-dir').style.display='block'; $('#feed-list').style.display='none'; }
 function showList(){ $('#feed-dir').style.display='none'; $('#feed-list').style.display='block'; window.scrollTo(0,0); }
 $$('.tab').forEach(t=>t.onclick=()=>goto(t.dataset.tab));
 document.addEventListener('click',e=>{
@@ -1375,11 +1455,12 @@ document.addEventListener('click',e=>{
 function render(){
   const list=ITEMS.filter(i=>tier==='all'||i.tier===tier)
                   .filter(i=>layer==='all'||i.layer===layer)
-                  .filter(i=>!(hideRead&&read.has(i.id)));
+                  .filter(i=>!(hideRead&&read.has(i.id)))
+                  .filter(i=>!q||((i.title+' '+i.source+' '+(i.summary||'')).toLowerCase().includes(q)));
   $('#feed').innerHTML = list.map(i=>`
     <div class="card ${read.has(i.id)?'read':''}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
-        <span class="src">${esc(i.source)} · ${i.date}</span></div>
+        <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span></div>
       <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
       ${i.summary?`<div class="summ">${esc(i.summary)}</div>`:''}
       ${i.lens?`<div class="lens"><b>HEOR lens →</b> ${esc(i.lens)}</div>`:''}
@@ -1404,6 +1485,15 @@ if(showall) showall.onclick=()=>{layer='all';
 const back=$('[data-back]');
 if(back) back.onclick=()=>showDir();
 $('#hide').onclick=e=>{hideRead=!hideRead;e.target.classList.toggle('on',hideRead);render();};
+const qi=$('#q');
+if(qi) qi.oninput=()=>{q=qi.value.trim().toLowerCase();
+  if(q){ if($('#feed-list').style.display==='none'){ layer='all';
+      $('#cat-head').textContent='Search results';
+      $('#cat-lead').textContent='Matching items across every category, in the latest build.';
+      showList(); }
+    render();
+  } else { showDir(); }
+};
 render();
 """
 
@@ -1443,8 +1533,9 @@ LAYER_NAV = {
 }
 
 
-def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
+def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", health=None):
     order = {t: n for n, t in enumerate(TIERS)}
+    # dated items first (newest first); undated ("") sort naturally to the bottom
     items.sort(key=lambda i: i["date"], reverse=True)
     items.sort(key=lambda i: order.get(i["tier"], 9))
 
@@ -1470,7 +1561,23 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
         f'<a class="hub" href="{safe_url(h["url"])}" target="_blank" rel="noopener">'
         f'<div class="n">{html.escape(h["name"])}</div><div class="d">{html.escape(h["note"])}</div></a>'
         for h in hubs)
-    warn = f'<div class="foot">Feeds that failed this run: {html.escape(", ".join(dead))}</div>' if dead else ""
+    # public footer shows only source NAMES; full technical detail stays in the build log
+    warn = ""
+    if dead:
+        names = sorted({d.split(":")[0].strip() for d in dead})
+        warn = (f'<div class="foot">Feeds that returned nothing this run '
+                f'(normal for irregular regulators): {html.escape(", ".join(names))}</div>')
+
+    # fresh, stateless build-status object baked into the page each run
+    undated = sum(1 for i in items if not i.get("date"))
+    if health:
+        status_line = (f"This build · {health['contributing']}/{health['expected']} sources contributed · "
+                       f"{len(health['failed'])} returned nothing · {undated} undated · built {built}")
+    else:
+        contributing = len({i["source"] for i in items})
+        failed = len({d.split(":")[0].strip() for d in dead})
+        status_line = (f"This build · {contributing} sources contributed · "
+                       f"{failed} returned nothing · {undated} undated · built {built}")
 
     items_json = (json.dumps(items).replace("<", "\\u003c").replace(">", "\\u003e")
                   .replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
@@ -1491,6 +1598,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
 <h1>AI in Health</h1>
 <div class="tagline">Clinical and Market Access Evidence Monitor</div>
 <div class="sub">Rebuilt every morning · {len(items)} items · updated {built}</div>
+<div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
 
 <div class="tabs">
   <div class="tab on" data-tab="overview">Overview</div>
@@ -1503,6 +1611,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
 <div id="view-overview" class="view on">{overview or '<div class="dnote">Overview populates on the next build.</div>'}</div>
 
 <div id="view-feed" class="view">
+  <div class="searchbar"><input id="q" class="search" type="search" autocomplete="off"
+    placeholder="Search the latest build — title, source, regulator, country, HTA body…"></div>
   <div id="feed-dir">
     <div class="dnote" style="margin-bottom:16px">Choose a category to open its feed. Counts are items in the latest build.</div>
     {directory_html}
@@ -1529,6 +1639,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html=""):
   {warn}
 </div>
 
+<div class="pagefoot">
+  <b>Disclaimer.</b> AI in Health aggregates public sources automatically and classifies them with rule-based scripts. It can miss, misclassify, or fail to date an item, and sources may change or retract content. Nothing here is regulatory, legal, financial or medical advice, nor a substitute for the primary source — verify before you rely on it. Dates are read from sources and never estimated; items without a usable date are shown as “date unknown.”
+  <div class="pagefoot-s">{html.escape(status_line)}</div>
+</div>
 </div>
 <script>const ITEMS={items_json};{JS}</script>
 </body></html>""", encoding="utf-8")
@@ -1595,7 +1709,61 @@ def diagnostics(items, cfg, dead):
 
     # 5. layer distribution of actual items
     print("  layer counts:", dict(by_layer))
+
+    # 6. undated items — dates are never estimated, so track how many carry no date
+    undated = [i["id"] for i in items if not i.get("date")]
+    print(f"  undated items (shown as 'date unknown'): {len(undated)}")
     print("============================\n")
+
+    health = {
+        "contributing": len(by_src),
+        "expected": len(expected),
+        "failed": sorted(failed),
+        "zero_steady": sorted(steady_zero),
+        "quiet": sorted(quiet),
+        "undated": len(undated),
+        "by_layer": dict(by_layer),
+    }
+    _emit_ci_health(health, dead)
+    return health
+
+
+def _emit_ci_health(health, dead):
+    """Surface pipeline health to GitHub Actions: inline warning annotations plus a
+    job-summary table. Additive only — these prints are harmless when run locally.
+    Set FAIL_ON_DEGRADE to make the job fail when >20% of steady sources go silent."""
+    steady, failed = health["zero_steady"], health["failed"]
+    for n in steady:
+        print(f"::warning title=Feed silent::{n} produced 0 items this run (possible breakage)")
+    for n in failed:
+        print(f"::warning title=Feed error::{n} returned an error this run")
+
+    summ = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summ:
+        lines = [
+            "### AI-in-Health build health", "",
+            f"- Sources contributing: **{health['contributing']} / {health['expected']}**",
+            f"- Silent, steady (possible breakage): **{len(steady)}** {', '.join(steady) or '—'}",
+            f"- Errored: **{len(failed)}** {', '.join(failed) or '—'}",
+            f"- Quiet (normal for irregular regulators): {', '.join(health['quiet']) or 'none'}",
+            f"- Undated items: **{health['undated']}**", "",
+        ]
+        if dead:
+            lines += ["<details><summary>Failure detail</summary>", ""]
+            lines += [f"- `{d}`" for d in sorted(dead)]
+            lines += ["", "</details>"]
+        try:
+            with open(summ, "a", encoding="utf-8") as fh:
+                fh.write("\n".join(lines) + "\n")
+        except OSError:
+            pass
+
+    if os.environ.get("FAIL_ON_DEGRADE"):
+        frac = len(steady) / (health["expected"] or 1)
+        if frac > 0.20:
+            print(f"::error title=Pipeline degraded::{len(steady)} steady sources "
+                  f"({frac:.0%}) produced nothing — exceeds the 20% threshold")
+            sys.exit(1)
 
 
 def _pdate(s):
@@ -1688,16 +1856,17 @@ def main():
     elif agg:
         print(f"  coverage: {agg['n_devices']} devices tracked{' (SAMPLE)' if sample else ''}")
 
-    diagnostics(items, cfg, dead)
+    health = diagnostics(items, cfg, dead)
 
     o = overview_stats(items)
     take = weekly_take(items, o, token) if not args.no_llm else ""
 
-    row, history = log_history(items, cfg.get("trend_terms", []), token)
+    row, history = log_history(items, cfg.get("trend_terms", []), token, health)
     print(f"  history: {row['total']} items logged for {row['date']} ({len(history)} builds on record)")
 
     render(items, cfg["hubs"], dead, now.strftime("%d %b %Y %H:%M UTC"),
-           overview_html(items, agg, o, history, take), coverage_html(agg, sample), trends_html(items, history))
+           overview_html(items, agg, o, history, take), coverage_html(agg, sample), trends_html(items, history),
+           health=health)
     print(f"\n✓ docs/index.html — {len(items)} items")
     if dead:
         print(f"! {len(dead)} feed(s) failed: {'; '.join(dead)}")
@@ -1705,3 +1874,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+# build engine — end of file

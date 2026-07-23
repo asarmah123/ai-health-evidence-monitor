@@ -2,6 +2,10 @@
 
 **Live → https://asarmah123.github.io/ai-heor-feed/**
 
+> **One morning briefing for AI across the entire market-access lifecycle — research to reimbursement — built around the only two questions that decide adoption: _can it be sold, and will it be paid for?_**
+
+`~60 curated sources` · `8 ingestion paths` · `regulatory & HTA bodies across 15+ markets` · `North America · Europe · APAC · MEA`
+
 **AI in Health** is a daily intelligence monitor that tracks artificial intelligence across the
 full pipeline a health technology travels — from **research** and **clinical evidence**, through
 **regulatory authorisation** and **health technology assessment (HTA)**, to **reimbursement** and
@@ -82,12 +86,12 @@ a single static page, so there is nothing to host and nothing to break at reques
 
 | Layer | Sources |
 |---|---|
-| **AI research** | arXiv (cs.AI / cs.LG / cs.CL), lab blogs, AI newsletters |
-| **Clinical** | NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, ClinicalTrials.gov |
-| **HEOR** | Value in Health, PharmacoEconomics, OHDSI, ISPOR, standing PubMed queries on AI × HTA |
-| **Regulation** | FDA & CMS via the Federal Register, EMA, openFDA device authorisations, PMDA/NMPA/SFDA (via aggregators) |
-| **Reimbursement** | CMS coverage & payment, NICE, DiGA, NTAP/CPT, HITAP, HIRA, PBAC/MSAC |
-| **Industry** | STAT, Endpoints, Fierce, MedTech Dive |
+| **Research** | arXiv (cs.AI / cs.LG / cs.CL), lab blogs, AI newsletters |
+| **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Ground Truths |
+| **HEOR & HTA** | ICER, HTAi, INAHTA, HITAP, Value in Health, PharmacoEconomics, OHDSI, ISPOR, standing PubMed queries on AI × HTA |
+| **Regulation** | FDA & CMS (Federal Register), EMA, MHRA (news + safety alerts), openFDA authorisations, PMDA/NMPA/SFDA/Swissmedic/Health Canada (via aggregators) |
+| **Reimbursement** | CMS, NICE, DiGA, NTAP/CPT, EU Joint Clinical Assessment, G-BA/IQWiG, HAS, CADTH, AIFA/TLV/Zorginstituut, HIRA, PBAC/MSAC |
+| **Industry** | STAT, Endpoints, Fierce, MedTech Dive, MassDevice |
 
 ---
 
