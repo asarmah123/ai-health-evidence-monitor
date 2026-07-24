@@ -935,10 +935,10 @@ def overview_html(items, agg, o, history=None, take=""):
     pulse = "".join(
         f'<div class="pulse-c" data-goto="feed"><div class="pl">{SHORT[k]}</div>'
         f'<div class="pv">{o["layers"][k]} {pdelta(k)}</div></div>' for k in LAYERS)
-    pulse_html = (f'<div class="sec">Activity by stage</div>'
+    pulse_html = (f'<details class="ovsec" open><summary class="secsum">Activity by stage</summary>'
                   f'<div class="seccap">Where today\u2019s {len(items)} items fall across the six stages an AI '
                   f'product moves through \u2014 from research to reimbursement. Arrows show the change vs the past week.</div>'
-                  f'<div class="pulse">{pulse}</div>')
+                  f'<div class="pulse">{pulse}</div></details>')
 
     # ---- the two market-access gates, then leading indicators
     def render_tiles(rows):
@@ -977,12 +977,12 @@ def overview_html(items, agg, o, history=None, take=""):
                 for i in gitems)
             boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
                       f'<span class="digbox-n">{len(gitems)}</span></div>{grows}</div>')
-        digest = f'<div class="sec">Worth a closer look</div><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div>'
+        digest = f'<details class="ovsec" open><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
     else:
-        digest = ('<div class="sec">Worth a closer look</div>'
+        digest = ('<details class="ovsec" open><summary class="secsum">Worth a closer look</summary>'
                   '<div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
                   '<div class="dnote">No device authorisations, economic-endpoint trials, or major '
-                  'regulatory actions today. A quiet day.</div>')
+                  'regulatory actions today. A quiet day.</div></details>')
 
     # --- shared bar-panel builder ---
     def bar_panel(title, sub, rows, empty, color="#9c2c2c"):
@@ -1102,12 +1102,12 @@ def overview_html(items, agg, o, history=None, take=""):
 {hero}
 {digest}
 {pulse_html}
-<div class="sec">The two gates</div>
+<details class="ovsec" open><summary class="secsum">The two gates</summary>
 <div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts today\u2019s items about that gate.</div>
-<div class="tiles g2">{gate_html}</div>
-<div class="sec">Leading indicators</div>
+<div class="tiles g2">{gate_html}</div></details>
+<details class="ovsec" open><summary class="secsum">Leading indicators</summary>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
-<div class="tiles g2">{ind_html}</div>
+<div class="tiles g2">{ind_html}</div></details>
 {cov_mini}
 <details class="more">
 <summary>Show detailed breakdowns — market, regulatory &amp; HTA bodies, clinical area, reimbursement routes</summary>
@@ -1488,6 +1488,14 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .more>summary::before{content:"▸  ";color:var(--accent)}
 .more[open]>summary::before{content:"▾  "}
 .more>summary:hover{text-decoration:underline}
+/* collapsible main overview sections (header = toggle) */
+.ovsec{margin:0}
+.secsum{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;
+ margin:28px 0 11px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}
+.secsum::-webkit-details-marker{display:none}
+.secsum::before{content:"▾";color:#c4c4c4;font-size:10px;font-weight:400}
+.ovsec:not([open])>.secsum::before{content:"▸"}
+.ovsec:not([open])>.secsum{margin-bottom:6px}
 /* methodology list */
 .method{margin:0 0 10px;padding-left:22px}
 .method li{font-size:13.5px;color:#3f3f3f;line-height:1.55;margin-bottom:8px}
