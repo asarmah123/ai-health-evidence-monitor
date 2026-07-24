@@ -232,13 +232,33 @@ def fetch_rss(sources, cutoff, cap):
 
 def fetch_arxiv(cfg, cutoff, cap):
     cats = " OR ".join(f"cat:{c}" for c in cfg["categories"])
-    url = ("http://export.arxiv.org/api/query?"
+    url = ("https://export.arxiv.org/api/query?"
            f"search_query={requests.utils.quote(cats)}"
            "&sortBy=submittedDate&sortOrder=descending&max_results=120")
-    try:
-        parsed = feedparser.parse(get(url, timeout=30).content)
-    except Exception as e:
-        return [], [f"arXiv: {type(e).__name__}: {str(e)[:120]} [export.arxiv.org]"]
+    # arXiv's open API rate-limits and intermittently 403s cloud-runner IPs, so a single
+    # request from GitHub Actions often fails. Retry politely with escalating backoff across
+    # both UAs — never a proxy: the API is fully public, we just need to space requests out.
+    parsed, last = None, "unknown error"
+    for ua in (BOT_UA, BROWSER_UA):
+        for attempt in range(3):
+            try:
+                r = requests.get(url, headers=ua, timeout=45)
+                r.raise_for_status()
+                p = feedparser.parse(r.content)
+                if p.entries:
+                    parsed = p
+                    break
+                last = "no entries returned"
+            except requests.HTTPError as e:
+                last = f"HTTP {getattr(e.response, 'status_code', '?')}"
+            except Exception as e:
+                last = f"{type(e).__name__}: {str(e)[:80]}"
+            if attempt < 2:
+                time.sleep(3 + attempt * 3)   # arXiv asks for generous spacing between hits
+        if parsed is not None:
+            break
+    if parsed is None:
+        return [], [f"arXiv: {last} [export.arxiv.org]"]
 
     terms = [t.lower() for t in cfg["boost_terms"]]
     scored = []
@@ -845,6 +865,59 @@ def _digest(o):
     return picks[:8]
 
 
+# Plain-language, honest reasons for why an item is the day's top story. We state the
+# RULE that surfaced it — never an invented explanation of significance.
+WHY_TEXT = {
+    "Device authorisations": "A new AI-enabled device cleared regulatory authorisation "
+                             "(from the FDA openFDA database).",
+    "Trials · economic endpoint": "A registered trial with an economic endpoint — an early "
+                                  "sign of a payer dossier in the making.",
+    "Regulatory actions": "An action from a major regulator or HTA body (FDA, CMS, EMA or NICE).",
+}
+
+# Transparent, rules-based importance score. Every point is attributable to a named
+# reason (shown to the user), so ranking is explainable — never a black box.
+MAJOR_BODIES = ("FDA", "CMS", "EMA", "NICE", "MHRA", "G-BA", "HAS", "CADTH", "PMDA")
+
+
+def rank_score(i):
+    """Return (score, [reasons]) for one item. Higher = more consequential for a
+    market-access reader. Purely deterministic — no model, no inference."""
+    s, reasons = 0, []
+    src, layer, url = i.get("source", ""), i.get("layer", ""), i.get("url", "")
+
+    if src == "FDA — AI device authorisations":
+        s += 5; reasons.append("New device authorisation")
+    if any(b in src for b in MAJOR_BODIES):
+        s += 3; reasons.append("Major regulator / HTA body")
+
+    if layer == "access":
+        s += 3; reasons.append("Reimbursement / coverage")
+    elif layer == "regulation":
+        s += 2; reasons.append("Regulatory / authorisation")
+
+    if _econ_endpoint(i):
+        s += 4; reasons.append("Trial with an economic endpoint")
+    if "clinicaltrials" in url:
+        s += 1; reasons.append("Registered trial")
+    if layer == "heor":
+        s += 2; reasons.append("HEOR / value evidence")
+
+    if i.get("tier") == "daily":
+        s += 1; reasons.append("High-cadence source")
+
+    d = _pdate(i.get("date", ""))
+    if d:
+        from datetime import datetime, timezone
+        age = (datetime.now(timezone.utc).date() - d).days
+        if age <= 2:
+            s += 2; reasons.append("Published in the last 2 days")
+        elif age <= 7:
+            s += 1; reasons.append("Published this week")
+
+    return s, reasons
+
+
 def overview_html(items, agg, o, history=None, take=""):
     # ---- pipeline pulse: one cell per category, mirrors the Feed tabs
     prior = (history or [])[:-1]
@@ -975,12 +1048,20 @@ def overview_html(items, agg, o, history=None, take=""):
         if abs(d) >= 1.5:
             hero_lines.append(f'<b>{SHORT[k]}</b> activity {"up" if d > 0 else "down"} '
                               f'{abs(d):.0f} vs last week — the day\'s biggest move')
-    # single most consequential item
+    # single most consequential item → promoted into its own dominant card (topstory)
     hpicks = _digest(o)
     if hpicks:
         why, hi = hpicks[0]
-        hero_lines.append(f'Most consequential: <a href="{safe_url(hi["url"])}" target="_blank" '
-                          f'rel="noopener">{html.escape(hi["title"])}</a> <span class="hero-tag">{why.lower()}</span>')
+        why_text = WHY_TEXT.get(why, why)
+        topstory = (f'<div class="topstory"><div class="topstory-l">Today’s biggest development</div>'
+                    f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
+                    f'<div class="topstory-m">{html.escape(hi["source"])} · {hi["date"] or "date unknown"}</div>'
+                    f'<div class="topstory-why"><b>Why it’s here:</b> {html.escape(why_text)}</div></div>')
+    else:
+        topstory = ('<div class="topstory quiet"><div class="topstory-l">Today’s biggest development</div>'
+                    '<div class="topstory-t2">A quiet day</div>'
+                    '<div class="topstory-why">No new device authorisations, economic-endpoint trials, '
+                    'or major-regulator actions in this build.</div></div>')
     # most active market + body
     if o.get("macro"):
         reg = o["macro"][0]
@@ -1017,7 +1098,9 @@ def overview_html(items, agg, o, history=None, take=""):
     brief_block = ('<div class="sec" style="margin-top:6px">Today’s brief</div>'
                    '<div class="seccap">What landed in the latest build, at a glance.</div>' + brief)
 
-    return f'''{take_html}{brief_block}{hero}
+    return f'''{take_html}{brief_block}
+{topstory}
+{hero}
 {digest}
 {pulse_html}
 <div class="sec">The two gates</div>
@@ -1026,12 +1109,15 @@ def overview_html(items, agg, o, history=None, take=""):
 <div class="sec">Leading indicators</div>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
 <div class="tiles g2">{ind_html}</div>
+{cov_mini}
+<details class="more">
+<summary>Show detailed breakdowns — market, regulatory &amp; HTA bodies, clinical area, reimbursement routes</summary>
 <div class="sec">The breakdown</div>
 <div class="seccap">Today’s items by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
 <div class="panels">{geo_panel}{regulators_panel}</div>
 <div class="panels" style="margin-top:8px">{payers_panel}{clinfocus}</div>
 {pathway_row}
-{cov_mini}'''
+</details>'''
 
 
 # --------------------------------------------------------- coverage tracker
@@ -1380,6 +1466,47 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .pagefoot{font-size:11.5px;color:#8a8a8a;line-height:1.6;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
 .pagefoot b{color:#5f5f5f}
 .pagefoot-s{margin-top:9px;color:#b0b0b0;font-variant-numeric:tabular-nums}
+/* today's biggest development — dominant top card */
+.topstory{border:1px solid #dcc9c9;border-left:4px solid var(--accent);background:linear-gradient(180deg,#fdf7f7,#fff);
+ border-radius:12px;padding:16px 18px;margin:8px 0 14px}
+.topstory-l{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.topstory-t{display:inline-block;font-size:19px;font-weight:680;line-height:1.3;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.topstory-t:hover{text-decoration:underline}
+.topstory-t2{font-size:19px;font-weight:680;color:#8a8a8a}
+.topstory-m{font-size:12px;color:var(--mute);margin-top:6px}
+.topstory-why{font-size:13px;color:#4a4a4a;margin-top:9px;line-height:1.5}
+.topstory-why b{color:var(--ink)}
+.topstory.quiet{border-left-color:#c4c4c4;background:#fafafa}
+/* collapsible detailed analytics */
+.more{margin-top:10px;border-top:1px solid var(--line);padding-top:4px}
+.more>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--accent);padding:10px 0;list-style:none}
+.more>summary::-webkit-details-marker{display:none}
+.more>summary::before{content:"▸  ";color:var(--accent)}
+.more[open]>summary::before{content:"▾  "}
+.more>summary:hover{text-decoration:underline}
+/* methodology list */
+.method{margin:0 0 10px;padding-left:22px}
+.method li{font-size:13.5px;color:#3f3f3f;line-height:1.55;margin-bottom:8px}
+.method b{color:var(--ink)}
+/* feed sort + geography chip + why-ranked */
+.sortl{font-size:12px;color:#7a7a7a;display:inline-flex;align-items:center;gap:5px}
+.sortsel{font-size:12.5px;padding:5px 8px;border:1px solid #dcdcdc;border-radius:7px;background:#fff;color:var(--ink);font-family:inherit;cursor:pointer}
+.geo{font-size:10.5px;font-weight:600;letter-spacing:.03em;color:#2f6f9f;background:#eef4fa;padding:2px 7px;border-radius:4px}
+.whyrank{display:inline-block;margin-left:14px}
+.whyrank>summary{cursor:pointer;font-size:12px;color:var(--mute);list-style:none}
+.whyrank>summary::-webkit-details-marker{display:none}
+.whyrank>summary:hover{color:var(--ink);text-decoration:underline}
+.whyrank ul{margin:7px 0 2px;padding-left:18px}
+.whyrank li{font-size:12px;color:#5a5a5a;line-height:1.5}
+/* mobile refinements */
+@media(max-width:640px){
+  .topstory-t,.topstory-t2{font-size:17px}
+  .fbar{gap:8px}.sortl{width:100%;justify-content:space-between}
+  .tab{padding:11px 14px}
+  button.f{padding:8px 14px}
+  .acts{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .whyrank{margin-left:0}
+}
 .take{border:1px solid #d8d8d8;border-left:3px solid var(--accent);border-radius:8px;
  padding:12px 15px;margin-bottom:18px;background:#fbfaf9}
 .take-l{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
@@ -1431,7 +1558,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-let tier='all', layer='all', hideRead=false, q='';
+let tier='all', layer='all', hideRead=false, q='', sort='importance';
 const KEY='aiheor_read_v1';
 const read=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));
 const save=()=>localStorage.setItem(KEY,JSON.stringify([...read]));
@@ -1459,14 +1586,26 @@ function render(){
                   .filter(i=>layer==='all'||i.layer===layer)
                   .filter(i=>!(hideRead&&read.has(i.id)))
                   .filter(i=>!q||((i.title+' '+i.source+' '+(i.summary||'')).toLowerCase().includes(q)));
+  const byDateDesc=(a,b)=>(b.date||'').localeCompare(a.date||'');
+  const cmp={
+    importance:(a,b)=>((b.score||0)-(a.score||0))||byDateDesc(a,b),
+    newest:byDateDesc,
+    geography:(a,b)=>(a.country||'zzz').localeCompare(b.country||'zzz')||((b.score||0)-(a.score||0)),
+    source:(a,b)=>a.source.localeCompare(b.source)||byDateDesc(a,b),
+  }[sort]||((a,b)=>(b.score||0)-(a.score||0));
+  list.sort(cmp);
   $('#feed').innerHTML = list.map(i=>`
     <div class="card ${read.has(i.id)?'read':''}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
-        <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span></div>
+        <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
+        ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}</div>
       <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
       ${i.summary?`<div class="summ">${esc(i.summary)}</div>`:''}
       ${i.lens?`<div class="lens"><b>HEOR lens →</b> ${esc(i.lens)}</div>`:''}
-      <div class="acts"><button data-i="${i.id}">${read.has(i.id)?'Mark unread':'Mark read'}</button></div>
+      <div class="acts">
+        <button data-i="${i.id}">${read.has(i.id)?'Mark unread':'Mark read'}</button>
+        ${(i.why&&i.why.length)?`<details class="whyrank"><summary>Why ranked · ${i.score}</summary><ul>${i.why.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>`:''}
+      </div>
     </div>`).join('') || '<div class="dnote">Nothing matches — try another filter.</div>';
   $$('.acts button').forEach(b=>b.onclick=()=>{const id=b.dataset.i;read.has(id)?read.delete(id):read.add(id);save();render();});
   $('#count').textContent=`${list.length} item${list.length===1?'':'s'} · ${read.size} read`;
@@ -1487,6 +1626,8 @@ if(showall) showall.onclick=()=>{layer='all';
 const back=$('[data-back]');
 if(back) back.onclick=()=>showDir();
 $('#hide').onclick=e=>{hideRead=!hideRead;e.target.classList.toggle('on',hideRead);render();};
+const sortSel=$('#sort');
+if(sortSel) sortSel.onchange=()=>{sort=sortSel.value;render();};
 const qi=$('#q');
 if(qi) qi.oninput=()=>{q=qi.value.trim().toLowerCase();
   if(q){ if($('#feed-list').style.display==='none'){ layer='all';
@@ -1581,6 +1722,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         status_line = (f"This build · {contributing} sources contributed · "
                        f"{failed} returned nothing · {undated} undated · built {built}")
 
+    # attach a transparent importance score + reasons + jurisdiction, so the feed can
+    # sort by importance/geography and show each item WHY it ranks where it does
+    for i in items:
+        i["score"], i["why"] = rank_score(i)
+        i["country"] = country_of(i) or ""
+
     items_json = (json.dumps(items).replace("<", "\\u003c").replace(">", "\\u003e")
                   .replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
     DOCS.mkdir(parents=True, exist_ok=True)
@@ -1625,6 +1772,13 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="cat-head" id="cat-head"></div>
     <div class="cat-lead" id="cat-lead"></div>
     <div class="fbar">{tier_btns}<span class="spacer"></span>
+      <label class="sortl">Sort
+        <select id="sort" class="sortsel">
+          <option value="importance">Importance</option>
+          <option value="newest">Newest</option>
+          <option value="geography">Geography</option>
+          <option value="source">Source</option>
+        </select></label>
       <button class="f" id="hide">Hide read</button><span class="count" id="count"></span></div>
     <div id="feed"></div>
   </div>
@@ -1635,6 +1789,16 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <div id="view-trends" class="view">{trend_html}</div>
 
 <div id="view-sources" class="view">
+  <div class="sec">How this site works</div>
+  <div class="seccap">A transparent, evidence-first pipeline — not an AI-written news summary.</div>
+  <ol class="method">
+    <li><b>Collects</b> AI-in-health developments each day from ~60 curated sources — regulators, HTA &amp; payer bodies, clinical journals, trial registries and industry press — through their official APIs and RSS feeds.</li>
+    <li><b>De-duplicates</b> by canonical link, so the same story from several sources appears once.</li>
+    <li><b>Classifies</b> every item into one of six stages — research, clinical evidence, HEOR &amp; HTA, regulation, reimbursement, industry — using transparent keyword and source rules (no model).</li>
+    <li><b>Scores &amp; ranks</b> items by explicit, attributable rules — new device authorisations, trials with an economic endpoint, actions from major regulators, and recency. Every item can show <i>why</i> it ranks where it does.</li>
+    <li><b>Rebuilds</b> the entire site automatically each morning via a scheduled job. No database, no server, no tracking.</li>
+    <li><b>Never invents events or dates.</b> Dates are read from the source; when none is present the item reads “date unknown” rather than a guess. No causal claims are generated beyond what the counts support.</li>
+  </ol>
   <div class="sec">Communities &amp; standards bodies</div>
   <div class="hubs">{hub_html}</div>
   <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored in your browser only.</div>
