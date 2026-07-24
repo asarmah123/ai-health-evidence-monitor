@@ -865,11 +865,13 @@ def _digest(o):
 # Plain-language, honest reasons for why an item is the day's top story. We state the
 # RULE that surfaced it — never an invented explanation of significance.
 WHY_TEXT = {
-    "Device authorisations": "A new AI-enabled device cleared regulatory authorisation "
-                             "(from the FDA openFDA database).",
-    "Trials · economic endpoint": "A registered trial with an economic endpoint — an early "
-                                  "sign of a payer dossier in the making.",
-    "Regulatory actions": "An action from a major regulator or HTA body (FDA, CMS, EMA or NICE).",
+    "Device authorisations": "Regulatory clearance is the Gate-1 signal — it moves an AI product from "
+                             "evidence-gathering toward commercial deployment. Clearances publish with a "
+                             "lag, so the decision date shown may be weeks old.",
+    "Trials · economic endpoint": "An economic endpoint is the strongest early sign a product is being "
+                                  "built for reimbursement, not just approval — a payer dossier forming.",
+    "Regulatory actions": "A move by a major regulator or HTA body — the decisions that shape whether, "
+                          "and how, an AI product reaches patients.",
 }
 
 # Transparent, rules-based importance score. Every point is attributable to a named
@@ -945,9 +947,10 @@ def overview_html(items, agg, o, history=None, take=""):
             f'<div class="ts">{sub if "&" in sub else html.escape(sub)}</div></div>' for t, v, sub in rows)
     gate_tiles = [
         ("Gate 1 · Can it be sold?", len(o["clears"]),
-         "New AI device authorisations today, from the FDA openFDA database (510(k), PMA)."),
+         "Recent AI device authorisations in the FDA openFDA record (510(k)/PMA). Clearances "
+         "publish with a lag, so this is roughly the last 30 days, not strictly today."),
         ("Gate 2 · Will it be paid?", len(o["coverage_actions"]),
-         "Payment decisions today from the bodies we track as feeds — CMS (US) and NICE (UK)."),
+         "Recent payment decisions from the bodies we track as feeds — CMS (US) and NICE (UK)."),
     ]
     ind_tiles = [
         ("Trials building a payer case", len(o["econ"]),
@@ -1043,19 +1046,19 @@ def overview_html(items, agg, o, history=None, take=""):
         moves.sort(key=lambda x: -abs(x[0]))
         d, k = moves[0]
         if abs(d) >= 1.5:
-            hero_lines.append(f'<b>{SHORT[k]}</b> activity {"up" if d > 0 else "down"} '
-                              f'{abs(d):.0f} vs last week — the day\'s biggest move')
+            hero_lines.append(f'<b>{SHORT[k]}</b> activity {"picked up" if d > 0 else "eased"} this week '
+                              f'— the biggest shift ({"+" if d > 0 else "−"}{abs(d):.0f} vs the prior week)')
     # single most consequential item → promoted into its own dominant card (topstory)
     hpicks = _digest(o)
     if hpicks:
         why, hi = hpicks[0]
         why_text = WHY_TEXT.get(why, why)
-        topstory = (f'<div class="topstory"><div class="topstory-l">Today’s biggest development</div>'
+        topstory = (f'<div class="topstory"><div class="topstory-l">Biggest development in view</div>'
                     f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
                     f'<div class="topstory-m">{html.escape(hi["source"])} · {hi["date"] or "date unknown"}</div>'
                     f'<div class="topstory-why"><b>Why it’s here:</b> {html.escape(why_text)}</div></div>')
     else:
-        topstory = ('<div class="topstory quiet"><div class="topstory-l">Today’s biggest development</div>'
+        topstory = ('<div class="topstory quiet"><div class="topstory-l">Biggest development in view</div>'
                     '<div class="topstory-t2">A quiet day</div>'
                     '<div class="topstory-why">No new device authorisations, economic-endpoint trials, '
                     'or major-regulator actions in this build.</div></div>')
@@ -1070,8 +1073,7 @@ def overview_html(items, agg, o, history=None, take=""):
         hero_lines.append(line)
     if hero_lines:
         hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
-        hero = (f'<div class="hero"><div class="hero-h">At a glance '
-                f'<span class="hero-n">{len(items)} items today</span></div>{hl}</div>')
+        hero = (f'<div class="hero"><div class="hero-h">At a glance</div>{hl}</div>')
     else:
         hero = ""
 
@@ -1463,6 +1465,11 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .pagefoot{font-size:11.5px;color:#8a8a8a;line-height:1.6;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
 .pagefoot b{color:#5f5f5f}
 .pagefoot-s{margin-top:9px;color:#b0b0b0;font-variant-numeric:tabular-nums}
+.discmore{display:inline;margin-left:4px}
+.discmore>summary{display:inline;cursor:pointer;color:var(--accent);list-style:none}
+.discmore>summary::-webkit-details-marker{display:none}
+.discmore>summary:hover{text-decoration:underline}
+.discmore[open]{display:block;margin:6px 0 0}
 /* today's biggest development — dominant top card */
 .topstory{border:1px solid #dcc9c9;border-left:4px solid var(--accent);background:linear-gradient(180deg,#fdf7f7,#fff);
  border-radius:12px;padding:16px 18px;margin:8px 0 14px}
@@ -1485,6 +1492,8 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .method{margin:0 0 10px;padding-left:22px}
 .method li{font-size:13.5px;color:#3f3f3f;line-height:1.55;margin-bottom:8px}
 .method b{color:var(--ink)}
+.method-note{font-size:12.5px;color:#5a5a5a;line-height:1.6;margin:2px 0 8px;padding:11px 13px;background:#fafafa;border:1px solid var(--line);border-radius:9px}
+.method-note b{color:var(--ink)}
 /* feed sort + geography chip + why-ranked */
 .sortl{font-size:12px;color:#7a7a7a;display:inline-flex;align-items:center;gap:5px}
 .sortsel{font-size:12.5px;padding:5px 8px;border:1px solid #dcdcdc;border-radius:7px;background:#fff;color:var(--ink);font-family:inherit;cursor:pointer}
@@ -1796,6 +1805,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <li><b>Rebuilds</b> the entire site automatically each morning via a scheduled job. No database, no server, no tracking.</li>
     <li><b>Never invents events or dates.</b> Dates are read from the source; when none is present the item reads “date unknown” rather than a guess. No causal claims are generated beyond what the counts support.</li>
   </ol>
+  <div class="method-note">
+    <b>Ranking &amp; confidence.</b> Order is heuristic, not a confidence score — items are ranked by explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency), and every feed item exposes its own “Why ranked” breakdown, so you can see exactly why one item outranks another. <b>Inclusion.</b> Sources are chosen editorially — primary regulators, HTA &amp; payer bodies, peer-reviewed journals, trial registries and established trade press; company press releases are deliberately excluded to keep the feed independent. <b>Cadence.</b> Rebuilt once each morning; most items are a day or two old, though device authorisations reflect the FDA’s ~30-day publishing lag.
+  </div>
   <div class="sec">Communities &amp; standards bodies</div>
   <div class="hubs">{hub_html}</div>
   <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored in your browser only.</div>
@@ -1803,7 +1815,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 </div>
 
 <div class="pagefoot">
-  <b>Disclaimer.</b> AI in Health aggregates public sources automatically and classifies them with rule-based scripts. It can miss, misclassify, or fail to date an item, and sources may change or retract content. Nothing here is regulatory, legal, financial or medical advice, nor a substitute for the primary source — verify before you rely on it. Dates are read from sources and never estimated; items without a usable date are shown as “date unknown.”
+  <b>Disclaimer.</b> Automated aggregation of public sources, rule-classified — not regulatory, legal, financial or medical advice. Verify against the primary source.
+  <details class="discmore"><summary>Full disclaimer</summary>It can miss, misclassify, or fail to date an item, and sources may change or retract content. Nothing here is a substitute for the primary source. Dates are read from sources and never estimated; items without a usable date are shown as “date unknown.” No causal claims are made beyond what the counts support.</details>
   <div class="pagefoot-s">{html.escape(status_line)}</div>
 </div>
 </div>
