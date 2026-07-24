@@ -935,7 +935,7 @@ def overview_html(items, agg, o, history=None, take=""):
     pulse = "".join(
         f'<div class="pulse-c" data-goto="feed"><div class="pl">{SHORT[k]}</div>'
         f'<div class="pv">{o["layers"][k]} {pdelta(k)}</div></div>' for k in LAYERS)
-    pulse_html = (f'<details class="ovsec" open><summary class="secsum">Activity by stage</summary>'
+    pulse_html = (f'<details class="ovsec"><summary class="secsum">Activity by stage</summary>'
                   f'<div class="seccap">Where today\u2019s {len(items)} items fall across the six stages an AI '
                   f'product moves through \u2014 from research to reimbursement. Arrows show the change vs the past week.</div>'
                   f'<div class="pulse">{pulse}</div></details>')
@@ -977,9 +977,9 @@ def overview_html(items, agg, o, history=None, take=""):
                 for i in gitems)
             boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
                       f'<span class="digbox-n">{len(gitems)}</span></div>{grows}</div>')
-        digest = f'<details class="ovsec" open><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
+        digest = f'<details class="ovsec"><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
     else:
-        digest = ('<details class="ovsec" open><summary class="secsum">Worth a closer look</summary>'
+        digest = ('<details class="ovsec"><summary class="secsum">Worth a closer look</summary>'
                   '<div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
                   '<div class="dnote">No device authorisations, economic-endpoint trials, or major '
                   'regulatory actions today. A quiet day.</div></details>')
@@ -1102,10 +1102,10 @@ def overview_html(items, agg, o, history=None, take=""):
 {hero}
 {digest}
 {pulse_html}
-<details class="ovsec" open><summary class="secsum">The two gates</summary>
-<div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts today\u2019s items about that gate.</div>
+<details class="ovsec"><summary class="secsum">The two gates</summary>
+<div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts recent items about that gate.</div>
 <div class="tiles g2">{gate_html}</div></details>
-<details class="ovsec" open><summary class="secsum">Leading indicators</summary>
+<details class="ovsec"><summary class="secsum">Leading indicators</summary>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
 <div class="tiles g2">{ind_html}</div></details>
 {cov_mini}
@@ -1215,12 +1215,36 @@ def coverage_aggregates(data):
 
 
 def trends_html(items, history):
-    """Trends TAB: volume sparkline + rising/falling terms. Tiles moved to Overview."""
+    """Trends TAB: trend-of-the-day + volume sparkline + rising/falling terms + orgs."""
     if not history:
         return '<div class="dnote">No history yet — the first build has just run.</div>'
     today = history[-1]
     prior = history[:-1]
 
+    # term movers (shared by 'trend of the day' and the panel)
+    movers = []
+    if len(prior) >= 3:
+        for term, now in today.get("terms", {}).items():
+            base = [h["terms"].get(term, 0) for h in prior[-28:]]
+            avg = sum(base) / len(base) if base else 0
+            if now == 0 and avg < 0.5:
+                continue
+            pct = (100 if now else 0) if avg == 0 else ((now - avg) / avg) * 100
+            movers.append((pct, term, now, avg))
+        movers.sort(key=lambda r: -r[0])
+
+    # trend of the day: the single biggest riser, stated factually (no invented cause)
+    tod = ""
+    if movers and movers[0][0] > 0:
+        pct, term, now, avg = movers[0]
+        avg_txt = f"~{avg:.0f}" if avg >= 1 else "under 1"
+        tod = (f'<div class="topstory"><div class="topstory-l">Trend of the day</div>'
+               f'<div class="topstory-t">{html.escape(term)}</div>'
+               f'<div class="topstory-why">Mentions are <b>{"+" if pct >= 0 else ""}{pct:.0f}%</b> vs the '
+               f'28-day average — <b>{now}</b> in this build against a typical <b>{avg_txt}</b>. '
+               f'This tracks how often the term appears across items in this build; it does not explain why.</div></div>')
+
+    # volume sparkline, with the latest point highlighted
     spark = ""
     if len(history) >= 3:
         vals = [h["total"] for h in history[-42:]]
@@ -1228,40 +1252,38 @@ def trends_html(items, history):
         rng = (hi - lo) or 1
         w, ht = 300, 44
         step = w / max(len(vals) - 1, 1)
-        pts = " ".join(f"{n*step:.1f},{ht - ((v-lo)/rng)*(ht-6) - 3:.1f}" for n, v in enumerate(vals))
+        coords = [(n * step, ht - ((v - lo) / rng) * (ht - 6) - 3) for n, v in enumerate(vals)]
+        pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
+        lx, ly = coords[-1]
         spark = (f'<div class="spark"><div class="ph">Volume</div>'
                  f'<svg viewBox="0 0 {w} {ht}" preserveAspectRatio="none">'
                  f'<polyline points="{pts}" fill="none" stroke="#9c2c2c" stroke-width="1.6" '
-                 f'stroke-linejoin="round" opacity=".8"/></svg>'
-                 f'<div class="sparl">Items per day · {len(vals)} days · low {lo} / high {hi}</div></div>')
+                 f'stroke-linejoin="round" opacity=".8"/>'
+                 f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="2.6" fill="#9c2c2c"/></svg>'
+                 f'<div class="sparl">Items per build · last {len(vals)} builds · low {lo} / high {hi} · '
+                 f'latest <b>{vals[-1]}</b> (dot). The window lengthens as history accrues.</div></div>')
     else:
-        spark = (f'<div class="spark"><div class="ph">Volume</div>'
-                 f'<div class="psub">A sparkline appears once there are 3+ builds on record.</div></div>')
+        spark = ('<div class="spark"><div class="ph">Volume</div>'
+                 '<div class="psub">A sparkline appears once there are 3+ builds on record.</div></div>')
 
-    terms_html = ""
-    if len(prior) >= 3:
-        rows = []
-        for term, now in today.get("terms", {}).items():
-            base = [h["terms"].get(term, 0) for h in prior[-28:]]
-            avg = sum(base) / len(base) if base else 0
-            if now == 0 and avg < 0.5:
-                continue
-            pct = (100 if now else 0) if avg == 0 else ((now - avg) / avg) * 100
-            rows.append((pct, term, now))
-        rows.sort(key=lambda r: -r[0])
-        top = (rows[:5] + [("sep",)] + rows[-2:]) if len(rows) > 7 else rows[:6]
-        peak = max((abs(r[0]) for r in rows if len(r) == 3), default=1) or 1
+    # rising & falling terms, now with counts alongside the percentage
+    if len(prior) >= 3 and movers:
+        top = (movers[:5] + [("sep",)] + movers[-2:]) if len(movers) > 7 else movers[:6]
+        peak = max((abs(r[0]) for r in movers), default=1) or 1
         bars = ""
         for r in top:
             if len(r) == 1:
-                bars += '<div class="tsep"></div>'; continue
-            pct, term, now = r
+                bars += '<div class="tsep"></div>'
+                continue
+            pct, term, now, avg = r
             up = pct >= 0
             bars += (f'<div class="trow"><div class="tn{"" if up else " dim"}">{html.escape(term)}</div>'
-                     f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct)/peak*100,100):.0f}%"></div></div>'
-                     f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div></div>')
+                     f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
+                     f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div>'
+                     f'<div class="tcount">{now} vs ~{avg:.0f}</div></div>')
         terms_html = (f'<div class="panel"><div class="ph">Rising &amp; falling terms</div>'
-                      f'<div class="psub">today vs 28-day average</div>{bars}</div>')
+                      f'<div class="psub">Change in mentions vs the previous 28-day average; counts shown as '
+                      f'today vs average. Small bases move sharply, so read the counts alongside the percentage.</div>{bars}</div>')
     else:
         need = max(4 - len(history), 1)
         terms_html = (f'<div class="panel"><div class="ph">Rising &amp; falling terms</div>'
@@ -1273,18 +1295,15 @@ def trends_html(items, history):
         peak = orgs[0][1] or 1
         bars = "".join(
             f'<div class="trow"><div class="tn" style="width:200px">{html.escape(n)}</div>'
-            f'<div class="tb"><div class="tf" style="width:{k/peak*100:.0f}%"></div></div>'
+            f'<div class="tb"><div class="tf" style="width:{k / peak * 100:.0f}%"></div></div>'
             f'<div class="tp">{k}</div></div>' for n, k in orgs)
         orgs_html = (f'<div class="panel"><div class="ph">Most active organisations</div>'
-                     f'<div class="psub">sponsors &amp; applicants across trials and clearances — directional</div>{bars}</div>')
+                     f'<div class="psub">Named as trial sponsors or device applicants in this build — '
+                     f'directional, not a market ranking.</div>{bars}</div>')
     else:
         orgs_html = ('<div class="panel"><div class="ph">Most active organisations</div>'
                      '<div class="psub">No sponsors or applicants identified today.</div></div>')
-    return f'<div class="panels">{spark}{terms_html}</div><div style="margin-top:8px">{orgs_html}</div>'
-
-
-
-
+    return f'{tod}<div class="panels">{spark}{terms_html}</div><div style="margin-top:8px">{orgs_html}</div>'
 def _evidence_panel(ev):
     """Public evidence aggregate — 'what won coverage'. Percentages and mix only;
     no device, date or citation ever appears here."""
@@ -1412,6 +1431,7 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
 .tb{flex:1;height:6px;background:#f2f2f2;border-radius:3px}
 .tf{height:6px;background:var(--accent);border-radius:3px;opacity:.75}.tf.down{background:#c4c4c4}
 .tp{font-size:11.5px;font-weight:600;color:var(--accent);width:40px;text-align:right}
+.tcount{font-size:10.5px;color:#9a9a9a;width:66px;text-align:right;white-space:nowrap;flex:none}
 .tsep{border-top:1px solid #f0f0f0;margin:7px 0}
 /* coverage */
 .cov{border:1px solid #d3d3d3;border-radius:10px;padding:14px 16px}
