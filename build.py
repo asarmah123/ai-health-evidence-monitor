@@ -204,7 +204,9 @@ def fetch_rss(sources, cutoff, cap):
             dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [{s['url']}]")
             continue
         if not parsed.entries:
-            dead.append(f"{s['name']}: no entries [{s['url']}]")
+            # empty feed is not an error — a low-cadence source is often simply quiet.
+            # The tier-based health check flags this only for daily sources.
+            print(f"  · {s['name']}: feed returned no entries", file=sys.stderr)
             continue
 
         kept = 0
@@ -236,7 +238,7 @@ def fetch_arxiv(cfg, cutoff, cap):
     try:
         parsed = feedparser.parse(get(url, timeout=30).content)
     except Exception as e:
-        return [], [f"arXiv: {type(e).__name__}"]
+        return [], [f"arXiv: {type(e).__name__}: {str(e)[:120]} [export.arxiv.org]"]
 
     terms = [t.lower() for t in cfg["boost_terms"]]
     scored = []
@@ -1667,20 +1669,33 @@ def diagnostics(items, cfg, dead):
     by_src = Counter(i["source"] for i in items)
     by_layer = Counter(i["layer"] for i in items)
 
-    # sporadic-by-design sources (regulators post irregularly); a zero here is normal
-    sporadic = {e["name"] for e in cfg.get("federal_register", [])} | {"FDA — AI device authorisations"}
+    # cadence per source — only DAILY-tier feeds are "steady", so a zero for them is worth
+    # flagging as possible breakage. Weekly/monthly feeds and standing Google-News queries
+    # (and irregular regulators) are quiet by design: an empty 10-day window is normal.
+    tier_of = {}
+    for grp in ("rss", "gnews", "federal_register", "pubmed", "ctgov", "scrape"):
+        for e in cfg.get(grp, []):
+            tier_of[e["name"]] = e.get("tier", "weekly")
+    tier_of["arXiv"] = "daily"
+    tier_of["FDA — AI device authorisations"] = "weekly"
+
+    # Google-News standing queries are intermittent by nature — a narrow query can be empty
+    # on any given day — so they are never "steady". Only true daily publisher/API feeds are.
+    gnews_names = {e["name"] for e in cfg.get("gnews", [])}
+    def _steady(n):
+        return tier_of.get(n) == "daily" and n not in gnews_names
 
     # 1. per-source counts + zero-yield flags
     print(f"sources contributing: {len(by_src)} / {len(expected)} expected")
     failed = {d.split(":")[0].strip() for d in dead}
-    steady_zero = [n for n in expected if by_src.get(n, 0) == 0 and n not in failed and n not in sporadic]
-    quiet = [n for n in sporadic if by_src.get(n, 0) == 0 and n not in failed]
+    steady_zero = [n for n in expected if _steady(n) and by_src.get(n, 0) == 0 and n not in failed]
+    quiet = [n for n in expected if not _steady(n) and by_src.get(n, 0) == 0 and n not in failed]
     if steady_zero:
-        print(f"  ! STEADY sources with zero items (possible breakage): {steady_zero}")
+        print(f"  ! DAILY sources with zero items (possible breakage): {steady_zero}")
     else:
-        print("  ✓ every steady, non-failed source produced at least one item")
+        print("  ✓ every daily, non-failed source produced at least one item")
     if quiet:
-        print(f"  · quiet (normal for regulators): {quiet}")
+        print(f"  · quiet weekly/monthly feeds & queries (zero is normal): {len(quiet)}")
 
     # 2. mis-attribution: item source/layer disagreeing with config
     mism = []
@@ -1710,9 +1725,14 @@ def diagnostics(items, cfg, dead):
     # 5. layer distribution of actual items
     print("  layer counts:", dict(by_layer))
 
-    # 6. undated items — dates are never estimated, so track how many carry no date
+    # 6. undated items — dates are never estimated, so track how many carry no date,
+    #    and which sources they come from (scrape link-lists are undated by design;
+    #    a normally-dated RSS feed showing up here signals a date-parsing problem).
     undated = [i["id"] for i in items if not i.get("date")]
+    undated_by_src = Counter(i["source"] for i in items if not i.get("date"))
     print(f"  undated items (shown as 'date unknown'): {len(undated)}")
+    if undated_by_src:
+        print("    by source:", dict(undated_by_src.most_common()))
     print("============================\n")
 
     health = {
@@ -1722,6 +1742,7 @@ def diagnostics(items, cfg, dead):
         "zero_steady": sorted(steady_zero),
         "quiet": sorted(quiet),
         "undated": len(undated),
+        "undated_by_src": dict(undated_by_src.most_common()),
         "by_layer": dict(by_layer),
     }
     _emit_ci_health(health, dead)
@@ -1740,13 +1761,17 @@ def _emit_ci_health(health, dead):
 
     summ = os.environ.get("GITHUB_STEP_SUMMARY")
     if summ:
+        ubs = health.get("undated_by_src", {})
+        undated_line = ""
+        if ubs:
+            undated_line = " · " + ", ".join(f"{k} ({v})" for k, v in list(ubs.items())[:8])
         lines = [
             "### AI-in-Health build health", "",
             f"- Sources contributing: **{health['contributing']} / {health['expected']}**",
-            f"- Silent, steady (possible breakage): **{len(steady)}** {', '.join(steady) or '—'}",
+            f"- Silent daily feeds (possible breakage): **{len(steady)}** {', '.join(steady) or '—'}",
             f"- Errored: **{len(failed)}** {', '.join(failed) or '—'}",
-            f"- Quiet (normal for irregular regulators): {', '.join(health['quiet']) or 'none'}",
-            f"- Undated items: **{health['undated']}**", "",
+            f"- Quiet (weekly/monthly feeds & queries — zero is normal): **{len(health['quiet'])}**",
+            f"- Undated items: **{health['undated']}**{undated_line}", "",
         ]
         if dead:
             lines += ["<details><summary>Failure detail</summary>", ""]
