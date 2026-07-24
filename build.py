@@ -235,28 +235,25 @@ def fetch_arxiv(cfg, cutoff, cap):
     url = ("https://export.arxiv.org/api/query?"
            f"search_query={requests.utils.quote(cats)}"
            "&sortBy=submittedDate&sortOrder=descending&max_results=120")
-    # arXiv's open API rate-limits and intermittently 403s cloud-runner IPs, so a single
-    # request from GitHub Actions often fails. Retry politely with escalating backoff across
-    # both UAs — never a proxy: the API is fully public, we just need to space requests out.
+    # arXiv can be slow or blocked from cloud IPs, but we must not stall the daily build.
+    # Bounded to 3 quick attempts (~1 min worst case): one retry on the bot UA for rate-limit
+    # recovery, then a browser-UA fallback. Never a proxy — the API is fully public.
     parsed, last = None, "unknown error"
-    for ua in (BOT_UA, BROWSER_UA):
-        for attempt in range(3):
-            try:
-                r = requests.get(url, headers=ua, timeout=45)
-                r.raise_for_status()
-                p = feedparser.parse(r.content)
-                if p.entries:
-                    parsed = p
-                    break
-                last = "no entries returned"
-            except requests.HTTPError as e:
-                last = f"HTTP {getattr(e.response, 'status_code', '?')}"
-            except Exception as e:
-                last = f"{type(e).__name__}: {str(e)[:80]}"
-            if attempt < 2:
-                time.sleep(3 + attempt * 3)   # arXiv asks for generous spacing between hits
-        if parsed is not None:
-            break
+    for ua, wait in ((BOT_UA, 0), (BOT_UA, 3), (BROWSER_UA, 0)):
+        if wait:
+            time.sleep(wait)
+        try:
+            r = requests.get(url, headers=ua, timeout=20)
+            r.raise_for_status()
+            p = feedparser.parse(r.content)
+            if p.entries:
+                parsed = p
+                break
+            last = "no entries returned"
+        except requests.HTTPError as e:
+            last = f"HTTP {getattr(e.response, 'status_code', '?')}"
+        except Exception as e:
+            last = f"{type(e).__name__}: {str(e)[:80]}"
     if parsed is None:
         return [], [f"arXiv: {last} [export.arxiv.org]"]
 
