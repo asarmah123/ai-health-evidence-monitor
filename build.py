@@ -1872,13 +1872,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI in Health — Clinical and Market Access Evidence Monitor</title>
-<meta name="description" content="Daily monitor of AI across evidence generation, device authorisation and reimbursement — with a clearance-to-coverage tracker across the US, Germany, France and the UK.">
+<meta name="description" content="A transparent daily monitor of how AI moves through healthcare — clinical evidence, regulation, reimbursement and market access — built from primary sources.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI in Health — Clinical and Market Access Evidence Monitor">
-<meta property="og:description" content="Daily monitor of AI across evidence generation, device authorisation and reimbursement — with a clearance-to-coverage tracker across the US, Germany, France and the UK.">
+<meta property="og:description" content="A transparent daily monitor of how AI moves through healthcare — clinical evidence, regulation, reimbursement and market access — built from primary sources.">
 <meta property="og:url" content="https://asarmah123.github.io/ai-heor-feed/">
-<meta property="og:image" content="https://asarmah123.github.io/ai-heor-feed/preview.png">
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="summary">
 <style>{CSS}</style>
 </head><body><div class="wrap">
 <h1>AI in Health</h1>
@@ -1930,7 +1929,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="sec">How it works</div>
   <div class="seccap">A transparent, evidence-first pipeline — not an AI-written news summary. Built for researchers, clinicians, investors, regulators and market-access teams tracking AI adoption in healthcare.</div>
   <div class="pipeline">
-    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">~60 curated sources — regulators, HTA &amp; payer bodies, journals, trial registries, industry publications — via official APIs and RSS.</div></div></div>
+    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">~65 curated sources — regulators, HTA &amp; payer bodies, journals, trial registries, industry publications — via official APIs and RSS.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Canonical links merge the same story from several sources.</div></div></div>
     <div class="parrow">↓</div>
