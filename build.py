@@ -669,7 +669,7 @@ BODY_ROLE = {
     "PBAC": "payer", "MSAC": "payer", "HIRA": "payer", "NECA": "payer", "Chuikyo": "payer",
     "HITAP": "payer", "ACE": "payer", "CADTH": "payer", "MOHAP": "regulator",
     "ICER": "payer", "AIFA": "payer", "TLV": "payer", "Zorginstituut": "payer",
-    "Swissmedic": "regulator", "Health Canada": "regulator",
+    "Swissmedic": "regulator", "Health Canada": "regulator", "NHSA": "payer",
     # professional societies & HTA networks (no binding decisions)
     "ISPOR": "professional", "HTAi": "professional", "INAHTA": "professional",
 }
@@ -679,7 +679,7 @@ BODY_ROLE = {
 SAFE_TEXT_BODIES = {"PMDA", "NMPA", "TGA", "MFDS", "HSA", "CDSCO", "SFDA", "SAHPRA",
                     "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWIG",
                     "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP",
-                    "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA"}
+                    "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA", "NHSA"}
 
 
 def country_of(i):
@@ -699,7 +699,7 @@ def country_of(i):
         ("Germany", ["diga", "bfarm", "g-ba", "nub-"]),
         ("France", ["pecan", "cnedimts", "lppr", "haute autorite"]),
         ("Japan", ["pmda", "japan", "chuikyo", "mhlw"]),
-        ("China", ["nmpa", "china"]),
+        ("China", ["nmpa", "nhsa", "china"]),
         ("Australia", ["tga", "pbac", "msac", "australia"]),
         ("South Korea", ["mfds", "hira", "neca", "south korea", "korea"]),
         ("India", ["cdsco", "india"]),
@@ -737,7 +737,7 @@ def _body_role_counts(items):
         for b, role in BODY_ROLE.items():
             if role in matched:
                 continue
-            if (b in src) or (b in SAFE_TEXT_BODIES and b.lower() in text):
+            if (b in src) or (b in SAFE_TEXT_BODIES and re.search(rf"\b{re.escape(b.lower())}\b", text)):
                 out[role][b] += 1
                 matched.add(role)
     return {k: v.most_common() for k, v in out.items()}
@@ -1834,7 +1834,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <li><b>Never invents events or dates.</b> Dates are read from the source; when none is present the item reads “date unknown” rather than a guess. No causal claims are generated beyond what the counts support.</li>
   </ol>
   <div class="method-note">
-    <b>Ranking &amp; confidence.</b> Order is heuristic, not a confidence score — items are ranked by explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency), and every feed item exposes its own “Why ranked” breakdown, so you can see exactly why one item outranks another. <b>Inclusion.</b> Sources are chosen editorially — primary regulators, HTA &amp; payer bodies, peer-reviewed journals, trial registries and established trade press; company press releases are deliberately excluded to keep the feed independent. <b>Cadence.</b> Rebuilt once each morning; most items are a day or two old, though device authorisations reflect the FDA’s ~30-day publishing lag.
+    <b>Ranking &amp; confidence.</b> Order is heuristic, not a confidence score — items are ranked by explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency), and every feed item exposes its own “Why ranked” breakdown, so you can see exactly why one item outranks another. <b>Coverage philosophy.</b> We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Where a source publishes an official machine-readable feed we read it directly (RSS/API); where none exists, we use a carefully scoped standing news query instead — so the mix of native feeds and news queries is a deliberate editorial choice, not a technical limitation. Company press releases are intentionally excluded. <b>Cadence.</b> Rebuilt once each morning; most items are a day or two old, though device authorisations reflect the FDA’s ~30-day publishing lag.
   </div>
   <div class="sec">Communities &amp; standards bodies</div>
   <div class="hubs">{hub_html}</div>
