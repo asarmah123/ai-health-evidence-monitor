@@ -870,9 +870,8 @@ def _digest(o):
 # Plain-language, honest reasons for why an item is the day's top story. We state the
 # RULE that surfaced it — never an invented explanation of significance.
 WHY_TEXT = {
-    "Device authorisations": "Regulatory clearance is the Gate-1 signal — it moves an AI product from "
-                             "evidence-gathering toward commercial deployment. Clearances publish with a "
-                             "lag, so the decision date shown may be weeks old.",
+    "Device authorisations": "Regulatory clearance is the first major step toward commercial deployment. "
+                             "Clearances publish with a lag, so the decision date shown may be weeks old.",
     "Trials · economic endpoint": "An economic endpoint is the strongest early sign a product is being "
                                   "built for reimbursement, not just approval — a payer dossier forming.",
     "Regulatory actions": "A move by a major regulator or HTA body — the decisions that shape whether, "
@@ -885,6 +884,21 @@ WHY_MATTERS = {
     "Device authorisations": "Authorisation is the first step from evidence toward commercial deployment.",
     "Trials · economic endpoint": "Economic endpoints build the reimbursement case, not just clinical proof.",
     "Regulatory actions": "Major-regulator and HTA actions shape how — and whether — a product reaches patients.",
+}
+
+# Category (not cause) for each tracked term — lets Trends say WHAT KIND of signal a
+# term is, without claiming why it moved.
+TERM_CLASS = {
+    "NTAP": "Payment / reimbursement", "CPT": "Payment / reimbursement",
+    "reimbursement": "Payment / reimbursement", "coverage": "Payment / reimbursement",
+    "DiGA": "Payment / reimbursement", "digital therapeutic": "Payment / reimbursement",
+    "Early Value Assessment": "Payment / reimbursement",
+    "health technology assessment": "HEOR / evidence", "cost-effectiveness": "HEOR / evidence",
+    "real-world evidence": "HEOR / evidence", "systematic review": "HEOR / evidence",
+    "EU AI Act": "Regulatory", "510(k)": "Regulatory", "De Novo": "Regulatory",
+    "software as a medical device": "Regulatory", "predetermined change control": "Regulatory",
+    "large language model": "AI capability", "agent": "AI capability", "foundation model": "AI capability",
+    "validation": "Evaluation / safety", "bias": "Evaluation / safety", "hallucination": "Evaluation / safety",
 }
 
 # Transparent, rules-based importance score. Every point is attributable to a named
@@ -949,7 +963,7 @@ def overview_html(items, agg, o, history=None, take=""):
         f'<div class="pulse-c" data-goto="feed"><div class="pl">{SHORT[k]}</div>'
         f'<div class="pv">{o["layers"][k]} {pdelta(k)}</div></div>' for k in LAYERS)
     pulse_html = (f'<details class="ovsec"><summary class="secsum">Activity by stage</summary>'
-                  f'<div class="seccap">Where today\u2019s {len(items)} items fall across the six stages an AI '
+                  f'<div class="seccap">Where today\u2019s {len(items)} updates fall across the six stages an AI '
                   f'product moves through \u2014 from research to reimbursement. Arrows show the change vs the past week.</div>'
                   f'<div class="pulse">{pulse}</div></details>')
 
@@ -1073,6 +1087,21 @@ def overview_html(items, agg, o, history=None, take=""):
             if bcnt - bavg >= 2:
                 hero_lines.append(f'<b>{html.escape(bname)}</b> is above its recent norm '
                                   f'({bcnt} vs a typical ~{bavg:.0f})')
+    # what's unusual: the biggest term riser vs its own recent baseline (works now — terms tracked)
+    if history and len(prior_h) >= 3:
+        tt = history[-1].get("terms", {})
+        tmoves = []
+        for term, tnow in tt.items():
+            tbase = [h.get("terms", {}).get(term, 0) for h in prior_h[-28:]]
+            tavg = sum(tbase) / len(tbase) if tbase else 0
+            if tnow > 0 and tnow - tavg >= 1.5 and (tavg == 0 or tnow / tavg >= 2):
+                tmoves.append((tnow - tavg, term, tnow, tavg))
+        if tmoves:
+            tmoves.sort(key=lambda x: -x[0])
+            _, tterm, tnow, tavg = tmoves[0]
+            avgtxt = f"~{tavg:.0f}" if tavg >= 1 else "under 1"
+            hero_lines.append(f'<b>{html.escape(tterm)}</b> mentions are above their recent baseline '
+                              f'({tnow} vs {avgtxt} typical)')
     # single most consequential item → promoted into its own dominant card (topstory)
     hpicks = _digest(o)
     if hpicks:
@@ -1100,7 +1129,7 @@ def overview_html(items, agg, o, history=None, take=""):
     focus = o.get("focus", [])
     if focus:
         tops = " and ".join(f"<b>{html.escape(t)}</b>" for t, _ in focus[:2])
-        hero_lines.append(f"Clinical attention concentrated in {tops}")
+        hero_lines.append(f"Most-mentioned clinical areas: {tops}")
     if hero_lines:
         hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
         hero = (f'<div class="hero"><div class="hero-h">Key insights</div>{hl}</div>')
@@ -1113,16 +1142,17 @@ def overview_html(items, agg, o, history=None, take=""):
                  f'<div class="take-t">{html.escape(take)}</div></div>') if take else ""
 
     # ---- today's brief: level-1 scannable counts (all real, from this build) ----
-    def _bm(v, label, hot=False):
+    def _bm(v, singular, hot=False):
         cls = "brief-v hot" if (hot and v) else "brief-v"
+        label = singular if v == 1 else singular + "s"   # simple singular/plural
         return (f'<div class="brief-m"><div class="{cls}">{v}</div>'
                 f'<div class="brief-l">{label}</div></div>')
     brief = ('<div class="brief">'
-             + _bm(len(items), "items")
-             + _bm(len(o["clears"]), "device<br>authorisations", hot=True)
-             + _bm(len(o["coverage_actions"]), "coverage<br>decisions", hot=True)
-             + _bm(len(o["trials"]), "AI trials")
-             + _bm(len(o["papers"]), "HEOR<br>papers")
+             + _bm(len(items), "update")
+             + _bm(len(o["clears"]), "AI device<br>authorisation", hot=True)
+             + _bm(len(o["coverage_actions"]), "coverage<br>decision", hot=True)
+             + _bm(len(o["trials"]), "clinical<br>trial")
+             + _bm(len(o["papers"]), "HEOR<br>paper")
              + '</div>')
     brief_block = ('<div class="sec" style="margin-top:6px">Today’s brief</div>'
                    '<div class="seccap">What landed in the latest build, at a glance.</div>' + brief)
@@ -1131,6 +1161,8 @@ def overview_html(items, agg, o, history=None, take=""):
 {topstory}
 {hero}
 {digest}
+<div class="sec">The evidence journey</div>
+<div class="seccap">How today's activity maps to the path a product travels — research → clinical evidence → regulation → reimbursement → adoption. Expand any stage below.</div>
 {pulse_html}
 <details class="ovsec"><summary class="secsum">The two gates</summary>
 <div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts recent items about that gate.</div>
@@ -1245,13 +1277,12 @@ def coverage_aggregates(data):
 
 
 def trends_html(items, history):
-    """Trends TAB: trend-of-the-day + volume sparkline + rising/falling terms + orgs."""
+    """Trends TAB: top trend (count-led) + build volume + biggest term shifts (classified) + orgs."""
     if not history:
         return '<div class="dnote">No history yet — the first build has just run.</div>'
     today = history[-1]
     prior = history[:-1]
 
-    # term movers (shared by 'trend of the day' and the panel)
     movers = []
     if len(prior) >= 3:
         for term, now in today.get("terms", {}).items():
@@ -1263,25 +1294,26 @@ def trends_html(items, history):
             movers.append((pct, term, now, avg))
         movers.sort(key=lambda r: -r[0])
 
-    # trend of the day: the single biggest riser, stated factually (no invented cause)
+    # top trend — lead with the absolute count, not the percentage
     tod = ""
     if movers and movers[0][0] > 0:
         pct, term, now, avg = movers[0]
         avg_txt = f"~{avg:.0f}" if avg >= 1 else "under 1"
-        # first-appearance signal: builds since this term was last seen (honest, from history)
         gap = 0
         for h in reversed(prior):
             if h.get("terms", {}).get(term, 0) > 0:
                 break
             gap += 1
         newflag = f'<span class="newflag">New · first mention in {gap} builds</span>' if gap >= 3 else ""
+        cls = TERM_CLASS.get(term, "")
+        cls_html = f'<div class="tclass-lg">{html.escape(cls)} term</div>' if cls else ""
         tod = (f'<div class="topstory"><div class="topstory-l">Top trend today</div>'
-               f'<div class="topstory-t">{html.escape(term)}{newflag}</div>'
-               f'<div class="topstory-why">Mentions are <b>{"+" if pct >= 0 else ""}{pct:.0f}%</b> vs the '
-               f'28-day average — <b>{now}</b> in this build against a typical <b>{avg_txt}</b>. '
+               f'<div class="topstory-t">{html.escape(term)}{newflag}</div>{cls_html}'
+               f'<div class="topstory-why"><b>{now} mention{"s" if now != 1 else ""} today</b> · '
+               f'typical {avg_txt} per build · (<b>{"+" if pct >= 0 else ""}{pct:.0f}%</b> vs baseline). '
                f'This tracks how often the term appears across items in this build; it does not explain why.</div></div>')
 
-    # volume sparkline, with the latest point highlighted
+    # build volume
     spark = ""
     if len(history) >= 3:
         vals = [h["total"] for h in history[-42:]]
@@ -1292,18 +1324,18 @@ def trends_html(items, history):
         coords = [(n * step, ht - ((v - lo) / rng) * (ht - 6) - 3) for n, v in enumerate(vals)]
         pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
         lx, ly = coords[-1]
-        spark = (f'<div class="spark"><div class="ph">Volume</div>'
+        spark = (f'<div class="spark"><div class="ph">Build volume</div>'
+                 f'<div class="volnow"><b>{vals[-1]}</b> updates today</div>'
                  f'<svg viewBox="0 0 {w} {ht}" preserveAspectRatio="none">'
                  f'<polyline points="{pts}" fill="none" stroke="#9c2c2c" stroke-width="1.6" '
                  f'stroke-linejoin="round" opacity=".8"/>'
                  f'<circle cx="{lx:.1f}" cy="{ly:.1f}" r="2.6" fill="#9c2c2c"/></svg>'
-                 f'<div class="sparl">Items per build · last {len(vals)} builds · low {lo} / high {hi} · '
-                 f'latest <b>{vals[-1]}</b> (dot). The window lengthens as history accrues.</div></div>')
+                 f'<div class="sparl">Range over last {len(vals)} builds: {lo}–{hi} updates per build (latest = dot).</div></div>')
     else:
-        spark = ('<div class="spark"><div class="ph">Volume</div>'
+        spark = ('<div class="spark"><div class="ph">Build volume</div>'
                  '<div class="psub">A sparkline appears once there are 3+ builds on record.</div></div>')
 
-    # rising & falling terms, now with counts alongside the percentage
+    # biggest changes in mentions
     if len(prior) >= 3 and movers:
         top = (movers[:5] + [("sep",)] + movers[-2:]) if len(movers) > 7 else movers[:6]
         peak = max((abs(r[0]) for r in movers), default=1) or 1
@@ -1314,16 +1346,21 @@ def trends_html(items, history):
                 continue
             pct, term, now, avg = r
             up = pct >= 0
-            bars += (f'<div class="trow"><div class="tn{"" if up else " dim"}">{html.escape(term)}</div>'
+            newmini = ' <span class="newmini">new</span>' if (now > 0 and avg < 0.5) else ""
+            cls = TERM_CLASS.get(term, "")
+            cls_html = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
+            cnt = f'{now} vs ~{avg:.0f}' if now > 0 else 'none this build'
+            bars += (f'<div class="trow"><div class="tn{"" if up else " dim"}">'
+                     f'<span class="tnm">{html.escape(term)}{newmini}</span>{cls_html}</div>'
                      f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
                      f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div>'
-                     f'<div class="tcount">{now} vs ~{avg:.0f}</div></div>')
-        terms_html = (f'<div class="panel"><div class="ph">Fastest-changing topics</div>'
-                      f'<div class="psub">Change in mentions vs the previous 28-day average; counts shown as '
-                      f'today vs average. Small bases move sharply, so read the counts alongside the percentage.</div>{bars}</div>')
+                     f'<div class="tcount">{cnt}</div></div>')
+        terms_html = (f'<div class="panel"><div class="ph">Biggest changes in mentions</div>'
+                      f'<div class="psub">Change vs the previous 28-day average; counts shown as today vs average. '
+                      f'Small bases move sharply, so read the counts alongside the percentage.</div>{bars}</div>')
     else:
         need = max(4 - len(history), 1)
-        terms_html = (f'<div class="panel"><div class="ph">Fastest-changing topics</div>'
+        terms_html = (f'<div class="panel"><div class="ph">Biggest changes in mentions</div>'
                       f'<div class="psub">Accruing — term trends need a few days of history. '
                       f'~{need} more to go.</div></div>')
 
@@ -1335,8 +1372,8 @@ def trends_html(items, history):
             f'<div class="tb"><div class="tf" style="width:{k / peak * 100:.0f}%"></div></div>'
             f'<div class="tp">{k}</div></div>' for n, k in orgs)
         orgs_html = (f'<div class="panel"><div class="ph">Most mentioned organisations</div>'
-                     f'<div class="psub">Named as trial sponsors or device applicants in this build — '
-                     f'Frequency of mentions only — not a market ranking.</div>{bars}</div>')
+                     f'<div class="psub">Named as trial sponsors or device applicants in this build. '
+                     f'Mention frequency only — not a measure of company activity, size, or market position.</div>{bars}</div>')
     else:
         orgs_html = ('<div class="panel"><div class="ph">Most mentioned organisations</div>'
                      '<div class="psub">No sponsors or applicants identified today.</div></div>')
@@ -1470,6 +1507,19 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
 .tf{height:6px;background:var(--accent);border-radius:3px;opacity:.75}.tf.down{background:#c4c4c4}
 .tp{font-size:11.5px;font-weight:600;color:var(--accent);width:40px;text-align:right}
 .tcount{font-size:10.5px;color:#9a9a9a;width:66px;text-align:right;white-space:nowrap;flex:none}
+.tnm{display:block}
+.tclass{display:block;font-size:9px;color:#adadad;text-transform:uppercase;letter-spacing:.02em;margin-top:1px}
+.tclass-lg{font-size:11px;color:#8a8a8a;text-transform:uppercase;letter-spacing:.04em;margin-top:5px}
+.newmini{font-size:8.5px;font-weight:650;text-transform:uppercase;color:#1f8a70;background:#eaf6f1;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle}
+.volnow{font-size:14px;color:var(--ink);margin:3px 0 4px}.volnow b{font-weight:680}
+.pipeline{margin:2px 0 6px}
+.pstep{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.pstep-n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.pstep-t{font-size:13.5px;font-weight:680;color:var(--ink)}
+.pstep-d{font-size:12.5px;color:#5a5a5a;line-height:1.5;margin-top:3px}
+.parrow{text-align:center;color:#cbb6b6;font-size:14px;line-height:1;margin:3px 0}
+.principles{margin:0 0 6px;padding-left:20px}
+.principles li{font-size:13.5px;color:#3f3f3f;line-height:1.55;margin-bottom:7px}.principles b{color:var(--ink)}
 .tsep{border-top:1px solid #f0f0f0;margin:7px 0}
 /* coverage */
 .cov{border:1px solid #d3d3d3;border-radius:10px;padding:14px 16px}
@@ -1540,6 +1590,9 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .topstory-why b{color:var(--ink)}
 .topstory.quiet{border-left-color:#c4c4c4;background:#fafafa}
 .newflag{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:#1f8a70;background:#eaf6f1;padding:2px 7px;border-radius:4px;margin-left:10px;vertical-align:middle}
+.activestrip{background:#fbf6f6;border:1px solid #e6d9d9;border-radius:9px;padding:10px 13px;margin-bottom:16px;font-size:13px;color:#4a4a4a;line-height:1.5}
+.as-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin-right:10px}
+.activestrip b{color:var(--ink)}
 /* collapsible detailed analytics */
 .more{margin-top:10px;border-top:1px solid var(--line);padding-top:4px}
 .more>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--accent);padding:10px 0;list-style:none}
@@ -1727,29 +1780,27 @@ LAYER_GROUPS = [
 LAYER_NAV = {
     "research": ("AI research & models",
         "Frontier AI research, models and methods — arXiv, the major labs, and the main "
-        "AI newsletters. The upstream signal: what becomes technically possible before it "
-        "reaches medicine."),
+        "AI newsletters. Early signal: emerging capabilities before they reach healthcare."),
     "clinical": ("Clinical evidence & trials",
         "Does it work in patients? Peer-reviewed journals (NEJM AI, Lancet Digital Health, "
         "Nature Medicine, JAMIA), preprints (medRxiv), registered trials (ClinicalTrials.gov), "
         "and Eric Topol's Ground Truths."),
     "heor": ("Health economics & HTA",
-        "Is it worth it? Cost-effectiveness, value assessment and HTA methods — Value in "
+        "Is it worth paying for? Cost-effectiveness, value assessment and HTA methods — Value in "
         "Health, PharmacoEconomics, OHDSI, ISPOR, and PubMed queries on AI in health "
         "technology assessment."),
     "regulation": ("Regulatory & authorisation",
-        "Can it be marketed? FDA and EMA guidance, plus AI-enabled device authorisations "
+        "Can it reach the market? FDA and EMA guidance, plus AI-enabled device authorisations "
         "(510(k) and PMA) via openFDA."),
     "access": ("Reimbursement & coverage",
-        "Will it be paid for? CMS coverage and payment rules, coding (NTAP, CPT), Germany's "
+        "Will healthcare systems pay for it? CMS coverage and payment rules, coding (NTAP, CPT), Germany's "
         "DiGA, and NICE HTA decisions — the mechanisms that turn an authorisation into revenue."),
     "industry": ("Industry & funding",
-        "The business of health AI — STAT, Endpoints, Fierce, MedTech Dive. Funding rounds, "
-        "deals, partnerships and launches."),
+        "The business of health AI — STAT, Endpoints, Fierce, MedTech Dive. Company activity, partnerships, funding, launches and strategic moves."),
 }
 
 
-def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", health=None):
+def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", health=None, o=None):
     order = {t: n for n, t in enumerate(TIERS)}
     # dated items first (newest first); undated ("") sort naturally to the bottom
     items.sort(key=lambda i: i["date"], reverse=True)
@@ -1773,16 +1824,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         directory_html += (f'<div class="catgrp"><div class="grp-h">{html.escape(gname)}</div>'
                            f'<div class="catgrid">{cards}</div></div>')
 
-    hub_html = "".join(
-        f'<a class="hub" href="{safe_url(h["url"])}" target="_blank" rel="noopener">'
-        f'<div class="n">{html.escape(h["name"])}</div><div class="d">{html.escape(h["note"])}</div></a>'
-        for h in hubs)
-    # public footer shows only source NAMES; full technical detail stays in the build log
-    warn = ""
-    if dead:
-        names = sorted({d.split(":")[0].strip() for d in dead})
-        warn = (f'<div class="foot">Feeds that returned nothing this run '
-                f'(normal for irregular regulators): {html.escape(", ".join(names))}</div>')
+    COMMUNITY_HUBS = {"OHDSI", "EHDEN", "DARWIN EU", "ISPOR — AI", "HTAi", "CHAI", "RAISE Health"}
+    def _hub(h):
+        return (f'<a class="hub" href="{safe_url(h["url"])}" target="_blank" rel="noopener">'
+                f'<div class="n">{html.escape(h["name"])}</div><div class="d">{html.escape(h["note"])}</div></a>')
+    community_html = "".join(_hub(h) for h in hubs if h["name"] in COMMUNITY_HUBS)
+    tracker_html = "".join(_hub(h) for h in hubs if h["name"] not in COMMUNITY_HUBS)
 
     # fresh, stateless build-status object baked into the page each run
     undated = sum(1 for i in items if not i.get("date"))
@@ -1792,7 +1839,25 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         contrib = len({i["source"] for i in items}); exp = contrib
         nfail = len({d.split(":")[0].strip() for d in dead})
     status_short = f"Built {built} · {contrib} of {exp} sources updated"
+    _dead_names = sorted({d.split(":")[0].strip() for d in dead})
     status_full = f"{nfail} returned nothing · {undated} undated this run"
+    if _dead_names:
+        status_full += " — returned nothing: " + ", ".join(_dead_names)
+
+    # "most active today" strip on the feed directory — mirrors the homepage insights
+    active_strip = ""
+    if o:
+        parts = []
+        if o.get("macro"):
+            m = o["macro"][0]; parts.append(f'<b>{html.escape(str(m[0]))}</b> {m[1]} updates')
+        allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
+        if allb:
+            tb = max(allb, key=lambda x: x[1]); parts.append(f'<b>{html.escape(str(tb[0]))}</b> {tb[1]} actions')
+        if o.get("focus"):
+            f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> {f0[1]} mentions')
+        if parts:
+            active_strip = (f'<div class="activestrip"><span class="as-l">Today</span>'
+                            f'{" · ".join(parts)}</div>')
 
     # attach a transparent importance score + reasons + jurisdiction, so the feed can
     # sort by importance/geography and show each item WHY it ranks where it does
@@ -1835,9 +1900,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="searchbar"><input id="q" class="search" type="search" autocomplete="off"
     placeholder="Search the latest build — title, source, regulator, country, HTA body…"></div>
   <div id="feed-dir">
-    <div class="dnote" style="margin-bottom:16px">Choose a category to open its feed. Counts are items in the latest build.</div>
+    {active_strip}
+    <div class="dnote" style="margin-bottom:16px">Choose a category to explore the latest developments. Counts show developments in the current build.</div>
     {directory_html}
-    <div style="margin-top:6px"><span class="seeall" data-showall="1">View all {len(items)} items →</span></div>
+    <div style="margin-top:6px"><span class="seeall" data-showall="1">View all {len(items)} updates →</span></div>
   </div>
   <div id="feed-list" style="display:none">
     <div class="catback" data-back="1">← All categories</div>
@@ -1861,23 +1927,37 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <div id="view-trends" class="view">{trend_html}</div>
 
 <div id="view-sources" class="view">
-  <div class="sec">How this site works</div>
-  <div class="seccap">A transparent, evidence-first pipeline — not an AI-written news summary.</div>
-  <ol class="method">
-    <li><b>Collects</b> AI-in-health developments each day from ~60 curated sources — regulators, HTA &amp; payer bodies, clinical journals, trial registries and industry press — through their official APIs and RSS feeds.</li>
-    <li><b>De-duplicates</b> by canonical link, so the same story from several sources appears once.</li>
-    <li><b>Classifies</b> every item into one of six stages — research, clinical evidence, HEOR &amp; HTA, regulation, reimbursement, industry — using transparent keyword and source rules (no model).</li>
-    <li><b>Scores &amp; ranks</b> items by explicit, attributable rules — new device authorisations, trials with an economic endpoint, actions from major regulators, and recency. Every item can show <i>why</i> it ranks where it does.</li>
-    <li><b>Rebuilds</b> the entire site automatically each morning via a scheduled job. No database, no server, no tracking.</li>
-    <li><b>Never invents events or dates.</b> Dates are read from the source; when none is present the item reads “date unknown” rather than a guess. No causal claims are generated beyond what the counts support.</li>
-  </ol>
-  <div class="method-note">
-    <b>Ranking &amp; confidence.</b> Order is heuristic, not a confidence score — items are ranked by explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency), and every feed item exposes its own “Why ranked” breakdown, so you can see exactly why one item outranks another. <b>Coverage philosophy.</b> We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Where a source publishes an official machine-readable feed we read it directly (RSS/API); where none exists, we use a carefully scoped standing news query instead — so the mix of native feeds and news queries is a deliberate editorial choice, not a technical limitation. Company press releases are intentionally excluded. <b>Cadence.</b> Rebuilt once each morning; most items are a day or two old, though device authorisations reflect the FDA’s ~30-day publishing lag.
+  <div class="sec">How it works</div>
+  <div class="seccap">A transparent, evidence-first pipeline — not an AI-written news summary. Built for researchers, clinicians, investors, regulators and market-access teams tracking AI adoption in healthcare.</div>
+  <div class="pipeline">
+    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">~60 curated sources — regulators, HTA &amp; payer bodies, journals, trial registries, industry publications — via official APIs and RSS.</div></div></div>
+    <div class="parrow">↓</div>
+    <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Canonical links merge the same story from several sources.</div></div></div>
+    <div class="parrow">↓</div>
+    <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Every item into one of six evidence stages, using transparent keyword and source rules (no model).</div></div></div>
+    <div class="parrow">↓</div>
+    <div class="pstep"><div class="pstep-n">4</div><div class="pstep-b"><div class="pstep-t">Rank</div><div class="pstep-d">Explicit signals — device authorisations, economic-endpoint trials, major-regulator actions, recency. Ranking reflects priority, not certainty or confidence.</div></div></div>
+    <div class="parrow">↓</div>
+    <div class="pstep"><div class="pstep-n">5</div><div class="pstep-b"><div class="pstep-t">Publish</div><div class="pstep-d">Rebuilt automatically every morning. Static, privacy-preserving architecture: no user tracking and no personal data storage.</div></div></div>
   </div>
-  <div class="sec">Communities &amp; standards bodies</div>
-  <div class="hubs">{hub_html}</div>
+  <div class="sec">Editorial principles</div>
+  <ul class="principles">
+    <li><b>Never invents events or dates.</b> Dates are read from the source; when none exists the item reads “date unknown”, never a guess.</li>
+    <li><b>No causal claims.</b> We report what changed and how unusual it is — never why, beyond what the counts support.</li>
+    <li><b>Primary sources preferred.</b> Official machine-readable feeds and APIs where they exist; carefully scoped news queries only where none does.</li>
+    <li><b>Company press releases excluded</b>, to keep the feed independent.</li>
+    <li><b>Ranking is priority, not confidence.</b> Order follows explicit additive rules, and every item shows its own “Why ranked” breakdown.</li>
+  </ul>
+  <div class="sec">Coverage &amp; cadence</div>
+  <div class="panels">
+    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Native feeds where they exist; scoped news queries where they don’t — a deliberate editorial choice, not a technical limitation.</div></div>
+    <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most items are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
+  </div>
+  <div class="sec">Standards &amp; communities</div>
+  <div class="hubs">{community_html}</div>
+  <div class="sec">Regulatory &amp; reimbursement trackers</div>
+  <div class="hubs">{tracker_html}</div>
   <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored in your browser only.</div>
-  {warn}
 </div>
 
 <div class="pagefoot">
@@ -2131,7 +2211,7 @@ def main():
 
     render(items, cfg["hubs"], dead, now.strftime("%d %b %Y %H:%M UTC"),
            overview_html(items, agg, o, history, take), coverage_html(agg, sample), trends_html(items, history),
-           health=health)
+           health=health, o=o)
     print(f"\n✓ docs/index.html — {len(items)} items")
     if dead:
         print(f"! {len(dead)} feed(s) failed: {'; '.join(dead)}")
