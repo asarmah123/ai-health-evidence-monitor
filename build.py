@@ -525,11 +525,16 @@ def log_history(items, terms, token=None, health=None):
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     blob = " ".join((i["title"] + " " + i.get("summary", "")).lower() for i in items)
+    _bc = _body_role_counts(items)
     row = {
         "date": today,
         "total": len(items),
         "layers": {l: sum(1 for i in items if i["layer"] == l) for l in LAYERS},
         "terms": {t: blob.count(t.lower()) for t in terms},
+        # per-body counts (regulators + payers) so "above/below its recent norm" becomes
+        # computable as history accrues — the honest, baseline-backed "what's unusual"
+        "bodies": {name: cnt for role in ("regulator", "payer")
+                   for name, cnt in _bc.get(role, [])},
     }
     if health:
         # compact health footprint, so "dead 1 day vs dead 5 days" becomes visible over time
@@ -874,6 +879,14 @@ WHY_TEXT = {
                           "and how, an AI product reaches patients.",
 }
 
+# Short, factual significance line per digest group — explains why the CATEGORY matters
+# for market access, not why any specific event happened. Descriptive, never causal.
+WHY_MATTERS = {
+    "Device authorisations": "Authorisation is the first step from evidence toward commercial deployment.",
+    "Trials · economic endpoint": "Economic endpoints build the reimbursement case, not just clinical proof.",
+    "Regulatory actions": "Major-regulator and HTA actions shape how — and whether — a product reaches patients.",
+}
+
 # Transparent, rules-based importance score. Every point is attributable to a named
 # reason (shown to the user), so ranking is explainable — never a black box.
 MAJOR_BODIES = ("FDA", "CMS", "EMA", "NICE", "MHRA", "G-BA", "HAS", "CADTH", "PMDA")
@@ -975,8 +988,10 @@ def overview_html(items, agg, o, history=None, take=""):
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
                 f'<span class="dsrc">{html.escape(i["source"])} · {i["date"] or "date unknown"}</span></a>'
                 for i in gitems)
+            wm = WHY_MATTERS.get(why, "")
+            wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
             boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
-                      f'<span class="digbox-n">{len(gitems)}</span></div>{grows}</div>')
+                      f'<span class="digbox-n">{len(gitems)}</span></div>{wm_html}{grows}</div>')
         digest = f'<details class="ovsec"><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
     else:
         digest = ('<details class="ovsec"><summary class="secsum">Worth a closer look</summary>'
@@ -1048,17 +1063,27 @@ def overview_html(items, agg, o, history=None, take=""):
         if abs(d) >= 1.5:
             hero_lines.append(f'<b>{SHORT[k]}</b> activity {"picked up" if d > 0 else "eased"} this week '
                               f'— the biggest shift ({"+" if d > 0 else "−"}{abs(d):.0f} vs the prior week)')
+    # is the day's leading body unusual vs its OWN recent norm? (needs body history to accrue)
+    allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
+    if allb:
+        bname, bcnt = max(allb, key=lambda x: x[1])
+        bbase = [h["bodies"].get(bname, 0) for h in prior_h[-28:] if h.get("bodies")]
+        if len(bbase) >= 3:
+            bavg = sum(bbase) / len(bbase)
+            if bcnt - bavg >= 2:
+                hero_lines.append(f'<b>{html.escape(bname)}</b> is above its recent norm '
+                                  f'({bcnt} vs a typical ~{bavg:.0f})')
     # single most consequential item → promoted into its own dominant card (topstory)
     hpicks = _digest(o)
     if hpicks:
         why, hi = hpicks[0]
         why_text = WHY_TEXT.get(why, why)
-        topstory = (f'<div class="topstory"><div class="topstory-l">Biggest development in view</div>'
+        topstory = (f'<div class="topstory"><div class="topstory-l">Top story</div>'
                     f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
                     f'<div class="topstory-m">{html.escape(hi["source"])} · {hi["date"] or "date unknown"}</div>'
                     f'<div class="topstory-why"><b>Why it’s here:</b> {html.escape(why_text)}</div></div>')
     else:
-        topstory = ('<div class="topstory quiet"><div class="topstory-l">Biggest development in view</div>'
+        topstory = ('<div class="topstory quiet"><div class="topstory-l">Top story</div>'
                     '<div class="topstory-t2">A quiet day</div>'
                     '<div class="topstory-why">No new device authorisations, economic-endpoint trials, '
                     'or major-regulator actions in this build.</div></div>')
@@ -1071,9 +1096,14 @@ def overview_html(items, agg, o, history=None, take=""):
         if tb:
             line += f' · leading body: <b>{html.escape(tb[0])}</b> ({tb[1]})'
         hero_lines.append(line)
+    # dominant clinical areas — a real distribution insight (no fabricated cause)
+    focus = o.get("focus", [])
+    if focus:
+        tops = " and ".join(f"<b>{html.escape(t)}</b>" for t, _ in focus[:2])
+        hero_lines.append(f"Clinical attention concentrated in {tops}")
     if hero_lines:
         hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
-        hero = (f'<div class="hero"><div class="hero-h">At a glance</div>{hl}</div>')
+        hero = (f'<div class="hero"><div class="hero-h">Key insights</div>{hl}</div>')
     else:
         hero = ""
 
@@ -1238,8 +1268,15 @@ def trends_html(items, history):
     if movers and movers[0][0] > 0:
         pct, term, now, avg = movers[0]
         avg_txt = f"~{avg:.0f}" if avg >= 1 else "under 1"
-        tod = (f'<div class="topstory"><div class="topstory-l">Trend of the day</div>'
-               f'<div class="topstory-t">{html.escape(term)}</div>'
+        # first-appearance signal: builds since this term was last seen (honest, from history)
+        gap = 0
+        for h in reversed(prior):
+            if h.get("terms", {}).get(term, 0) > 0:
+                break
+            gap += 1
+        newflag = f'<span class="newflag">New · first mention in {gap} builds</span>' if gap >= 3 else ""
+        tod = (f'<div class="topstory"><div class="topstory-l">Top trend today</div>'
+               f'<div class="topstory-t">{html.escape(term)}{newflag}</div>'
                f'<div class="topstory-why">Mentions are <b>{"+" if pct >= 0 else ""}{pct:.0f}%</b> vs the '
                f'28-day average — <b>{now}</b> in this build against a typical <b>{avg_txt}</b>. '
                f'This tracks how often the term appears across items in this build; it does not explain why.</div></div>')
@@ -1281,12 +1318,12 @@ def trends_html(items, history):
                      f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
                      f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div>'
                      f'<div class="tcount">{now} vs ~{avg:.0f}</div></div>')
-        terms_html = (f'<div class="panel"><div class="ph">Rising &amp; falling terms</div>'
+        terms_html = (f'<div class="panel"><div class="ph">Fastest-changing topics</div>'
                       f'<div class="psub">Change in mentions vs the previous 28-day average; counts shown as '
                       f'today vs average. Small bases move sharply, so read the counts alongside the percentage.</div>{bars}</div>')
     else:
         need = max(4 - len(history), 1)
-        terms_html = (f'<div class="panel"><div class="ph">Rising &amp; falling terms</div>'
+        terms_html = (f'<div class="panel"><div class="ph">Fastest-changing topics</div>'
                       f'<div class="psub">Accruing — term trends need a few days of history. '
                       f'~{need} more to go.</div></div>')
 
@@ -1297,11 +1334,11 @@ def trends_html(items, history):
             f'<div class="trow"><div class="tn" style="width:200px">{html.escape(n)}</div>'
             f'<div class="tb"><div class="tf" style="width:{k / peak * 100:.0f}%"></div></div>'
             f'<div class="tp">{k}</div></div>' for n, k in orgs)
-        orgs_html = (f'<div class="panel"><div class="ph">Most active organisations</div>'
+        orgs_html = (f'<div class="panel"><div class="ph">Most mentioned organisations</div>'
                      f'<div class="psub">Named as trial sponsors or device applicants in this build — '
-                     f'directional, not a market ranking.</div>{bars}</div>')
+                     f'Frequency of mentions only — not a market ranking.</div>{bars}</div>')
     else:
-        orgs_html = ('<div class="panel"><div class="ph">Most active organisations</div>'
+        orgs_html = ('<div class="panel"><div class="ph">Most mentioned organisations</div>'
                      '<div class="psub">No sponsors or applicants identified today.</div></div>')
     return f'{tod}<div class="panels">{spark}{terms_html}</div><div style="margin-top:8px">{orgs_html}</div>'
 def _evidence_panel(ev):
@@ -1409,6 +1446,7 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
 .digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
 .digbox-h{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);background:#fafafa;padding:7px 13px;border-bottom:1px solid #f0f0f0}
 .digbox-n{color:#b3b3b3;margin-left:5px}
+.digwhy{font-size:12px;color:#5f5f5f;padding:8px 13px 2px;line-height:1.45}.digwhy b{color:#4a4a4a}
 .dig{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;
  padding:10px 13px;text-decoration:none;color:var(--ink);border-bottom:1px solid #f4f4f4}
 .dig:last-child{border-bottom:none}
@@ -1501,6 +1539,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .topstory-why{font-size:13px;color:#4a4a4a;margin-top:9px;line-height:1.5}
 .topstory-why b{color:var(--ink)}
 .topstory.quiet{border-left-color:#c4c4c4;background:#fafafa}
+.newflag{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:#1f8a70;background:#eaf6f1;padding:2px 7px;border-radius:4px;margin-left:10px;vertical-align:middle}
 /* collapsible detailed analytics */
 .more{margin-top:10px;border-top:1px solid var(--line);padding-top:4px}
 .more>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--accent);padding:10px 0;list-style:none}
@@ -1748,13 +1787,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     # fresh, stateless build-status object baked into the page each run
     undated = sum(1 for i in items if not i.get("date"))
     if health:
-        status_line = (f"This build · {health['contributing']}/{health['expected']} sources contributed · "
-                       f"{len(health['failed'])} returned nothing · {undated} undated · built {built}")
+        contrib, exp, nfail = health["contributing"], health["expected"], len(health["failed"])
     else:
-        contributing = len({i["source"] for i in items})
-        failed = len({d.split(":")[0].strip() for d in dead})
-        status_line = (f"This build · {contributing} sources contributed · "
-                       f"{failed} returned nothing · {undated} undated · built {built}")
+        contrib = len({i["source"] for i in items}); exp = contrib
+        nfail = len({d.split(":")[0].strip() for d in dead})
+    status_short = f"Built {built} · {contrib} of {exp} sources updated"
+    status_full = f"{nfail} returned nothing · {undated} undated this run"
 
     # attach a transparent importance score + reasons + jurisdiction, so the feed can
     # sort by importance/geography and show each item WHY it ranks where it does
@@ -1779,7 +1817,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <style>{CSS}</style>
 </head><body><div class="wrap">
 <h1>AI in Health</h1>
-<div class="tagline">Clinical and Market Access Evidence Monitor</div>
+<div class="tagline">Daily monitor of clinical, regulatory, reimbursement and market-access evidence</div>
 <div class="sub">Rebuilt every morning · {len(items)} items · updated {built}</div>
 <div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
 
@@ -1799,7 +1837,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div id="feed-dir">
     <div class="dnote" style="margin-bottom:16px">Choose a category to open its feed. Counts are items in the latest build.</div>
     {directory_html}
-    <div style="margin-top:6px"><span class="seeall" data-showall="1">Or view everything in one list →</span></div>
+    <div style="margin-top:6px"><span class="seeall" data-showall="1">View all {len(items)} items →</span></div>
   </div>
   <div id="feed-list" style="display:none">
     <div class="catback" data-back="1">← All categories</div>
@@ -1845,7 +1883,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <div class="pagefoot">
   <b>Disclaimer.</b> Automated aggregation of public sources, rule-classified — not regulatory, legal, financial or medical advice. Verify against the primary source.
   <details class="discmore"><summary>Full disclaimer</summary>It can miss, misclassify, or fail to date an item, and sources may change or retract content. Nothing here is a substitute for the primary source. Dates are read from sources and never estimated; items without a usable date are shown as “date unknown.” No causal claims are made beyond what the counts support.</details>
-  <div class="pagefoot-s">{html.escape(status_line)}</div>
+  <div class="pagefoot-s">{html.escape(status_short)} <details class="discmore"><summary>Build details</summary>{html.escape(status_full)}</details></div>
 </div>
 </div>
 <script>const ITEMS={items_json};{JS}</script>
