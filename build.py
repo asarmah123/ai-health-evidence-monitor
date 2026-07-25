@@ -456,7 +456,7 @@ def fetch_openfda(cfg, lookback):
                 date = ""
             link = f"{base_link}{num}"
             items.append({
-                "id": uid(link), "title": f"{label} {verb}: {clean(name, 150)}",
+                "id": uid(link), "title": f"FDA {label} {verb}: {clean(name, 150)}",
                 "url": link, "source": "FDA — AI device authorisations",
                 "tier": "weekly", "layer": "regulation", "date": date,
                 "summary": clean(" · ".join(x for x in [who, num] if x), 160),
@@ -1165,7 +1165,7 @@ def overview_html(items, agg, o, history=None, take=""):
 <div class="seccap">How today's activity maps to the path a product travels — research → clinical evidence → regulation → reimbursement → adoption. Expand any stage below.</div>
 {pulse_html}
 <details class="ovsec"><summary class="secsum">The two gates</summary>
-<div class="seccap">The two hurdles every AI product must clear, in order. Each tile counts recent items about that gate.</div>
+<div class="seccap">The two hurdles most AI products must clear, in order. Each tile counts recent items about that gate.</div>
 <div class="tiles g2">{gate_html}</div></details>
 <details class="ovsec"><summary class="secsum">Leading indicators</summary>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
@@ -1307,7 +1307,7 @@ def trends_html(items, history):
         newflag = f'<span class="newflag">New · first mention in {gap} builds</span>' if gap >= 3 else ""
         cls = TERM_CLASS.get(term, "")
         cls_html = f'<div class="tclass-lg">{html.escape(cls)} term</div>' if cls else ""
-        tod = (f'<div class="topstory"><div class="topstory-l">Top trend today</div>'
+        tod = (f'<div class="topstory"><div class="topstory-l">Top signal today</div>'
                f'<div class="topstory-t">{html.escape(term)}{newflag}</div>{cls_html}'
                f'<div class="topstory-why"><b>{now} mention{"s" if now != 1 else ""} today</b> · '
                f'typical {avg_txt} per build · (<b>{"+" if pct >= 0 else ""}{pct:.0f}%</b> vs baseline). '
@@ -1953,9 +1953,11 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Native feeds where they exist; scoped news queries where they don’t — a deliberate editorial choice, not a technical limitation.</div></div>
     <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most items are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
-  <div class="sec">Standards &amp; communities</div>
+  <div class="sec">Healthcare AI ecosystem</div>
+  <div class="seccap">Reference communities, standards bodies and official trackers — the landscape these sources sit within.</div>
+  <div class="grp-h">Standards &amp; communities</div>
   <div class="hubs">{community_html}</div>
-  <div class="sec">Regulatory &amp; reimbursement trackers</div>
+  <div class="grp-h" style="margin-top:16px">Regulatory &amp; reimbursement trackers</div>
   <div class="hubs">{tracker_html}</div>
   <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored in your browser only.</div>
 </div>
