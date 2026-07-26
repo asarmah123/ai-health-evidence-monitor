@@ -1891,7 +1891,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <meta property="og:title" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
 <meta property="og:description" content="A daily evidence monitor tracking how AI technologies move through healthcare — from research and clinical validation to regulatory approval, reimbursement and market adoption.">
 <meta property="og:url" content="https://asarmah123.github.io/ai-health-evidence-monitor/">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://asarmah123.github.io/ai-health-evidence-monitor/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
+<meta name="twitter:image" content="https://asarmah123.github.io/ai-health-evidence-monitor/preview.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>{CSS}</style>
 </head><body><div class="wrap">
 <h1>AI in Health</h1>
