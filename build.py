@@ -1006,10 +1006,10 @@ def overview_html(items, agg, o, history=None, take=""):
             wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
             boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
                       f'<span class="digbox-n">{len(gitems)}</span></div>{wm_html}{grows}</div>')
-        digest = f'<details class="ovsec"><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
+        digest = f'<details class="ovsec"><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
     else:
         digest = ('<details class="ovsec"><summary class="secsum">Worth a closer look</summary>'
-                  '<div class="seccap">The highest-consequence items today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
+                  '<div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
                   '<div class="dnote">No device authorisations, economic-endpoint trials, or major '
                   'regulatory actions today. A quiet day.</div></details>')
 
@@ -1121,7 +1121,7 @@ def overview_html(items, agg, o, history=None, take=""):
         reg = o["macro"][0]
         allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
         tb = max(allb, key=lambda x: x[1]) if allb else None
-        line = f'Most active market: <b>{html.escape(reg[0])}</b> ({reg[1]})'
+        line = f'Highest activity by region: <b>{html.escape(reg[0])}</b> ({reg[1]})'
         if tb:
             line += f' · leading body: <b>{html.escape(tb[0])}</b> ({tb[1]})'
         hero_lines.append(line)
@@ -1165,7 +1165,7 @@ def overview_html(items, agg, o, history=None, take=""):
 <div class="seccap">How today's activity maps to the path a product travels — research → clinical evidence → regulation → reimbursement → adoption. Expand any stage below.</div>
 {pulse_html}
 <details class="ovsec"><summary class="secsum">The two gates</summary>
-<div class="seccap">The two hurdles most AI products must clear, in order. Each tile counts recent items about that gate.</div>
+<div class="seccap">The two hurdles most AI products must clear, in order. Each tile counts recent updates about that gate.</div>
 <div class="tiles g2">{gate_html}</div></details>
 <details class="ovsec"><summary class="secsum">Leading indicators</summary>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
@@ -1174,7 +1174,7 @@ def overview_html(items, agg, o, history=None, take=""):
 <details class="more">
 <summary>Show detailed breakdowns — market, regulatory &amp; HTA bodies, clinical area, reimbursement routes</summary>
 <div class="sec">The breakdown</div>
-<div class="seccap">Today’s items by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
+<div class="seccap">Today’s updates by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
 <div class="panels">{geo_panel}{regulators_panel}</div>
 <div class="panels" style="margin-top:8px">{payers_panel}{clinfocus}</div>
 {pathway_row}
@@ -1325,7 +1325,7 @@ def trends_html(items, history):
         pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
         lx, ly = coords[-1]
         spark = (f'<div class="spark"><div class="ph">Build volume</div>'
-                 f'<div class="volnow"><b>{vals[-1]}</b> updates today</div>'
+                 f'<div class="volnow">Today\u2019s build: <b>{vals[-1]}</b> updates</div>'
                  f'<svg viewBox="0 0 {w} {ht}" preserveAspectRatio="none">'
                  f'<polyline points="{pts}" fill="none" stroke="#9c2c2c" stroke-width="1.6" '
                  f'stroke-linejoin="round" opacity=".8"/>'
@@ -1734,7 +1734,7 @@ function render(){
       </div>
     </div>`).join('') || '<div class="dnote">Nothing matches — try another filter.</div>';
   $$('.acts button').forEach(b=>b.onclick=()=>{const id=b.dataset.i;read.has(id)?read.delete(id):read.add(id);save();render();});
-  $('#count').textContent=`${list.length} item${list.length===1?'':'s'} · ${read.size} read`;
+  $('#count').textContent=`${list.length} update${list.length===1?'':'s'} · ${read.size} read`;
 }
 $$('[data-tier]').forEach(b=>b.onclick=()=>{tier=b.dataset.tier;
   $$('[data-tier]').forEach(x=>x.classList.toggle('on',x===b));render();});
@@ -1746,7 +1746,7 @@ $$('.cat').forEach(c=>c.onclick=()=>{
 });
 const showall=$('[data-showall]');
 if(showall) showall.onclick=()=>{layer='all';
-  $('#cat-head').textContent='All items';
+  $('#cat-head').textContent='All updates';
   $('#cat-lead').textContent='Every source across all six categories, unfiltered.';
   showList(); render();};
 const back=$('[data-back]');
@@ -1779,24 +1779,22 @@ LAYER_GROUPS = [
 # self-explanatory name + what the feed represents (shown at the top of each list)
 LAYER_NAV = {
     "research": ("AI research & models",
-        "Frontier AI research, models and methods — arXiv, the major labs, and the main "
-        "AI newsletters. Early signal: emerging capabilities before they reach healthcare."),
+        "Frontier AI research, models and methods — an early signal of what becomes "
+        "possible before it reaches healthcare."),
     "clinical": ("Clinical evidence & trials",
-        "Does it work in patients? Peer-reviewed journals (NEJM AI, Lancet Digital Health, "
-        "Nature Medicine, JAMIA), preprints (medRxiv), registered trials (ClinicalTrials.gov), "
-        "and Eric Topol's Ground Truths."),
+        "Does it work in patients? Peer-reviewed studies, preprints and registered "
+        "trials evaluating AI in patients."),
     "heor": ("Health economics & HTA",
-        "Is it worth paying for? Cost-effectiveness, value assessment and HTA methods — Value in "
-        "Health, PharmacoEconomics, OHDSI, ISPOR, and PubMed queries on AI in health "
-        "technology assessment."),
+        "Is it worth paying for? Cost-effectiveness, value assessment and health "
+        "technology assessment of AI."),
     "regulation": ("Regulatory & authorisation",
-        "Can it reach the market? FDA and EMA guidance, plus AI-enabled device authorisations "
-        "(510(k) and PMA) via openFDA."),
+        "Can it reach the market? Regulatory guidance and AI-enabled device authorisations."),
     "access": ("Reimbursement & coverage",
-        "Will healthcare systems pay for it? CMS coverage and payment rules, coding (NTAP, CPT), Germany's "
-        "DiGA, and NICE HTA decisions — the mechanisms that turn an authorisation into revenue."),
+        "Will healthcare systems pay for it? Coverage decisions, coding and the pathways "
+        "that turn an authorisation into revenue."),
     "industry": ("Industry & funding",
-        "The business of health AI — STAT, Endpoints, Fierce, MedTech Dive. Company activity, partnerships, funding, launches and strategic moves."),
+        "The business of health AI — company activity, partnerships, funding, launches "
+        "and strategic moves."),
 }
 
 
@@ -1849,14 +1847,14 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     if o:
         parts = []
         if o.get("macro"):
-            m = o["macro"][0]; parts.append(f'<b>{html.escape(str(m[0]))}</b> {m[1]} updates')
+            m = o["macro"][0]; parts.append(f'<b>{html.escape(str(m[0]))}</b> led with {m[1]} updates')
         allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
         if allb:
-            tb = max(allb, key=lambda x: x[1]); parts.append(f'<b>{html.escape(str(tb[0]))}</b> {tb[1]} actions')
+            tb = max(allb, key=lambda x: x[1]); parts.append(f'<b>{html.escape(str(tb[0]))}</b> most active regulator ({tb[1]})')
         if o.get("focus"):
-            f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> {f0[1]} mentions')
+            f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> top clinical area ({f0[1]})')
         if parts:
-            active_strip = (f'<div class="activestrip"><span class="as-l">Today</span>'
+            active_strip = (f'<div class="activestrip"><span class="as-l">Today\u2019s snapshot</span> '
                             f'{" · ".join(parts)}</div>')
 
     # attach a transparent importance score + reasons + jurisdiction, so the feed can
@@ -1933,11 +1931,11 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Canonical links merge the same story from several sources.</div></div></div>
     <div class="parrow">↓</div>
-    <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Every item into one of six evidence stages, using transparent keyword and source rules (no model).</div></div></div>
+    <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Every item into one of six evidence stages, using transparent keyword and source rules (no machine-learning model).</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">4</div><div class="pstep-b"><div class="pstep-t">Rank</div><div class="pstep-d">Explicit signals — device authorisations, economic-endpoint trials, major-regulator actions, recency. Ranking reflects priority, not certainty or confidence.</div></div></div>
     <div class="parrow">↓</div>
-    <div class="pstep"><div class="pstep-n">5</div><div class="pstep-b"><div class="pstep-t">Publish</div><div class="pstep-d">Rebuilt automatically every morning. Static, privacy-preserving architecture: no user tracking and no personal data storage.</div></div></div>
+    <div class="pstep"><div class="pstep-n">5</div><div class="pstep-b"><div class="pstep-t">Rebuild &amp; publish</div><div class="pstep-d">Rebuilt automatically every morning as a static site. Privacy-preserving: no user tracking and no personal data storage.</div></div></div>
   </div>
   <div class="sec">Editorial principles</div>
   <ul class="principles">
@@ -1949,7 +1947,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   </ul>
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
-    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Native feeds where they exist; scoped news queries where they don’t — a deliberate editorial choice, not a technical limitation.</div></div>
+    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Official APIs and RSS feeds where available; carefully scoped news queries only where no official feed exists — a deliberate editorial choice, not a technical limitation.</div></div>
     <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most items are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
   <div class="sec">Healthcare AI ecosystem</div>
@@ -1958,7 +1956,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="hubs">{community_html}</div>
   <div class="grp-h" style="margin-top:16px">Regulatory &amp; reimbursement trackers</div>
   <div class="hubs">{tracker_html}</div>
-  <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored in your browser only.</div>
+  <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored locally in your browser only.</div>
 </div>
 
 <div class="pagefoot">
