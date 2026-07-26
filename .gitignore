@@ -1,2 +1,11 @@
 __pycache__/
 .venv/
+
+# Private data — lives in the separate private repo, never in this public one.
+# Listed here so a local copy for testing can never be committed by accident.
+feeds.yaml
+coverage.yaml
+lens_prompt.txt
+data/
+*.env
+.env
