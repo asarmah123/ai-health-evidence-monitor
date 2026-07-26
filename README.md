@@ -1,6 +1,6 @@
 # AI in Health — Clinical and Market Access Evidence Monitor
 
-**Live → https://asarmah123.github.io/ai-heor-feed/**
+**Live → https://asarmah123.github.io/ai-health-evidence-monitor/**
 
 > **A daily evidence monitor that tracks AI technologies from research and clinical validation through regulation, health technology assessment, reimbursement, and market adoption.**
 

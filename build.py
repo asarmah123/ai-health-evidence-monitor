@@ -30,7 +30,7 @@ CACHE = ROOT / "data" / "cache.json"
 # last-resort fallback when a source refuses the identifying UA — never to disguise
 # who we are. No third-party CORS proxies: we only read endpoints meant to be public.
 BOT_UA = {
-    "User-Agent": "AI-in-Health-Monitor/1.0 (+https://github.com/asarmah123/ai-heor-feed)",
+    "User-Agent": "AI-in-Health-Monitor/1.0 (+https://github.com/asarmah123/ai-health-evidence-monitor)",
     "Accept": "application/rss+xml, application/xml, text/xml, text/html;q=0.9, */*;q=0.8",
     "Accept-Language": "en-GB,en;q=0.9",
 }
@@ -1454,7 +1454,7 @@ def coverage_html(agg, sample=False, draft=False):
     <span>{fast_line}</span>
   </div>
   <div class="cov-note">Aggregates only. Definitions in
-    <a href="https://github.com/asarmah123/ai-heor-feed/blob/main/TAXONOMY.md" target="_blank" rel="noopener">TAXONOMY.md</a> —
+    <a href="https://github.com/asarmah123/ai-health-evidence-monitor/blob/main/TAXONOMY.md" target="_blank" rel="noopener">TAXONOMY.md</a> —
     provisional, regional and code-only statuses are counted separately and never merged into a median.</div>
 </div>
 {evidence_panel}'''
@@ -1890,7 +1890,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI in Health — Clinical and Market Access Evidence Monitor">
 <meta property="og:description" content="A transparent daily monitor of how AI moves through healthcare — clinical evidence, regulation, reimbursement and market access — built from primary sources.">
-<meta property="og:url" content="https://asarmah123.github.io/ai-heor-feed/">
+<meta property="og:url" content="https://asarmah123.github.io/ai-health-evidence-monitor/">
 <meta name="twitter:card" content="summary">
 <style>{CSS}</style>
 </head><body><div class="wrap">
