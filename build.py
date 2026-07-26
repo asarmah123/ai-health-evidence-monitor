@@ -1885,11 +1885,11 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     (DOCS / "index.html").write_text(f"""<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI in Health — Clinical and Market Access Evidence Monitor</title>
-<meta name="description" content="A transparent daily monitor of how AI moves through healthcare — clinical evidence, regulation, reimbursement and market access — built from primary sources.">
+<title>AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor</title>
+<meta name="description" content="A daily evidence monitor tracking how AI technologies move through healthcare — from research and clinical validation to regulatory approval, reimbursement and market adoption.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="AI in Health — Clinical and Market Access Evidence Monitor">
-<meta property="og:description" content="A transparent daily monitor of how AI moves through healthcare — clinical evidence, regulation, reimbursement and market access — built from primary sources.">
+<meta property="og:title" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
+<meta property="og:description" content="A daily evidence monitor tracking how AI technologies move through healthcare — from research and clinical validation to regulatory approval, reimbursement and market adoption.">
 <meta property="og:url" content="https://asarmah123.github.io/ai-health-evidence-monitor/">
 <meta name="twitter:card" content="summary">
 <style>{CSS}</style>
