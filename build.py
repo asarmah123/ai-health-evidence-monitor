@@ -1044,7 +1044,7 @@ def overview_html(items, agg, o, history=None, take=""):
                              bodies.get("payer", []), "No HTA / payer activity today.", color="#1f8a70")
     clinfocus = bar_panel("Clinical focus", "therapeutic areas mentioned today",
                           o.get("focus", []), "No specialty clearly identified today.", color="#b5563a")
-    pathway = bar_panel("Reimbursement pathways in the news", "items mentioning each route, today",
+    pathway = bar_panel("Reimbursement pathways in the news", "updates mentioning each route, today",
                         o.get("pathways", []), "None mentioned today.", color="#b0842b")
     prof_rows = bodies.get("professional", [])
     prof_panel = bar_panel("Professional bodies", "societies &amp; standards (ISPOR, HTAi)",
@@ -1105,7 +1105,14 @@ def overview_html(items, agg, o, history=None, take=""):
     # single most consequential item → promoted into its own dominant card (topstory)
     hpicks = _digest(o)
     if hpicks:
-        why, hi = hpicks[0]
+        # Top story prefers the most consequential RECENT item, so a weeks-old
+        # authorisation does not dominate a fresh major-regulator action. If nothing
+        # is recent, fall back to the top-ranked item (its lag is disclosed below).
+        _today = datetime.now(timezone.utc).date()
+        def _fresh(it):
+            d = _pdate(it.get("date", ""))
+            return d is not None and (_today - d).days <= 10
+        why, hi = next(((w, it) for w, it in hpicks if _fresh(it)), hpicks[0])
         why_text = WHY_TEXT.get(why, why)
         topstory = (f'<div class="topstory"><div class="topstory-l">Top story</div>'
                     f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
@@ -1311,7 +1318,7 @@ def trends_html(items, history):
                f'<div class="topstory-t">{html.escape(term)}{newflag}</div>{cls_html}'
                f'<div class="topstory-why"><b>{now} mention{"s" if now != 1 else ""} today</b> · '
                f'typical {avg_txt} per build · (<b>{"+" if pct >= 0 else ""}{pct:.0f}%</b> vs baseline). '
-               f'This tracks how often the term appears across items in this build; it does not explain why.</div></div>')
+               f'This tracks how often the term appears across updates in this build; it does not explain why.</div></div>')
 
     # build volume
     spark = ""
@@ -1880,7 +1887,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 </head><body><div class="wrap">
 <h1>AI in Health</h1>
 <div class="tagline">Daily monitor of clinical, regulatory, reimbursement and market-access evidence</div>
-<div class="sub">Rebuilt every morning · {len(items)} items · updated {built}</div>
+<div class="sub">Rebuilt every morning · {len(items)} updates · updated {built}</div>
 <div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
 
 <div class="tabs">
@@ -1948,7 +1955,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
     <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Official APIs and RSS feeds where available; carefully scoped news queries only where no official feed exists — a deliberate editorial choice, not a technical limitation.</div></div>
-    <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most items are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
+    <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most updates are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
   <div class="sec">Healthcare AI ecosystem</div>
   <div class="seccap">Reference communities, standards bodies and official trackers — the landscape these sources sit within.</div>
