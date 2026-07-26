@@ -1126,11 +1126,13 @@ def overview_html(items, agg, o, history=None, take=""):
     # most active market + body
     if o.get("macro"):
         reg = o["macro"][0]
-        allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
+        allb_reg = o["bodies"]["regulator"]
+        allb = allb_reg + o["bodies"]["payer"]
         tb = max(allb, key=lambda x: x[1]) if allb else None
         line = f'Highest activity by region: <b>{html.escape(reg[0])}</b> ({reg[1]})'
         if tb:
-            line += f' · leading body: <b>{html.escape(tb[0])}</b> ({tb[1]})'
+            _role = "regulator" if tb in allb_reg else "HTA / payer body"
+            line += f' · most active {_role}: <b>{html.escape(tb[0])}</b> ({tb[1]})'
         hero_lines.append(line)
     # dominant clinical areas — a real distribution insight (no fabricated cause)
     focus = o.get("focus", [])
@@ -1352,22 +1354,27 @@ def trends_html(items, history):
                 bars += '<div class="tsep"></div>'
                 continue
             pct, term, now, avg = r
-            up = pct >= 0
-            newmini = ' <span class="newmini">new</span>' if (now > 0 and avg < 0.5) else ""
             cls = TERM_CLASS.get(term, "")
             cls_html = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
-            cnt = f'{now} vs ~{avg:.0f}' if now > 0 else 'none this build'
+            if now == 0:
+                bl = f"~{avg:.0f}" if avg >= 1 else "under 1"
+                bars += (f'<div class="trow"><div class="tn dim">'
+                         f'<span class="tnm">{html.escape(term)}</span>{cls_html}</div>'
+                         f'<div class="tzero">no mentions this build (baseline {bl}/build)</div></div>')
+                continue
+            up = pct >= 0
+            newmini = ' <span class="newmini">new</span>' if avg < 0.5 else ""
             bars += (f'<div class="trow"><div class="tn{"" if up else " dim"}">'
                      f'<span class="tnm">{html.escape(term)}{newmini}</span>{cls_html}</div>'
                      f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
                      f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div>'
-                     f'<div class="tcount">{cnt}</div></div>')
-        terms_html = (f'<div class="panel"><div class="ph">Biggest changes in mentions</div>'
+                     f'<div class="tcount">{now} vs ~{avg:.0f}</div></div>')
+        terms_html = (f'<div class="panel"><div class="ph">Largest changes in evidence signals</div>'
                       f'<div class="psub">Change vs the previous 28-day average; counts shown as today vs average. '
                       f'Small bases move sharply, so read the counts alongside the percentage.</div>{bars}</div>')
     else:
         need = max(4 - len(history), 1)
-        terms_html = (f'<div class="panel"><div class="ph">Biggest changes in mentions</div>'
+        terms_html = (f'<div class="panel"><div class="ph">Largest changes in evidence signals</div>'
                       f'<div class="psub">Accruing — term trends need a few days of history. '
                       f'~{need} more to go.</div></div>')
 
@@ -1514,6 +1521,7 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
 .tf{height:6px;background:var(--accent);border-radius:3px;opacity:.75}.tf.down{background:#c4c4c4}
 .tp{font-size:11.5px;font-weight:600;color:var(--accent);width:40px;text-align:right}
 .tcount{font-size:10.5px;color:#9a9a9a;width:66px;text-align:right;white-space:nowrap;flex:none}
+.tzero{flex:1;text-align:right;font-size:12px;color:#a5a5a5;white-space:nowrap}
 .tnm{display:block}
 .tclass{display:block;font-size:9px;color:#adadad;text-transform:uppercase;letter-spacing:.02em;margin-top:1px}
 .tclass-lg{font-size:11px;color:#8a8a8a;text-transform:uppercase;letter-spacing:.04em;margin-top:5px}
@@ -1786,8 +1794,7 @@ LAYER_GROUPS = [
 # self-explanatory name + what the feed represents (shown at the top of each list)
 LAYER_NAV = {
     "research": ("AI research & models",
-        "Frontier AI research, models and methods — an early signal of what becomes "
-        "possible before it reaches healthcare."),
+        "Frontier AI research, models and methods — an early signal of emerging AI capabilities that may influence future healthcare applications."),
     "clinical": ("Clinical evidence & trials",
         "Does it work in patients? Peer-reviewed studies, preprints and registered "
         "trials evaluating AI in patients."),
@@ -1800,8 +1807,7 @@ LAYER_NAV = {
         "Will healthcare systems pay for it? Coverage decisions, coding and the pathways "
         "that turn an authorisation into revenue."),
     "industry": ("Industry & funding",
-        "The business of health AI — company activity, partnerships, funding, launches "
-        "and strategic moves."),
+        "The business of health AI — company activity, partnerships, funding announcements and launches."),
 }
 
 
@@ -1855,9 +1861,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         parts = []
         if o.get("macro"):
             m = o["macro"][0]; parts.append(f'<b>{html.escape(str(m[0]))}</b> led with {m[1]} updates')
-        allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
+        allb_reg = o["bodies"]["regulator"]
+        allb = allb_reg + o["bodies"]["payer"]
         if allb:
-            tb = max(allb, key=lambda x: x[1]); parts.append(f'<b>{html.escape(str(tb[0]))}</b> most active regulator ({tb[1]})')
+            tb = max(allb, key=lambda x: x[1])
+            _r = "regulator" if tb in allb_reg else "HTA/payer body"
+            parts.append(f'<b>{html.escape(str(tb[0]))}</b> most active {_r} ({tb[1]})')
         if o.get("focus"):
             f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> top clinical area ({f0[1]})')
         if parts:
@@ -1940,7 +1949,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Every item into one of six evidence stages, using transparent keyword and source rules (no machine-learning model).</div></div></div>
     <div class="parrow">↓</div>
-    <div class="pstep"><div class="pstep-n">4</div><div class="pstep-b"><div class="pstep-t">Rank</div><div class="pstep-d">Explicit signals — device authorisations, economic-endpoint trials, major-regulator actions, recency. Ranking reflects priority, not certainty or confidence.</div></div></div>
+    <div class="pstep"><div class="pstep-n">4</div><div class="pstep-b"><div class="pstep-t">Rank</div><div class="pstep-d">Explicit signals — device authorisations, economic-endpoint trials, major-regulator actions, recency. Ranking reflects editorial priority, not certainty or confidence.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">5</div><div class="pstep-b"><div class="pstep-t">Rebuild &amp; publish</div><div class="pstep-d">Rebuilt automatically every morning as a static site. Privacy-preserving: no user tracking and no personal data storage.</div></div></div>
   </div>
@@ -1954,7 +1963,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   </ul>
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
-    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Official APIs and RSS feeds where available; carefully scoped news queries only where no official feed exists — a deliberate editorial choice, not a technical limitation.</div></div>
+    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">We prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade publications. Official APIs, RSS feeds and registries where available; carefully scoped queries only where no machine-readable source exists — a deliberate editorial choice, not a technical limitation.</div></div>
     <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most updates are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
   <div class="sec">Healthcare AI ecosystem</div>
