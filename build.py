@@ -1616,11 +1616,10 @@ CSS = """
 body{margin:0;padding:26px 20px 60px;background:#fff;color:var(--ink);
  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
 .wrap{max-width:880px;margin:0 auto}
-h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:700}
-.tagline{font-size:14.5px;color:#4a4a4a;margin:3px 0}
-.forwhom{font-size:12.5px;color:#6a6a6a;margin:3px 0 2px}
-.pitch{font-size:13px;color:#555;margin:6px 0 3px;line-height:1.5;max-width:660px}
-.sub{color:var(--mute);font-size:12.5px;margin-bottom:16px}
+h1{font-size:28px;margin:0 0 3px;letter-spacing:-.022em;font-weight:700}
+.tagline{font-size:17.5px;font-weight:500;color:#232323;margin:4px 0 10px;line-height:1.35;letter-spacing:-.008em}
+.forwhom{font-size:12.5px;color:#707070;margin:0 0 9px}
+.sub{color:#9a9a9a;font-size:12px;margin:0 0 16px;font-variant-numeric:tabular-nums}
 /* tabs */
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:20px;
  position:sticky;top:0;background:#fff;z-index:10;padding-top:2px}
@@ -2109,7 +2108,6 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <header>
 <h1>AI in Health</h1>
 <div class="tagline">Track how healthcare AI is advancing toward approval, reimbursement and adoption</div>
-<div class="pitch">Not a news feed — every update is classified by lifecycle stage and ranked, so what shapes approval and reimbursement surfaces first.</div>
 <div class="forwhom">Daily intelligence for market-access, HEOR, regulatory, clinical and investment teams.</div>
 <div class="sub">Updated every morning · {len(items)} updates · {built}</div>
 <div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
@@ -2158,7 +2156,6 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 
 <div id="view-sources" class="view">
   <div class="sec">How the intelligence is built</div>
-  <div class="seccap">A transparent, evidence-first pipeline — not an AI-written news summary. Built for researchers, clinicians, investors, regulators and market-access teams tracking AI adoption in healthcare.</div>
   <div class="pipeline">
     <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">~65 curated sources — regulators, HTA &amp; payer bodies, journals, trial registries, industry publications — via official APIs and RSS. Chosen for regulatory, clinical, reimbursement and market relevance, not volume.</div></div></div>
     <div class="parrow">↓</div>
