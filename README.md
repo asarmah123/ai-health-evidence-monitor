@@ -2,7 +2,7 @@
 
 **Live → https://asarmah123.github.io/ai-health-evidence-monitor/**
 
-> **A daily evidence monitor that tracks AI technologies from research and clinical validation through regulation, health technology assessment, reimbursement, and market adoption.**
+> **Daily market intelligence on how AI technologies advance through healthcare — from research and clinical validation through regulation, health technology assessment, reimbursement, and market adoption.**
 
 `~65 curated sources` · `regulators & HTA bodies across 15+ markets` · `North America · Europe · APAC · MEA`
 
