@@ -40,6 +40,8 @@ BROWSER_UA = dict(BOT_UA, **{
 })
 UA = BOT_UA   # default headers for the JSON-API fetchers (PubMed, Federal Register, openFDA, ctgov)
 LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
+STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
+               "heor": "#1f8a70", "access": "#b0842b", "industry": "#64748b"}
 TIERS = ["daily", "weekly", "monthly"]
 
 # Respectful pacing: never fire requests faster than one every _MIN_GAP seconds.
@@ -670,7 +672,7 @@ BODY_ROLE = {
     "PMDA": "regulator", "NMPA": "regulator", "TGA": "regulator", "MFDS": "regulator",
     "HSA": "regulator", "CDSCO": "regulator", "SFDA": "regulator", "SAHPRA": "regulator",
     # HTA & payer bodies (coverage / assessment)
-    "CMS": "payer", "NICE": "payer", "G-BA": "payer", "IQWIG": "payer", "HAS": "payer", "BfArM": "payer",
+    "CMS": "payer", "NICE": "payer", "G-BA": "payer", "IQWiG": "payer", "HAS": "payer", "BfArM": "payer",
     "PBAC": "payer", "MSAC": "payer", "HIRA": "payer", "NECA": "payer", "Chuikyo": "payer",
     "HITAP": "payer", "ACE": "payer", "CADTH": "payer", "MOHAP": "regulator",
     "ICER": "payer", "AIFA": "payer", "TLV": "payer", "Zorginstituut": "payer",
@@ -682,7 +684,7 @@ BODY_ROLE = {
 # bodies distinctive enough to match safely in free text (no source feed of their own).
 # Ambiguous acronyms (HAS, NICE, CMS, FDA, ACE) are matched by SOURCE only, never text.
 SAFE_TEXT_BODIES = {"PMDA", "NMPA", "TGA", "MFDS", "HSA", "CDSCO", "SFDA", "SAHPRA",
-                    "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWIG",
+                    "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWiG",
                     "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP",
                     "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA", "NHSA"}
 
@@ -944,11 +946,79 @@ def rank_score(i):
     return s, reasons
 
 
+# Plain-language expansions for acronyms shown in the panels, surfaced as hover
+# tooltips (<abbr>) so non-specialists aren\u2019t lost. Educational only; no data change.
+GLOSSARY = {
+    "FDA": "US Food and Drug Administration",
+    "EMA": "European Medicines Agency",
+    "MHRA": "UK Medicines and Healthcare products Regulatory Agency",
+    "NICE": "UK National Institute for Health and Care Excellence",
+    "CMS": "US Centers for Medicare & Medicaid Services",
+    "CADTH": "Canada\u2019s Drug Agency (formerly CADTH)",
+    "IQWiG": "Germany\u2019s Institute for Quality and Efficiency in Health Care",
+    "G-BA": "Germany\u2019s Federal Joint Committee (Gemeinsamer Bundesausschuss)",
+    "HAS": "France\u2019s Haute Autorit\u00e9 de Sant\u00e9",
+    "BfArM": "Germany\u2019s Federal Institute for Drugs and Medical Devices",
+    "HIRA": "South Korea\u2019s Health Insurance Review & Assessment Service",
+    "PBAC": "Australia\u2019s Pharmaceutical Benefits Advisory Committee",
+    "MSAC": "Australia\u2019s Medical Services Advisory Committee",
+    "PMDA": "Japan\u2019s Pharmaceuticals and Medical Devices Agency",
+    "NMPA": "China\u2019s National Medical Products Administration",
+    "TGA": "Australia\u2019s Therapeutic Goods Administration",
+    "MFDS": "South Korea\u2019s Ministry of Food and Drug Safety",
+    "HSA": "Singapore\u2019s Health Sciences Authority",
+    "SFDA": "Saudi Food and Drug Authority",
+    "SAHPRA": "South African Health Products Regulatory Authority",
+    "NHSA": "China\u2019s National Healthcare Security Administration",
+    "AIFA": "Italy\u2019s Medicines Agency (Agenzia Italiana del Farmaco)",
+    "TLV": "Sweden\u2019s Dental and Pharmaceutical Benefits Agency",
+    "ICER": "US Institute for Clinical and Economic Review",
+    "Zorginstituut": "Netherlands\u2019 National Health Care Institute",
+    "Swissmedic": "Switzerland\u2019s therapeutic products authority",
+    "ACE": "Singapore\u2019s Agency for Care Effectiveness",
+    "NECA": "South Korea\u2019s National Evidence-based Healthcare Collaborating Agency",
+    "Chuikyo": "Japan\u2019s Central Social Insurance Medical Council",
+    "HITAP": "Thailand\u2019s Health Intervention and Technology Assessment Program",
+    "MOHAP": "UAE Ministry of Health and Prevention",
+    "Health Canada": "Canada\u2019s federal health department",
+    "ISPOR": "The Professional Society for Health Economics and Outcomes Research",
+    "HTAi": "Health Technology Assessment international",
+    "INAHTA": "International Network of Agencies for Health Technology Assessment",
+    "DiGA": "Germany\u2019s fast-track reimbursement path for digital health apps",
+    "NTAP": "US Medicare New Technology Add-on Payment",
+    "CPT": "US Current Procedural Terminology billing codes",
+}
+
+
+def gloss(lbl):
+    """Wrap a known acronym in an <abbr> tooltip; otherwise just escape it."""
+    v = str(lbl)
+    if v in GLOSSARY:
+        return f'<abbr title="{html.escape(GLOSSARY[v])}">{html.escape(v)}</abbr>'
+    return html.escape(v)
+
+
+def _fmt_date(d):
+    """Human-readable date for the Top Story ('21 Jul 2026'); honest when missing."""
+    dt = _pdate(d)
+    return f"{dt.day} {dt.strftime('%b %Y')}" if dt else "date unknown"
+
+
+_KIND = {"research": "Research", "clinical": "Clinical", "regulation": "Regulatory",
+         "heor": "Health economics", "access": "Reimbursement", "industry": "Industry"}
+
+
 def overview_html(items, agg, o, history=None, take=""):
     # ---- pipeline pulse: one cell per category, mirrors the Feed tabs
     prior = (history or [])[:-1]
     SHORT = {"research": "Research", "clinical": "Clinical", "heor": "HEOR",
              "regulation": "Regulatory", "access": "Reimbursement", "industry": "Industry"}
+    LONG = {"research": "AI research", "clinical": "Clinical",
+            "heor": "Health economics (HEOR)", "regulation": "Regulatory",
+            "access": "Reimbursement", "industry": "Industry"}
+    JLABEL = {"research": "Research", "clinical": "Clinical evidence",
+              "regulation": "Regulatory approval", "heor": "Health economics",
+              "access": "Coverage decision", "industry": "Market activity"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
         if len(base) < 2:
@@ -959,13 +1029,29 @@ def overview_html(items, agg, o, history=None, take=""):
             return '<span class="pd flat">±0</span>'
         a, c = ("▲", "up") if d > 0 else ("▼", "down")
         return f'<span class="pd {c}">{a}{abs(d):.0f}</span>'
-    pulse = "".join(
-        f'<div class="pulse-c" data-goto="feed"><div class="pl">{SHORT[k]}</div>'
-        f'<div class="pv">{o["layers"][k]} {pdelta(k)}</div></div>' for k in LAYERS)
-    pulse_html = (f'<details class="ovsec"><summary class="secsum">Activity by stage</summary>'
-                  f'<div class="seccap">Where today\u2019s {len(items)} updates fall across the six stages an AI '
-                  f'product moves through \u2014 from research to reimbursement. Arrows show the change vs the past week.</div>'
-                  f'<div class="pulse">{pulse}</div></details>')
+    def _rarity(k):
+        seq = [h["layers"][k] for h in prior if isinstance(h.get("layers"), dict) and k in h["layers"]]
+        if len(seq) < 5:
+            return ""
+        cur = o["layers"][k]
+        run_hi = run_lo = 0
+        for v in reversed(seq):
+            if cur > v: run_hi += 1
+            else: break
+        for v in reversed(seq):
+            if cur < v: run_lo += 1
+            else: break
+        if run_hi >= 5:
+            return f'<div class="jnote">highest in {run_hi + 1} builds</div>'
+        if run_lo >= 5:
+            return f'<div class="jnote">lowest in {run_lo + 1} builds</div>'
+        return ""
+    journey = "".join(
+        (('<div class="jarrow">\u2193</div>' if idx else '')
+         + f'<div class="jstep" role="button" tabindex="0" data-goto="feed" data-layer="{k}" data-label="{html.escape(LAYER_NAV[k][0])}" data-desc="{html.escape(LAYER_NAV[k][1])}" style="border-left:4px solid {STAGE_COLOR[k]}"><div class="jlabel">{JLABEL[k]}</div>'
+           f'<div class="jval">{o["layers"][k]} {pdelta(k)}{_rarity(k)}</div></div>')
+        for idx, k in enumerate(LAYERS))
+    journey_html = f'<div class="journey">{journey}</div>'
 
     # ---- the two market-access gates, then leading indicators
     def render_tiles(rows):
@@ -1005,10 +1091,10 @@ def overview_html(items, agg, o, history=None, take=""):
             wm = WHY_MATTERS.get(why, "")
             wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
             boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
-                      f'<span class="digbox-n">{len(gitems)}</span></div>{wm_html}{grows}</div>')
-        digest = f'<details class="ovsec"><summary class="secsum">Worth a closer look</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
+                      f'<span class="digbox-n">{len(gitems)}</span>{wm_html}</div>{grows}</div>')
+        digest = f'<details class="ovsec" open><summary class="secsum">Priority updates</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
     else:
-        digest = ('<details class="ovsec"><summary class="secsum">Worth a closer look</summary>'
+        digest = ('<details class="ovsec" open><summary class="secsum">Priority updates</summary>'
                   '<div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
                   '<div class="dnote">No device authorisations, economic-endpoint trials, or major '
                   'regulatory actions today. A quiet day.</div></details>')
@@ -1018,20 +1104,20 @@ def overview_html(items, agg, o, history=None, take=""):
         if rows:
             peak = rows[0][1] or 1
             bars = "".join(
-                f'<div class="trow"><div class="tn">{html.escape(str(lbl))}</div>'
+                f'<div class="trow"><div class="tn">{gloss(lbl)}</div>'
                 f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%;background:{color}"></div></div>'
                 f'<div class="tp" style="color:{color}">{n}</div></div>' for lbl, n in rows[:6])
             return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{sub}</div>{bars}</div>'
         return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{empty}</div></div>'
 
     bodies = o.get("bodies", {})
-    GEO_C = "#2f6f9f"
+    GEO_C = "#5f6b7a"
     def geo_rows(rows):
         if not rows:
             return '<div class="psub" style="margin-bottom:2px">none today</div>'
         peak = rows[0][1] or 1
         return "".join(
-            f'<div class="trow"><div class="tn">{html.escape(str(lbl))}</div>'
+            f'<div class="trow"><div class="tn">{gloss(lbl)}</div>'
             f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%;background:{GEO_C}"></div></div>'
             f'<div class="tp" style="color:{GEO_C}">{n}</div></div>' for lbl, n in rows[:6])
     geo_panel = (f'<div class="panel"><div class="ph">Geography</div>'
@@ -1039,11 +1125,11 @@ def overview_html(items, agg, o, history=None, take=""):
                  f'<div class="subh">By region</div>{geo_rows(o.get("macro", []))}'
                  f'<div class="subh" style="margin-top:9px">By country</div>{geo_rows(o.get("countries", []))}</div>')
     regulators_panel = bar_panel("Regulators", "market-authorisation bodies (FDA, EMA)",
-                                 bodies.get("regulator", []), "No regulator activity today.", color="#6a4c93")
+                                 bodies.get("regulator", []), "No regulator activity today.", color="#2f6f9f")
     payers_panel = bar_panel("HTA &amp; payer bodies", "coverage &amp; assessment (CMS, NICE)",
                              bodies.get("payer", []), "No HTA / payer activity today.", color="#1f8a70")
     clinfocus = bar_panel("Clinical focus", "therapeutic areas mentioned today",
-                          o.get("focus", []), "No specialty clearly identified today.", color="#b5563a")
+                          o.get("focus", []), "No specialty clearly identified today.", color="#9c2c44")
     pathway = bar_panel("Reimbursement pathways in the news", "updates mentioning each route, today",
                         o.get("pathways", []), "None mentioned today.", color="#b0842b")
     prof_rows = bodies.get("professional", [])
@@ -1065,6 +1151,7 @@ def overview_html(items, agg, o, history=None, take=""):
     # ---- "At a glance" hero: deterministic executive summary (no LLM needed) ----
     prior_h = (history or [])[:-1]
     hero_lines = []
+    ln_mover = ln_body = ln_term = ln_region = ln_clin = None
     # biggest week-over-week mover (needs a little history)
     moves = []
     for k in LAYERS:
@@ -1075,8 +1162,8 @@ def overview_html(items, agg, o, history=None, take=""):
         moves.sort(key=lambda x: -abs(x[0]))
         d, k = moves[0]
         if abs(d) >= 1.5:
-            hero_lines.append(f'<b>{SHORT[k]}</b> activity {"picked up" if d > 0 else "eased"} this week '
-                              f'— the biggest shift ({"+" if d > 0 else "−"}{abs(d):.0f} vs the prior week)')
+            ln_mover = (f'<b>{LONG[k]}</b> produced the biggest {"increase" if d > 0 else "decrease"} this week '
+                        f'({"+" if d > 0 else "−"}{abs(d):.0f} vs last week)')
     # is the day's leading body unusual vs its OWN recent norm? (needs body history to accrue)
     allb = o["bodies"]["regulator"] + o["bodies"]["payer"]
     if allb:
@@ -1085,8 +1172,8 @@ def overview_html(items, agg, o, history=None, take=""):
         if len(bbase) >= 3:
             bavg = sum(bbase) / len(bbase)
             if bcnt - bavg >= 2:
-                hero_lines.append(f'<b>{html.escape(bname)}</b> is above its recent norm '
-                                  f'({bcnt} vs a typical ~{bavg:.0f})')
+                ln_body = (f'<b>{html.escape(bname)}</b> is above its recent norm '
+                           f'({bcnt} vs a typical ~{bavg:.0f})')
     # what's unusual: the biggest term riser vs its own recent baseline (works now — terms tracked)
     if history and len(prior_h) >= 3:
         tt = history[-1].get("terms", {})
@@ -1099,9 +1186,17 @@ def overview_html(items, agg, o, history=None, take=""):
         if tmoves:
             tmoves.sort(key=lambda x: -x[0])
             _, tterm, tnow, tavg = tmoves[0]
-            avgtxt = f"~{tavg:.0f}" if tavg >= 1 else "under 1"
-            hero_lines.append(f'<b>{html.escape(tterm)}</b> mentions are above their recent baseline '
-                              f'({tnow} vs {avgtxt} typical)')
+            if tavg >= 1:
+                _mult = tnow / tavg
+                _mr = round(_mult)
+                _lead = (f'about {_mr}\u00d7 their recent daily average'
+                         if abs(_mult - _mr) <= 0.25 and _mr >= 2
+                         else 'well above their recent daily average')
+                _det = f'({tnow} vs ~{tavg:.0f} per build)'
+            else:
+                _lead = 'well above their recent daily average'
+                _det = f'({tnow} vs under 1 per build)'
+            ln_term = f'Mentions of <b>{html.escape(tterm)}</b> are running {_lead} {_det}'
     # single most consequential item → promoted into its own dominant card (topstory)
     hpicks = _digest(o)
     if hpicks:
@@ -1114,10 +1209,13 @@ def overview_html(items, agg, o, history=None, take=""):
             return d is not None and (_today - d).days <= 10
         why, hi = next(((w, it) for w, it in hpicks if _fresh(it)), hpicks[0])
         why_text = WHY_TEXT.get(why, why)
-        topstory = (f'<div class="topstory"><div class="topstory-l">Top story</div>'
+        _kind = _KIND.get(hi.get("layer", ""), "")
+        _kind_html = f'<span class="ts-kind">{_kind}</span>' if _kind else ""
+        topstory = (f'<div class="topstory" data-open="{html.escape(safe_url(hi["url"]))}"><div class="topstory-l">Top story</div>'
                     f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
-                    f'<div class="topstory-m">{html.escape(hi["source"])} · {hi["date"] or "date unknown"}</div>'
-                    f'<div class="topstory-why"><b>Why it’s here:</b> {html.escape(why_text)}</div></div>')
+                    f'<div class="topstory-m">{_kind_html}<span class="ts-src">{html.escape(hi["source"])}</span>'
+                    f'<span class="ts-date">{_fmt_date(hi["date"])}</span></div>'
+                    f'<div class="topstory-why"><b>Why it matters:</b> {html.escape(why_text)}</div></div>')
     else:
         topstory = ('<div class="topstory quiet"><div class="topstory-l">Top story</div>'
                     '<div class="topstory-t2">A quiet day</div>'
@@ -1132,13 +1230,14 @@ def overview_html(items, agg, o, history=None, take=""):
         line = f'Highest activity by region: <b>{html.escape(reg[0])}</b> ({reg[1]})'
         if tb:
             _role = "regulator" if tb in allb_reg else "HTA / payer body"
-            line += f' · most active {_role}: <b>{html.escape(tb[0])}</b> ({tb[1]})'
-        hero_lines.append(line)
+            line += f' · Most active {_role}: <b>{html.escape(tb[0])}</b> ({tb[1]})'
+        ln_region = line
     # dominant clinical areas — a real distribution insight (no fabricated cause)
     focus = o.get("focus", [])
     if focus:
         tops = " and ".join(f"<b>{html.escape(t)}</b>" for t, _ in focus[:2])
-        hero_lines.append(f"Most-mentioned clinical areas: {tops}")
+        ln_clin = f"Most-mentioned clinical areas: {tops}"
+    hero_lines = [x for x in (ln_mover, ln_region, ln_clin, ln_term, ln_body) if x][:3]
     if hero_lines:
         hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
         hero = (f'<div class="hero"><div class="hero-h">Key insights</div>{hl}</div>')
@@ -1151,39 +1250,60 @@ def overview_html(items, agg, o, history=None, take=""):
                  f'<div class="take-t">{html.escape(take)}</div></div>') if take else ""
 
     # ---- today's brief: level-1 scannable counts (all real, from this build) ----
-    def _bm(v, singular, hot=False):
+    def _bm(v, singular, hot=False, note=""):
         cls = "brief-v hot" if (hot and v) else "brief-v"
         label = singular if v == 1 else singular + "s"   # simple singular/plural
+        label = label[0].upper() + label[1:] if label else label
+        note_html = f'<div class="brief-note">{note}</div>' if note else ""
         return (f'<div class="brief-m"><div class="{cls}">{v}</div>'
-                f'<div class="brief-l">{label}</div></div>')
+                f'<div class="brief-l">{label}</div>{note_html}</div>')
+    _totp = [sum(h["layers"].values()) for h in prior if isinstance(h.get("layers"), dict) and h.get("layers")]
+    _updnote = f"typical ~{sum(_totp)/len(_totp):.0f}" if len(_totp) >= 3 else ""
     brief = ('<div class="brief">'
-             + _bm(len(items), "update")
+             + _bm(len(items), "update", note=_updnote)
              + _bm(len(o["clears"]), "AI device<br>authorisation", hot=True)
              + _bm(len(o["coverage_actions"]), "coverage<br>decision", hot=True)
              + _bm(len(o["trials"]), "clinical<br>trial")
              + _bm(len(o["papers"]), "HEOR<br>paper")
              + '</div>')
-    brief_block = ('<div class="sec" style="margin-top:6px">Today’s brief</div>'
+    brief_block = ('<div class="sec" style="margin-top:6px">The brief</div>'
                    '<div class="seccap">What landed in the latest build, at a glance.</div>' + brief)
+    cta = '<button class="cta" data-goto="feed">Browse today\u2019s updates \u2192</button>'
 
-    return f'''{take_html}{brief_block}
+    _l = o["layers"]
+    _top2 = [k for k, _ in sorted(_l.items(), key=lambda kv: -kv[1])[:2]]
+    SUMN = {"research": "AI research", "clinical": "clinical evidence",
+            "regulation": "regulatory", "heor": "health economics",
+            "access": "reimbursement", "industry": "industry"}
+    _areas = " and ".join(SUMN[k] for k in _top2)
+    _nc = len(o["clears"])
+    _auth = (f'{_nc} new AI device authorisation{"" if _nc == 1 else "s"} in this build'
+             if _nc else "no new AI device authorisations in this build")
+    editorial = f'<div class="editorial">Most of today\u2019s updates fall in {_areas}; {_auth}.</div>'
+    return f'''{take_html}
+<div class="briefing-h">Today’s briefing</div>
+<div class="briefing">
 {topstory}
 {hero}
+{brief_block}
+{editorial}
+{cta}
+</div>
 {digest}
 <div class="sec">The evidence journey</div>
-<div class="seccap">How today's activity maps to the path a product travels — research → clinical evidence → regulatory approval → health-economic value → reimbursement → adoption. Expand any stage below.</div>
-{pulse_html}
+<div class="seccap">How the latest build maps to the path a product travels — from research and clinical evidence, through regulatory approval, to health-economic value, coverage and market activity. Arrows mark the change vs the past week.</div>
+{journey_html}
 <details class="ovsec"><summary class="secsum">The two gates</summary>
 <div class="seccap">The two hurdles most AI products must clear, in order. Each tile counts recent updates about that gate.</div>
 <div class="tiles g2">{gate_html}</div></details>
-<details class="ovsec"><summary class="secsum">Leading indicators</summary>
+<details class="ovsec"><summary class="secsum">Signals to watch</summary>
 <div class="seccap">Evidence forming before a product reaches either gate — an economic trial endpoint signals a payer dossier in the making.</div>
 <div class="tiles g2">{ind_html}</div></details>
 {cov_mini}
 <details class="more">
-<summary>Show detailed breakdowns — market, regulatory &amp; HTA bodies, clinical area, reimbursement routes</summary>
-<div class="sec">The breakdown</div>
-<div class="seccap">Today’s updates by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
+<summary>Explore the data</summary>
+<div class="sec">Breakdown</div>
+<div class="seccap">Updates by market, regulatory and HTA body, clinical area, and reimbursement route.</div>
 <div class="panels">{geo_panel}{regulators_panel}</div>
 <div class="panels" style="margin-top:8px">{payers_panel}{clinfocus}</div>
 {pathway_row}
@@ -1467,7 +1587,7 @@ CSS = """
 body{margin:0;padding:26px 20px 60px;background:#fff;color:var(--ink);
  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
 .wrap{max-width:880px;margin:0 auto}
-h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
+h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:700}
 .tagline{font-size:14.5px;color:#4a4a4a;margin:3px 0}
 .sub{color:var(--mute);font-size:12.5px;margin-bottom:16px}
 /* tabs */
@@ -1479,7 +1599,7 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
 .tab.on{color:var(--ink);font-weight:650;border-bottom:2px solid var(--accent);background:#fbf6f6}
 .view{display:none}.view.on{display:block}
 .sec{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;
- margin:28px 0 11px;display:flex;align-items:center;gap:10px}
+ margin:40px 0 12px;display:flex;align-items:center;gap:10px}
 .sec:first-child{margin-top:6px}
 .seeall{font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);
  cursor:pointer;text-decoration:none}
@@ -1487,17 +1607,17 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:680}
 /* tiles */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .tiles.g2{grid-template-columns:repeat(2,1fr)}
-.seccap{font-size:13.5px;color:#565656;margin:-4px 0 12px;line-height:1.55}
+.seccap{font-size:13.5px;color:#565656;margin:-2px 0 14px;line-height:1.6}
 .tile{border:1px solid var(--line);border-radius:9px;padding:11px 13px}
 .tl{font-size:11.5px;color:#565656;text-transform:uppercase;letter-spacing:.05em}
-.tv{font-size:24px;font-weight:680;margin-top:4px}
+.tv{font-size:24px;font-weight:700;margin-top:4px}
 .ts{font-size:11.5px;color:#666;margin-top:3px;line-height:1.4}
 /* digest */
 .digboxes{display:flex;flex-direction:column;gap:10px}
 .digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.digbox-h{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);background:#fafafa;padding:7px 13px;border-bottom:1px solid #f0f0f0}
+.digbox-h{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#3d3d3d;background:#fafafa;padding:9px 13px;border-bottom:1px solid #f0f0f0}
 .digbox-n{color:#b3b3b3;margin-left:5px}
-.digwhy{font-size:12px;color:#5f5f5f;padding:8px 13px 2px;line-height:1.45}.digwhy b{color:#4a4a4a}
+.digwhy{font-size:12px;font-weight:400;font-style:italic;text-transform:none;letter-spacing:normal;color:#5f5f5f;padding:7px 0 1px;line-height:1.45}.digwhy b{color:#3d3d3d}
 .dig{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;
  padding:10px 13px;text-decoration:none;color:var(--ink);border-bottom:1px solid #f4f4f4}
 .dig:last-child{border-bottom:none}
@@ -1595,13 +1715,13 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .discmore[open]{display:block;margin:6px 0 0}
 /* today's biggest development — dominant top card */
 .topstory{border:1px solid #dcc9c9;border-left:4px solid var(--accent);background:linear-gradient(180deg,#fdf7f7,#fff);
- border-radius:12px;padding:16px 18px;margin:8px 0 14px}
+ border-radius:12px;padding:18px 20px;margin:8px 0 12px}
 .topstory-l{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
-.topstory-t{display:inline-block;font-size:19px;font-weight:680;line-height:1.3;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
+.topstory-t{display:inline-block;font-size:19px;font-weight:700;line-height:1.3;color:var(--ink);text-decoration:none;letter-spacing:-.01em}
 .topstory-t:hover{text-decoration:underline}
 .topstory-t2{font-size:19px;font-weight:680;color:#8a8a8a}
-.topstory-m{font-size:12px;color:var(--mute);margin-top:6px}
-.topstory-why{font-size:13px;color:#4a4a4a;margin-top:9px;line-height:1.5}
+.topstory-m{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--mute);margin-top:8px}
+.topstory-why{font-size:13px;font-style:italic;color:#4a4a4a;margin-top:9px;line-height:1.5}
 .topstory-why b{color:var(--ink)}
 .topstory.quiet{border-left-color:#c4c4c4;background:#fafafa}
 .newflag{font-size:9.5px;font-weight:650;text-transform:uppercase;letter-spacing:.03em;color:#1f8a70;background:#eaf6f1;padding:2px 7px;border-radius:4px;margin-left:10px;vertical-align:middle}
@@ -1652,8 +1772,8 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
  padding:12px 15px;margin-bottom:18px;background:#fbfaf9}
 .take-l{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
 .take-t{font-size:15px;line-height:1.6;color:#2a2a2a}
-.hero{border:1px solid #e6d9d9;border-left:4px solid var(--accent);background:#fcf8f8;border-radius:10px;padding:13px 16px;margin-bottom:20px}
-.hero-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.hero{padding:2px 0 0;margin-bottom:14px}
+.hero-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;margin-bottom:8px}
 .hero-n{color:#9a8a8a;font-weight:600;margin-left:6px}
 .hero-line{font-size:15px;color:#2a2a2a;line-height:1.6;padding:3px 0}
 .hero-line a{color:var(--ink);font-weight:600}
@@ -1679,13 +1799,12 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .cat-lead{font-size:12.5px;color:#666;line-height:1.5;max-width:660px}
 @media(max-width:640px){.catgrid{grid-template-columns:1fr}}
 /* today's brief — level-1 scannable summary strip */
-.brief{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;border:1px solid #e6d9d9;
- background:#fcf9f9;border-radius:11px;padding:15px 8px;margin:4px 0 6px}
+.brief{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:8px 0;margin:4px 0 10px}
 .brief-m{text-align:center;padding:0 6px;border-right:1px solid #efe6e6}
 .brief-m:last-child{border-right:none}
-.brief-v{font-size:28px;font-weight:720;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.brief-v{font-size:24px;font-weight:700;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
 .brief-v.hot{color:var(--accent)}
-.brief-l{font-size:11px;color:#666;margin-top:7px;line-height:1.25;text-transform:uppercase;letter-spacing:.03em}
+.brief-l{font-size:11.5px;color:#666;margin-top:7px;line-height:1.3;text-align:center}
 /* feed search */
 .searchbar{margin:2px 0 18px}
 .search{width:100%;font-size:14.5px;padding:11px 14px;border:1px solid #d5d5d5;border-radius:9px;
@@ -1694,7 +1813,31 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .search::placeholder{color:#9a9a9a}
 @media(max-width:640px){.tiles,.cov-grid{grid-template-columns:repeat(2,1fr)}.panels{grid-template-columns:1fr}
  .dig{grid-template-columns:1fr;gap:3px}.dsrc{white-space:normal}
- .brief{grid-template-columns:repeat(2,1fr);gap:12px 8px}.brief-m{border-right:none}}
+ .brief{grid-template-columns:repeat(2,1fr);gap:10px 4px}.brief-m{border-right:none}.brief-v{font-size:22px}}
+/* acronym tooltips */
+abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-underline-offset:2px;cursor:help}
+/* evidence journey — vertical stepped flow */
+.journey{margin:2px 0 10px}
+.jstep{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:9px;padding:12px 15px;cursor:pointer;background:#fff;transition:background .12s}
+.jstep:hover{border-color:#bcbcbc;background:#fafafa}
+.jstep:focus-visible,.cat:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.jlabel{font-size:14.5px;font-weight:600;color:var(--ink)}
+.jval{font-size:17px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;text-align:right}
+.jnote{font-size:10.5px;font-weight:400;color:#8a8a8a;margin-top:2px;letter-spacing:0}
+.brief-note{font-size:10px;color:#9a9a9a;margin-top:5px;line-height:1.2;text-transform:none;letter-spacing:0}
+.jarrow{height:15px;margin:0;font-size:0;background:linear-gradient(#cfcfcf,#cfcfcf) no-repeat center/2px 100%}
+/* primary call-to-action */
+.cta{display:inline-block;background:var(--accent);color:#fff;font-size:14.5px;font-weight:600;border:none;border-radius:8px;padding:12px 22px;cursor:pointer;margin:0 0 6px;letter-spacing:.01em}
+.cta:hover{background:#822525}
+/* stronger top-story emphasis + more breathing room */
+.topstory-t,.topstory-t2{font-size:23px}
+@media(max-width:640px){.topstory-t,.topstory-t2{font-size:19px}.cta{display:block;width:100%;text-align:center}}
+.editorial{font-size:14px;color:#4a4a4a;line-height:1.55;margin:2px 0 12px;padding-left:11px;border-left:3px solid var(--line)}
+.topstory[data-open]{cursor:pointer}
+.ts-kind{font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.04em;color:#5f5e5a;background:#f1efe8;padding:2px 7px;border-radius:4px}
+.ts-src{color:#4a4a4a}.ts-date{color:var(--mute)}
+.briefing-h{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;margin:6px 0 12px}
+.briefing{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
 """
 
 JS = """
@@ -1704,6 +1847,7 @@ const KEY='aiheor_read_v1';
 const read=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));
 const save=()=>localStorage.setItem(KEY,JSON.stringify([...read]));
 const LABEL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
+const SC={research:'#6a4c93',clinical:'#9c2c44',regulation:'#2f6f9f',heor:'#1f8a70',access:'#b0842b',industry:'#64748b'};
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const safeUrl=u=>(/^https?:\/\//i.test(u||'')?u:'#');
 
@@ -1718,7 +1862,21 @@ function showDir(){ const qq=$('#q'); if(qq) qq.value=''; q=''; $('#feed-dir').s
 function showList(){ $('#feed-dir').style.display='none'; $('#feed-list').style.display='block'; window.scrollTo(0,0); }
 $$('.tab').forEach(t=>t.onclick=()=>goto(t.dataset.tab));
 document.addEventListener('click',e=>{
-  const g=e.target.closest('[data-goto]'); if(g){e.preventDefault();goto(g.dataset.goto);}
+  const g=e.target.closest('[data-goto]'); if(g){e.preventDefault();goto(g.dataset.goto);
+    if(g.dataset.layer){layer=g.dataset.layer;
+      const h=$('#cat-head'),l=$('#cat-lead');
+      if(h)h.textContent=g.dataset.label||'Updates';
+      if(l)l.textContent=g.dataset.desc||'';
+      showList();render();}
+  }
+});
+document.addEventListener('click',e=>{
+  const c=e.target.closest('.topstory[data-open]');
+  if(c && !e.target.closest('a')){ const u=c.dataset.open; if(u && u!=='#') window.open(u,'_blank','noopener'); }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ') return;
+  const t=e.target.closest('.jstep,.cat'); if(t){e.preventDefault();t.click();}
 });
 
 // feed
@@ -1736,7 +1894,7 @@ function render(){
   }[sort]||((a,b)=>(b.score||0)-(a.score||0));
   list.sort(cmp);
   $('#feed').innerHTML = list.map(i=>`
-    <div class="card ${read.has(i.id)?'read':''}">
+    <div class="card ${read.has(i.id)?'read':''}" style="border-left:3px solid ${SC[i.layer]||'#dcdcdc'}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}</div>
@@ -1828,8 +1986,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         cards = ""
         for k in keys:
             title, desc = LAYER_NAV[k]
-            cards += (f'<div class="cat" data-layer="{k}" data-label="{html.escape(title)}" '
-                      f'data-desc="{html.escape(desc)}">'
+            cards += (f'<div class="cat" role="button" tabindex="0" data-layer="{k}" data-label="{html.escape(title)}" '
+                      f'data-desc="{html.escape(desc)}" style="border-left:4px solid {STAGE_COLOR.get(k, chr(35)+"ccc")}">'
                       f'<div class="cat-t">{html.escape(title)}<span class="cat-n">{counts.get(k,0)}</span></div>'
                       f'<div class="cat-d">{html.escape(desc)}</div></div>')
         directory_html += (f'<div class="catgrp"><div class="grp-h">{html.escape(gname)}</div>'
@@ -1870,7 +2028,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         if o.get("focus"):
             f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> top clinical area ({f0[1]})')
         if parts:
-            active_strip = (f'<div class="activestrip"><span class="as-l">Today\u2019s snapshot</span> '
+            active_strip = (f'<div class="activestrip"><span class="as-l">Snapshot</span> '
                             f'{" · ".join(parts)}</div>')
 
     # attach a transparent importance score + reasons + jurisdiction, so the feed can
@@ -1886,10 +2044,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor</title>
-<meta name="description" content="A daily evidence monitor tracking how AI technologies move through healthcare — from research and clinical validation to regulatory approval, reimbursement and market adoption.">
+<meta name="description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from primary sources.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
-<meta property="og:description" content="A daily evidence monitor tracking how AI technologies move through healthcare — from research and clinical validation to regulatory approval, reimbursement and market adoption.">
+<meta property="og:description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from primary sources.">
 <meta property="og:url" content="https://asarmah123.github.io/ai-health-evidence-monitor/">
 <meta property="og:image" content="https://asarmah123.github.io/ai-health-evidence-monitor/preview.png">
 <meta property="og:image:width" content="1200">
@@ -1899,19 +2057,22 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <meta name="twitter:card" content="summary_large_image">
 <style>{CSS}</style>
 </head><body><div class="wrap">
+<header>
 <h1>AI in Health</h1>
-<div class="tagline">Daily monitor of clinical, regulatory, reimbursement and market-access evidence</div>
+<div class="tagline">Market intelligence on how AI advances through healthcare — from clinical evidence to regulation, reimbursement and adoption</div>
 <div class="sub">Rebuilt every morning · {len(items)} updates · updated {built}</div>
 <div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
+</header>
 
-<div class="tabs">
+<nav class="tabs" aria-label="Sections">
   <div class="tab on" data-tab="overview">Overview</div>
   <div class="tab" data-tab="feed">Feed <span class="tabcount">({len(items)})</span></div>
   <div class="tab" data-tab="coverage">Coverage</div>
   <div class="tab" data-tab="trends">Trends</div>
   <div class="tab" data-tab="sources">Sources</div>
-</div>
+</nav>
 
+<main>
 <div id="view-overview" class="view on">{overview or '<div class="dnote">Overview populates on the next build.</div>'}</div>
 
 <div id="view-feed" class="view">
@@ -1979,12 +2140,13 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="hubs">{tracker_html}</div>
   <div class="foot">Sources are fetched daily from primary APIs and feeds. Read state is stored locally in your browser only.</div>
 </div>
+</main>
 
-<div class="pagefoot">
+<footer class="pagefoot">
   <b>Disclaimer.</b> Automated aggregation of public sources, rule-classified — not regulatory, legal, financial or medical advice. Verify against the primary source.
   <details class="discmore"><summary>Full disclaimer</summary>It can miss, misclassify, or fail to date an item, and sources may change or retract content. Nothing here is a substitute for the primary source. Dates are read from sources and never estimated; items without a usable date are shown as “date unknown.” No causal claims are made beyond what the counts support.</details>
   <div class="pagefoot-s">{html.escape(status_short)} <details class="discmore"><summary>Build details</summary>{html.escape(status_full)}</details></div>
-</div>
+</footer>
 </div>
 <script>const ITEMS={items_json};{JS}</script>
 </body></html>""", encoding="utf-8")

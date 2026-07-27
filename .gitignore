@@ -9,3 +9,4 @@ lens_prompt.txt
 data/
 *.env
 .env
+layout_preview.html
