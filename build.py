@@ -1090,8 +1090,8 @@ def overview_html(items, agg, o, history=None, take=""):
                 for i in gitems)
             wm = WHY_MATTERS.get(why, "")
             wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
-            boxes += (f'<div class="digbox"><div class="digbox-h">{why}'
-                      f'<span class="digbox-n">{len(gitems)}</span>{wm_html}</div>{grows}</div>')
+            boxes += (f'<details class="digbox"><summary class="digbox-h">{why}'
+                      f'<span class="digbox-n">{len(gitems)}</span></summary>{wm_html}{grows}</details>')
         digest = f'<details class="ovsec" open><summary class="secsum">Priority updates</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
     else:
         digest = ('<details class="ovsec" open><summary class="secsum">Priority updates</summary>'
@@ -1613,16 +1613,21 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:700}
 .tv{font-size:24px;font-weight:700;margin-top:4px}
 .ts{font-size:11.5px;color:#666;margin-top:3px;line-height:1.4}
 /* digest */
-.digboxes{display:flex;flex-direction:column;gap:10px}
-.digbox{border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.digbox-h{font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#3d3d3d;background:#fafafa;padding:9px 13px;border-bottom:1px solid #f0f0f0}
-.digbox-n{color:#b3b3b3;margin-left:5px}
-.digwhy{font-size:12px;font-weight:400;font-style:italic;text-transform:none;letter-spacing:normal;color:#5f5f5f;padding:7px 0 1px;line-height:1.45}.digwhy b{color:#3d3d3d}
+.digboxes{display:flex;flex-direction:column;gap:16px}
+.digbox{border:1px solid #d6d6d6;border-radius:12px;overflow:hidden;background:#fff}
+.digbox-h{display:flex;align-items:center;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#565656;background:#f2f2f0;padding:11px 16px;cursor:pointer;list-style:none}
+.digbox-h::-webkit-details-marker{display:none}
+.digbox-h::after{content:"\25B8";margin-left:auto;color:#a8a8a8;font-size:11px;font-weight:400}
+.digbox[open]>.digbox-h::after{content:"\25BE"}
+.digbox[open]>.digbox-h{border-bottom:1px solid #e6e6e6}
+.digbox-h:hover{background:#ecece9}
+.digbox-n{color:#9a9a9a;font-weight:600;margin-left:6px}
+.digwhy{font-size:12.5px;font-weight:400;font-style:italic;text-transform:none;letter-spacing:normal;color:#606060;padding:10px 16px 2px;line-height:1.5}.digwhy b{color:#3d3d3d;font-style:normal}
 .dig{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;
- padding:10px 13px;text-decoration:none;color:var(--ink);border-bottom:1px solid #f4f4f4}
+ padding:13px 16px;text-decoration:none;color:var(--ink);border-bottom:1px solid #eee}
 .dig:last-child{border-bottom:none}
 .dig:hover{background:#fafafa}
-.dttl{font-size:14.5px;font-weight:500;line-height:1.4}
+.dttl{font-size:15.5px;font-weight:600;line-height:1.4;color:var(--ink)}
 .dsrc{font-size:11.5px;color:#767676;white-space:nowrap}
 .dnote{border:1px dashed var(--line);border-radius:9px;padding:16px;font-size:12.5px;color:#8a8a8a}
 /* panels */
