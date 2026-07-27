@@ -2107,7 +2107,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 </head><body><div class="wrap">
 <header>
 <h1>AI in Health</h1>
-<div class="tagline">Track how healthcare AI is advancing toward approval, reimbursement and adoption</div>
+<div class="tagline">Track the evidence, regulatory and reimbursement signals shaping healthcare AI adoption.</div>
 <div class="forwhom">Daily intelligence for market-access, HEOR, regulatory, clinical and investment teams.</div>
 <div class="sub">Updated every morning · {len(items)} updates · {built}</div>
 <div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
