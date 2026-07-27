@@ -39,7 +39,7 @@ BROWSER_UA = dict(BOT_UA, **{
                    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"),
 })
 UA = BOT_UA   # default headers for the JSON-API fetchers (PubMed, Federal Register, openFDA, ctgov)
-LAYERS = ["research", "clinical", "heor", "regulation", "access", "industry"]
+LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 TIERS = ["daily", "weekly", "monthly"]
 
 # Respectful pacing: never fire requests faster than one every _MIN_GAP seconds.
@@ -1171,7 +1171,7 @@ def overview_html(items, agg, o, history=None, take=""):
 {hero}
 {digest}
 <div class="sec">The evidence journey</div>
-<div class="seccap">How today's activity maps to the path a product travels — research → clinical evidence → regulation → reimbursement → adoption. Expand any stage below.</div>
+<div class="seccap">How today's activity maps to the path a product travels — research → clinical evidence → regulatory approval → health-economic value → reimbursement → adoption. Expand any stage below.</div>
 {pulse_html}
 <details class="ovsec"><summary class="secsum">The two gates</summary>
 <div class="seccap">The two hurdles most AI products must clear, in order. Each tile counts recent updates about that gate.</div>
