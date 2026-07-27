@@ -1598,7 +1598,7 @@ h1{font-size:25px;margin:0;letter-spacing:-.015em;font-weight:700}
 .tab:hover{color:var(--ink)}
 .tab.on{color:var(--ink);font-weight:650;border-bottom:2px solid var(--accent);background:#fbf6f6}
 .view{display:none}.view.on{display:block}
-.sec{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;
+.sec{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#2f2f2f;
  margin:40px 0 12px;display:flex;align-items:center;gap:10px}
 .sec:first-child{margin-top:6px}
 .seeall{font-size:10.5px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--accent);
@@ -1704,7 +1704,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .hub:hover{border-color:#bfbfbf;background:#fafafa}
 .hub .n{font-size:13px;font-weight:600;color:var(--ink)}.hub .d{font-size:11.5px;color:var(--mute);margin-top:2px}
 .foot{font-size:11.5px;color:#a5a5a5;margin-top:22px;border-top:1px solid var(--line);padding-top:12px}
-.disc{font-size:11.5px;color:#8a6d1a;background:#fdfbf2;border:1px solid #ece3c4;border-radius:8px;padding:8px 12px;margin:0 0 16px;line-height:1.45}
+.disc{font-size:11.5px;color:#7a5f14;background:#fdf8e6;border:1px solid #e0cd8a;border-left:3px solid #c9a227;border-radius:8px;padding:9px 13px;margin:0 0 16px;line-height:1.45}
 .pagefoot{font-size:11.5px;color:#8a8a8a;line-height:1.6;margin-top:30px;border-top:1px solid var(--line);padding-top:14px}
 .pagefoot b{color:#5f5f5f}
 .pagefoot-s{margin-top:9px;color:#b0b0b0;font-variant-numeric:tabular-nums}
@@ -1737,7 +1737,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .more>summary:hover{text-decoration:underline}
 /* collapsible main overview sections (header = toggle) */
 .ovsec{margin:0}
-.secsum{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;
+.secsum{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#2f2f2f;
  margin:28px 0 11px;display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none}
 .secsum::-webkit-details-marker{display:none}
 .secsum::before{content:"▾";color:#c4c4c4;font-size:10px;font-weight:400}
@@ -1836,7 +1836,7 @@ abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-
 .topstory[data-open]{cursor:pointer}
 .ts-kind{font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.04em;color:#5f5e5a;background:#f1efe8;padding:2px 7px;border-radius:4px}
 .ts-src{color:#4a4a4a}.ts-date{color:var(--mute)}
-.briefing-h{font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#3d3d3d;margin:6px 0 12px}
+.briefing-h{font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#2f2f2f;margin:6px 0 12px}
 .briefing{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
 """
 
@@ -2059,7 +2059,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 </head><body><div class="wrap">
 <header>
 <h1>AI in Health</h1>
-<div class="tagline">Market intelligence on how AI advances through healthcare — from clinical evidence to regulation, reimbursement and adoption</div>
+<div class="tagline">Market intelligence on how AI advances in healthcare — from clinical evidence to regulation, reimbursement and adoption</div>
 <div class="sub">Rebuilt every morning · {len(items)} updates · updated {built}</div>
 <div class="disc">For research and information only — automated aggregation of public sources, classified by rule-based scripts. Not regulatory, legal, financial or medical advice. Always verify against the primary source before acting.</div>
 </header>
