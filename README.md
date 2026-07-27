@@ -85,7 +85,7 @@ Full definitions live in **[TAXONOMY.md](TAXONOMY.md)** — because "covered" is
 
 ## Clearance → coverage dataset *(in progress)*
 
-Alongside the feed, the project maintains a small, hand-verified longitudinal dataset of *how long AI-enabled devices take to go from authorisation to reimbursement* across major markets. It is intentionally conservative — it grows only when dates can be verified from primary sources, and both successful and unsuccessful outcomes (coverage, refusals, delistings) are retained to keep the record unbiased. It is an early, secondary component; the daily feed is the flagship.
+Alongside the daily feed, the project maintains a small hand-verified dataset tracking how AI-enabled devices move from authorisation to reimbursement across major markets. It is intentionally conservative: entries are added only when dates can be verified from primary sources. The daily evidence monitor remains the flagship.
 
 ---
 
@@ -95,15 +95,6 @@ Alongside the feed, the project maintains a small, hand-verified longitudinal da
 - **Automation** — GitHub Actions (scheduled daily build)
 - **Frontend** — hand-written HTML / CSS / vanilla JavaScript (no framework, no runtime dependencies)
 - **Hosting** — GitHub Pages (static)
-
----
-
-## Roadmap
-
-- Populate the clearance → coverage dataset with verified devices across US / EU / UK / DE
-- Deepen the dataset — *what evidence won coverage* (study design, winning endpoint) per device
-- Expand APAC/MEA ingestion as machine-readable feeds become available
-- Optional AI "what matters today" briefing (a lightweight LLM pass over the day's items)
 
 ---
 
