@@ -1,37 +1,25 @@
-# AI in Health — Clinical and Market Access Evidence Monitor
+# AI in Health — Clinical & Market Access Evidence Monitor
 
 **Live → https://asarmah123.github.io/ai-health-evidence-monitor/**
 
-> **Daily market intelligence on how AI technologies advance through healthcare — from research and clinical validation through regulation, health technology assessment, reimbursement, and market adoption.**
+Daily intelligence on how AI technologies move through healthcare — from research and clinical validation to regulation, health technology assessment, reimbursement and adoption.
 
 `~65 curated sources` · `regulators & HTA bodies across 15+ markets` · `North America · Europe · APAC · MEA`
 
-**AI in Health** pulls public signals from regulators, journals, trial registries and industry press into one briefing that refreshes every morning — framed the way a market-access team actually thinks, around two key questions: **can it be sold?** (authorisation) and **will it be paid for?** (coverage).
+It pulls public signals from regulators, journals, trial registries and industry press into one briefing that refreshes every morning — framed the way a market-access team thinks, around two questions: **can it be sold?** (authorisation) and **will it be paid for?** (coverage).
 
 Built for **HEOR and market-access professionals** who need regulatory, evidentiary and payment signals in one place rather than five.
 
 ---
 
-## Why trust it?
+## Design principles
 
-- **No language model at runtime** — no model writes, scores, interprets or summarises anything. Classification, ranking and dating are transparent, rule-based and reproducible; the same inputs produce the same output.
+- **No language model at runtime.** Classification, ranking and dating are deterministic and reproducible — the same inputs produce the same output.
 - **Primary sources first** — official regulator, HTA and registry APIs and feeds, not second-hand summaries.
-- **Dates are never inferred or fabricated** — they are read from the source, or shown as "date unknown" and excluded from date-based figures.
-- **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next. Every ranking shows *why* it ranks where it does.
+- **Dates are never inferred** — read from the source, or shown as "date unknown" and excluded from date-based figures.
+- **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next; every ranking shows *why* it ranks where it does.
 
 Rebuilt automatically every morning.
-
----
-
-## How it's organised
-
-- **Home** — an executive briefing: the day's four headline metrics, the featured development with why it matters, rule-based key insights, a compact evidence-journey strip, and the top-ranked updates.
-- **Evidence** — the full interactive feed: browse by lifecycle stage, then filter by region, source type, date and free-text search.
-- **Analysis** — breakdowns and trends across the current build: geography, regulators, HTA/payers, clinical areas, reimbursement pathways, the commercial pathway (early signals → the two gates), and trending terms versus their 28-day baseline.
-- **Methodology** — build health, how the pipeline works, what's monitored, trust & limitations, privacy, and an FAQ.
-- **About** — what it is, who it's for, and how it stays credible.
-
-An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site.
 
 ---
 
@@ -46,6 +34,18 @@ An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml
 - **Explore and filter** — search and filter the feed by stage, region, source type and date.
 - **Subscribe via RSS** — the top-ranked items as a standard feed.
 - **Private by design** — a static site with no server, no tracking and no cookies.
+
+---
+
+## How it's organised
+
+- **Home** — daily briefing: key metrics, featured development, evidence journey and ranked updates.
+- **Evidence** — searchable feed, filtered by stage, region, source type and date.
+- **Analysis** — activity breakdowns, trends, commercial-pathway signals and baseline comparisons.
+- **Methodology** — pipeline, sources, limitations, privacy and FAQ.
+- **About** — purpose, audience and credibility principles.
+
+An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site.
 
 ---
 
@@ -74,12 +74,14 @@ Eight ingestion paths handle the reality that sources expose data differently �
 
 ## Data sources
 
+*Representative examples by layer — not the full list. The complete set of ~65 sources, the exact queries and the ranking configuration are maintained privately.*
+
 | Layer | Sources |
 |---|---|
 | **Research** | arXiv (cs.AI / cs.LG / cs.CL), lab blogs, AI newsletters |
 | **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Ground Truths |
 | **HEOR & HTA** | ICER, HTAi, INAHTA, HITAP, Value in Health, PharmacoEconomics, OHDSI, ISPOR, standing PubMed queries on AI × HTA |
-| **Regulation** | FDA & CMS (Federal Register), EMA, MHRA (news + safety alerts), openFDA authorisations, PMDA/NMPA/SFDA/Swissmedic/Health Canada (via aggregators) |
+| **Regulation** | FDA, EMA, MHRA, PMDA, NMPA, SFDA, Swissmedic, Health Canada (openFDA authorisations, US Federal Register rules) |
 | **Reimbursement** | CMS, NICE, DiGA, NTAP/CPT, EU Joint Clinical Assessment, G-BA/IQWiG, HAS, CADTH, AIFA/TLV/Zorginstituut, HIRA, PBAC/MSAC |
 | **Industry** | STAT, Endpoints, Fierce, MedTech Dive, MassDevice |
 
@@ -97,25 +99,39 @@ Full definitions live in **[TAXONOMY.md](TAXONOMY.md)** — because "covered" is
 
 ---
 
-## Clearance → coverage dataset *(in progress)*
+## Research dataset: clearance → coverage pathways
 
-Alongside the daily feed, the project maintains a small hand-verified dataset tracking how AI-enabled devices move from authorisation to reimbursement across major markets. It is intentionally conservative: entries are added only when dates can be verified from primary sources. The daily evidence monitor remains the flagship.
+A separate, hand-verified dataset — not yet part of the main monitor — tracks how AI-enabled devices move from authorisation to reimbursement across major markets. It is intentionally conservative: entries are added only when dates can be verified from primary sources. The daily monitor remains the flagship.
+
+---
+
+## Potential extensions
+
+The underlying dataset supports future analytics such as:
+
+- regulatory landscape tracking
+- reimbursement pathway monitoring
+- evidence-gap analysis
+- historical adoption trends
+- enterprise alerts and API access
+
+The core monitor remains focused on transparent evidence tracking.
 
 ---
 
 ## Stack
 
-- **Ingestion** — Python (`feedparser`, `requests`, `BeautifulSoup`, `PyYAML`)
-- **Automation** — GitHub Actions (scheduled daily build)
-- **Frontend** — hand-written HTML / CSS / vanilla JavaScript (no framework, no runtime dependencies)
-- **Feed** — RSS 2.0 (`feed.xml`) with an XSLT stylesheet so it also renders as a readable page in a browser
-- **Hosting** — GitHub Pages (static)
+- Python ingestion pipeline
+- GitHub Actions scheduled builds
+- Static HTML / CSS / JavaScript frontend
+- RSS feed generation
+- GitHub Pages hosting
 
 ---
 
 ## Built with
 
-This project was developed using **AI-assisted software engineering** — large language models helped accelerate design, implementation and documentation, while decisions about product scope, taxonomy, data sources, validation and review were made by the project author. **The running product uses no language model:** all classification, ranking and dating are rule-based and reproducible.
+AI-assisted development was used during creation; the running monitor itself uses no language model — all classification, ranking and dating are rule-based and reproducible.
 
 ## Licence & colophon
 
