@@ -16,10 +16,7 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 
 - **No language model at runtime.** Classification, ranking and dating are deterministic and reproducible — the same inputs produce the same output.
 - **Primary sources first** — official regulator, HTA and registry APIs and feeds, not second-hand summaries.
-- **Dates are never inferred** — read from the source, or shown as "date unknown" and excluded from date-based figures.
-- **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next; every ranking shows *why* it ranks where it does.
-
-Rebuilt automatically every morning.
+- **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next.
 
 ---
 
@@ -62,60 +59,40 @@ An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml
                                  │
         ┌────────────────────────┴────────────────────────┐
         │  fetch → normalise → classify (stage / region /  │
-        │  body) → deduplicate (by URL) → rank             │
+        │  body) → deduplicate → rank                      │
         └────────────────────────┬────────────────────────┘
                                  │
                     Static HTML dashboard (GitHub Pages)
 ```
 
-Eight ingestion paths handle the reality that sources expose data differently — REST APIs (openFDA, ClinicalTrials.gov, Federal Register), native RSS/Atom, PubMed E-utilities, arXiv, curated Google-News queries for bodies with no feed, and lightweight HTML scraping. Everything runs on a schedule and renders to a single static page, so there is nothing to host and nothing to break at request time.
+Everything runs on a schedule and renders to a single static page, so there is nothing to host and nothing to break at request time. Ingestion-path detail (REST APIs, RSS/Atom, E-utilities, scraping) is in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
 
 ## Data sources
 
-*Representative examples by layer — not the full list. The complete set of ~65 sources, the exact queries and the ranking configuration are maintained privately.*
+*Representative examples by layer — not the full list. The complete set of ~65 sources, exact queries and ranking configuration are maintained privately. A fuller inventory is in **[SOURCES.md](SOURCES.md)**.*
 
-| Layer | Sources |
+| Layer | Examples |
 |---|---|
-| **Research** | arXiv (cs.AI / cs.LG / cs.CL), lab blogs, AI newsletters |
-| **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Ground Truths |
-| **HEOR & HTA** | ICER, HTAi, INAHTA, HITAP, Value in Health, PharmacoEconomics, OHDSI, ISPOR, standing PubMed queries on AI × HTA |
-| **Regulation** | FDA, EMA, MHRA, PMDA, NMPA, SFDA, Swissmedic, Health Canada (openFDA authorisations, US Federal Register rules) |
-| **Reimbursement** | CMS, NICE, DiGA, NTAP/CPT, EU Joint Clinical Assessment, G-BA/IQWiG, HAS, CADTH, AIFA/TLV/Zorginstituut, HIRA, PBAC/MSAC |
-| **Industry** | STAT, Endpoints, Fierce, MedTech Dive, MassDevice |
+| **Research** | arXiv (cs.AI / cs.LG / cs.CL) |
+| **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine |
+| **HEOR & HTA** | ICER, HTAi, ISPOR, PubMed AI × HTA searches |
+| **Regulation** | FDA, EMA, MHRA, PMDA (openFDA, US Federal Register) |
+| **Reimbursement** | CMS, NICE, DiGA, G-BA/IQWiG, CADTH, PBAC |
+| **Industry** | STAT, Endpoints, Fierce, MedTech Dive |
 
 ---
 
 ## Methodology
 
-- **Deduplication** by exact URL — every item shown is a unique link.
-- **Classification** into stage, jurisdiction (country → macro-region) and body (regulator / HTA-payer / professional society) is rule-based and auditable.
+- **Deduplication** by exact URL, then near-duplicate collapsing — the same event reported by several outlets is reduced to one, deterministically by shared distinctive tokens.
+- **Classification** into stage, jurisdiction and body is rule-based and auditable.
 - **Ranking** follows explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency); it reflects priority, not confidence, and every item exposes its own "why ranked" breakdown.
-- **Dates are never estimated.** Where a date can't be sourced it is recorded as `unknown` and excluded from any date-based figure.
-- **No causal or predictive claims** are made beyond what the counts support, and company press releases are excluded to keep the feed independent.
+- **Dates are never estimated** — read from the source, or recorded as `unknown` and excluded from any date-based figure.
+- **No causal or predictive claims** are made beyond what the counts support; company press releases are excluded to keep the feed independent.
 
-Full definitions live in **[TAXONOMY.md](TAXONOMY.md)** — because "covered" is not one thing (a Category III CPT code, a provisional DiGA listing and a time-limited NTAP are not equivalent).
-
----
-
-## Research dataset: clearance → coverage pathways
-
-A separate, hand-verified dataset — not yet part of the main monitor — tracks how AI-enabled devices move from authorisation to reimbursement across major markets. It is intentionally conservative: entries are added only when dates can be verified from primary sources. The daily monitor remains the flagship.
-
----
-
-## Potential extensions
-
-The underlying dataset supports future analytics such as:
-
-- regulatory landscape tracking
-- reimbursement pathway monitoring
-- evidence-gap analysis
-- historical adoption trends
-- enterprise alerts and API access
-
-The core monitor remains focused on transparent evidence tracking.
+Full definitions are in **[TAXONOMY.md](TAXONOMY.md)**. A separate clearance-to-coverage dataset is under development — see **[docs/DATASETS.md](docs/DATASETS.md)**.
 
 ---
 
@@ -129,10 +106,6 @@ The core monitor remains focused on transparent evidence tracking.
 
 ---
 
-## Built with
-
-AI-assisted development was used during creation; the running monitor itself uses no language model — all classification, ranking and dating are rule-based and reproducible.
-
 ## Licence & colophon
 
-MIT licensed (see [LICENSE](LICENSE)). Static site, rebuilt daily by GitHub Actions — no tracking, analytics or cookies; read state is stored in the browser only. Contributions and corrections welcome (see [CONTRIBUTING.md](CONTRIBUTING.md)). Maintained by [@asarmah123](https://github.com/asarmah123).
+MIT licensed (see [LICENSE](LICENSE)). Developed with AI-assisted software engineering; the deployed monitor uses no language model at runtime — all classification, ranking and dating are rule-based and reproducible. Static site, rebuilt daily by GitHub Actions — no tracking, analytics or cookies; read state is stored in the browser only. Contributions and corrections welcome (see [CONTRIBUTING.md](CONTRIBUTING.md)). Maintained by [@asarmah123](https://github.com/asarmah123).

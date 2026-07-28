@@ -1044,7 +1044,7 @@ def overview_html(items, agg, o, history=None, take=""):
             "access": "Reimbursement", "industry": "Industry"}
     JLABEL = {"research": "Research", "clinical": "Clinical evidence",
               "regulation": "Regulatory approval", "heor": "Health economics",
-              "access": "Coverage decision", "industry": "Market activity"}
+              "access": "Reimbursement & coverage", "industry": "Market activity"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
         if len(base) < 2:
@@ -2355,7 +2355,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="pipeline">
     <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">Curated primary sources across regulators, HTA bodies, journals and trial registries — chosen for relevance, not volume.</div></div></div>
     <div class="parrow">↓</div>
-    <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Merge the same story from several sources by canonical link.</div></div></div>
+    <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Merge exact duplicates by link, then collapse near-duplicate stories — the same event reported by several outlets — to one.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Assign an evidence stage using transparent rules — no machine-learning model.</div></div></div>
     <div class="parrow">↓</div>
@@ -2565,6 +2565,90 @@ def _pdate(s):
         return None
 
 
+# Words that carry no story identity — grammar, news/regulatory boilerplate, and very
+# generic nouns. Stripped before comparing titles so only distinctive tokens remain.
+_DUP_STOP = {
+    "the","a","an","and","or","of","for","to","in","on","with","by","from","at","as","is",
+    "are","be","was","were","that","this","it","its","their","after","over","into","amid",
+    "following","up","out","new","news","update","updates","report","reports","announce",
+    "announces","announced","receive","receives","received","get","gets","secure","secures",
+    "launch","launches","launched","first","could","may","will","says","said","help","make",
+    "using","use","used","based","via","amp","health","care","medical","device","devices",
+    "system","systems","technology","tech","digital","data","company","inc","ltd","corp",
+    "corporation","cleared","clearance","approval","approved","approve","recommend",
+    "recommends","recommended","recommendation","license","licence","authorisation",
+    "authorization","authorised","authorized","guidance","draft","final","rule","ruling",
+    "us","uk","eu","platform","solution","solutions","service","services",
+}
+
+
+def _dup_tokens(title):
+    t = re.sub(r"[^a-z0-9 ]", " ", (title or "").lower()).replace("licence", "license")
+    return {w for w in t.split() if len(w) >= 3 and w not in _DUP_STOP}
+
+
+def collapse_near_duplicates(items):
+    """Collapse the SAME story surfaced by several outlets (e.g. via Google-News queries):
+    different URLs, near-identical titles. Deterministic — clusters items that share a
+    distinctive (rare) token AND enough title overlap, then keeps the most complete one.
+    Exact-URL de-dup runs first; this catches what that can't."""
+    if len(items) < 2:
+        return items
+    from collections import Counter
+    toks = [_dup_tokens(i.get("title", "")) for i in items]
+    df = Counter(w for s in toks for w in s)
+    parent = list(range(len(items)))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[max(ra, rb)] = min(ra, rb)
+    # only compare items that share a rare, distinctive token (a likely entity/product name)
+    by_rare = {}
+    for idx, s in enumerate(toks):
+        for w in s:
+            if len(w) >= 4 and 2 <= df[w] <= 6:
+                by_rare.setdefault(w, []).append(idx)
+    checked = set()
+    for idxs in by_rare.values():
+        for a in range(len(idxs)):
+            for bb in range(a + 1, len(idxs)):
+                i, j = idxs[a], idxs[bb]
+                key = (i, j) if i < j else (j, i)
+                if key in checked:
+                    continue
+                checked.add(key)
+                inter = toks[i] & toks[j]
+                if not inter:
+                    continue
+                # the overlap must include a rare, distinctive token (an entity/product name),
+                # not just generic words — this is what stops different stories from merging
+                rare_entity = any(len(w) >= 4 and 2 <= df[w] <= 6 for w in inter)
+                mn = min(len(toks[i]), len(toks[j])) or 1
+                strong = len(inter) >= 3 or (len(inter) >= 2 and len(inter) / mn >= 0.6)
+                if rare_entity and strong:
+                    union(i, j)
+    clusters = {}
+    for idx in range(len(items)):
+        clusters.setdefault(find(idx), []).append(idx)
+    order = {n: n for n in range(len(items))}
+    keep = []
+    for members in clusters.values():
+        # representative: prefer dated, then the fullest title, then the highest rank
+        best = max(members, key=lambda k: (1 if items[k].get("date") else 0,
+                                           len(items[k].get("title", "")),
+                                           rank_score(items[k])[0]))
+        keep.append((order[best], items[best]))
+    dropped = len(items) - len(keep)
+    if dropped:
+        print(f"  near-duplicate stories collapsed: {dropped}")
+    keep.sort(key=lambda t: t[0])
+    return [it for _, it in keep]
+
+
 # --------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -2621,9 +2705,10 @@ def main():
     items += sc; dead += d3
     print(f"  {len(sc)} links")
 
-    # de-dupe, then re-attach any lens text we already paid for
+    # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
     uniq = {i["id"]: i for i in items}
     items = list(uniq.values())
+    items = collapse_near_duplicates(items)
     # HEOR lens removed: it was LLM-generated, which conflicts with the site's
     # deterministic, no-model positioning. Cache retained only for the "seen" timestamp.
     cache, cache_sha = load_cache(token)
