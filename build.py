@@ -1598,7 +1598,8 @@ def trends_html(items, history):
                          f'<div class="tzero">no mentions this build (baseline {bl}/build)</div></div>')
                 continue
             up = pct >= 0
-            newmini = ' <span class="newmini">new</span>' if avg < 0.5 else ""
+            newmini = (' <span class="newmini">new</span>' if avg < 0.5
+                       else ' <span class="newmini lowbase">low base</span>' if avg < 2 else "")
             bars += (f'<div class="trow"><div class="tn{"" if up else " dim"}">'
                      f'<span class="tnm">{html.escape(TERM_DISPLAY.get(term, term))}{newmini}</span>{cls_html}</div>'
                      f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
@@ -1937,6 +1938,11 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
  .brief{grid-template-columns:repeat(2,1fr);gap:10px 4px}.brief-m{border-right:none}.brief-v{font-size:22px}}
 /* acronym tooltips */
 abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-underline-offset:2px;cursor:help}
+.newmini.lowbase{background:#eef0f2;color:#8a8a8a}
+.bh{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 10px}
+.bh-m{flex:1;min-width:130px;border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+.bh-v{font-size:21px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.1}
+.bh-l{font-size:11px;color:#6a6a6a;margin-top:4px;line-height:1.3}
 /* evidence journey — vertical stepped flow */
 .journey{margin:2px 0 10px}
 .jstep{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:9px;padding:12px 15px;cursor:pointer;background:#fff;transition:background .12s}
@@ -2091,7 +2097,35 @@ LAYER_NAV = {
 }
 
 
-def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", health=None, o=None, history=None):
+def write_rss(items):
+    """Static RSS 2.0 of the day's highest-ranked items — same data as the page, honest dates."""
+    from email.utils import format_datetime
+    base = "https://asarmah123.github.io/ai-health-evidence-monitor/"
+    ranked = sorted(items, key=lambda i: -rank_score(i)[0])[:40]
+    now_rfc = format_datetime(datetime.now(timezone.utc))
+    parts = []
+    for i in ranked:
+        d = _pdate(i.get("date", ""))
+        pub = f"<pubDate>{format_datetime(datetime(d.year, d.month, d.day, tzinfo=timezone.utc))}</pubDate>" if d else ""
+        link = safe_url(i["url"])
+        desc = html.escape(f'{i["source"]} \u00b7 {i.get("date") or "date unknown"}')
+        parts.append(
+            f"<item><title>{html.escape(i['title'])}</title>"
+            f"<link>{html.escape(link)}</link>"
+            f'<guid isPermaLink="true">{html.escape(link)}</guid>'
+            f"<description>{desc}</description>{pub}</item>")
+    rss = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<rss version="2.0"><channel>'
+           '<title>AI in Health \u2014 Evidence Monitor</title>'
+           f'<link>{base}</link>'
+           '<description>Daily market intelligence on how AI advances toward approval, reimbursement and adoption.</description>'
+           '<language>en-gb</language>'
+           f'<lastBuildDate>{now_rfc}</lastBuildDate>'
+           + "".join(parts) + '</channel></rss>')
+    (DOCS / "feed.xml").write_text(rss, encoding="utf-8")
+
+
+def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", health=None, o=None, history=None, show_coverage=True):
     order = {t: n for n, t in enumerate(TIERS)}
     # dated items first (newest first); undated ("") sort naturally to the bottom
     items.sort(key=lambda i: i["date"], reverse=True)
@@ -2133,6 +2167,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     evidence_html = "".join(_hub(h) for h in hubs if h["name"] in EVIDENCE_HUBS)
     responsible_html = "".join(_hub(h) for h in hubs if h["name"] in RESPONSIBLE_AI)
     tracker_html = "".join(_hub(h) for h in hubs if h["name"] not in EVIDENCE_HUBS and h["name"] not in RESPONSIBLE_AI)
+    coverage_tab = '  <div class="tab" data-tab="coverage">Coverage</div>\n' if show_coverage else ''
+    coverage_view = f'<div id="view-coverage" class="view">{cov_html}</div>' if show_coverage else ''
 
     # fresh, stateless build-status object baked into the page each run
     undated = sum(1 for i in items if not i.get("date"))
@@ -2146,6 +2182,16 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     status_full = f"{nfail} returned nothing · {undated} undated this run"
     if _dead_names:
         status_full += " — returned nothing: " + ", ".join(_dead_names)
+    build_health = (
+        '<div class="sec" style="margin-top:6px">Build health</div>'
+        '<div class="bh">'
+        f'<div class="bh-m"><div class="bh-v">{contrib}/{exp}</div><div class="bh-l">sources updated</div></div>'
+        f'<div class="bh-m"><div class="bh-v">{nfail}</div><div class="bh-l">returned nothing</div></div>'
+        f'<div class="bh-m"><div class="bh-v">{undated}</div><div class="bh-l">undated \u00b7 shown as \u201cdate unknown\u201d</div></div>'
+        f'<div class="bh-m"><div class="bh-v" style="font-size:13px;font-weight:600">{built}</div><div class="bh-l">last built</div></div>'
+        '</div>'
+        '<div class="seccap">Each build reports its own coverage \u2014 what updated, what was quiet, and what could not be dated. Transparency by default.</div>'
+    )
 
     # "most active today" strip on the feed directory — mirrors the homepage insights
     active_strip = ""
@@ -2189,6 +2235,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <meta property="og:image:alt" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
 <meta name="twitter:image" content="https://asarmah123.github.io/ai-health-evidence-monitor/preview.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="alternate" type="application/rss+xml" title="AI in Health" href="feed.xml">
 <style>{CSS}</style>
 </head><body><div class="wrap">
 <header>
@@ -2202,8 +2249,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <nav class="tabs" aria-label="Sections">
   <div class="tab on" data-tab="overview">Overview</div>
   <div class="tab" data-tab="feed">Feed <span class="tabcount">({len(items)})</span></div>
-  <div class="tab" data-tab="coverage">Coverage</div>
-  <div class="tab" data-tab="trends">Trends</div>
+{coverage_tab}  <div class="tab" data-tab="trends">Trends</div>
   <div class="tab" data-tab="sources">Sources</div>
 </nav>
 
@@ -2236,11 +2282,12 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   </div>
 </div>
 
-<div id="view-coverage" class="view">{cov_html}</div>
+{coverage_view}
 
 <div id="view-trends" class="view">{trend_html}</div>
 
 <div id="view-sources" class="view">
+{build_health}
   <div class="sec">How the intelligence is built</div>
   <div class="pipeline">
     <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">~65 curated sources — regulators, HTA &amp; payer bodies, journals, trial registries, industry publications — via official APIs and RSS. Chosen for regulatory, clinical, reimbursement and market relevance, not volume.</div></div></div>
@@ -2274,7 +2321,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="hubs">{responsible_html}</div>
   <div class="grp-h" style="margin-top:16px">Regulatory &amp; reimbursement intelligence</div>
   <div class="hubs">{tracker_html}</div>
-  <div class="foot">Sources are fetched daily from primary APIs and feeds. No accounts, tracking cookies or personal-data storage. Your read state stays locally in your browser.</div>
+  <div class="foot">Sources are fetched daily from primary APIs and feeds. No accounts, tracking cookies or personal-data storage. Your read state stays locally in your browser. · <a href="feed.xml">RSS feed</a></div>
 </div>
 </main>
 
@@ -2529,7 +2576,8 @@ def main():
 
     render(items, cfg["hubs"], dead, now.strftime("%d %b %Y %H:%M UTC"),
            overview_html(items, agg, o, history, take), coverage_html(agg, sample), trends_html(items, history),
-           health=health, o=o, history=history)
+           health=health, o=o, history=history, show_coverage=bool(agg))
+    write_rss(items)
     print(f"\n✓ docs/index.html — {len(items)} items")
     if dead:
         print(f"! {len(dead)} feed(s) failed: {'; '.join(dead)}")
