@@ -293,6 +293,43 @@ def fetch_arxiv(cfg, cutoff, cap):
     return [it for _, it in scored[:cap]], []
 
 
+_SC_MON = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,"jul":7,"aug":8,"sep":9,"sept":9,
+           "oct":10,"nov":11,"dec":12,"january":1,"february":2,"march":3,"april":4,"june":6,
+           "july":7,"august":8,"september":9,"october":10,"november":11,"december":12}
+_SC_DMY = re.compile(r"(\d{1,2})\s+([A-Za-z]{3,9})\.?\s+(\d{4})\b")
+_SC_MDY = re.compile(r"([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})\b")
+
+
+def _sc_mk(y, mon, d):
+    if not mon or not (1 <= d <= 31):
+        return ""
+    try:
+        datetime(y, mon, d)          # validate (rejects e.g. 31 Feb)
+        return f"{y:04d}-{mon:02d}-{d:02d}"
+    except ValueError:
+        return ""
+
+
+def _scrape_date(a):
+    """Read a visible 'DD Month YYYY' / 'Month DD, YYYY' date from the link's own small
+    container, if present. Returns 'YYYY-MM-DD' or '' — reads a real date, never invents."""
+    node = a
+    for _ in range(5):
+        node = getattr(node, "parent", None)
+        if node is None:
+            break
+        txt = node.get_text(" ", strip=True)
+        if len(txt) > 700:           # too large → multi-article wrapper; stop (avoid wrong date)
+            break
+        m = _SC_DMY.search(txt)
+        if m:
+            return _sc_mk(int(m.group(3)), _SC_MON.get(m.group(2).lower()), int(m.group(1)))
+        m = _SC_MDY.search(txt)
+        if m:
+            return _sc_mk(int(m.group(3)), _SC_MON.get(m.group(1).lower()), int(m.group(2)))
+    return ""
+
+
 def fetch_scrape(sources):
     items, dead = [], []
     for s in sources:
@@ -317,7 +354,7 @@ def fetch_scrape(sources):
             items.append({
                 "id": uid(full), "title": text, "url": full,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": "",   # scraped link lists carry no publication date — never invent one
+                "date": _scrape_date(a),   # read a visible date if present; '' otherwise (never invented)
                 "summary": "",
             })
             if len(seen) >= 8:
