@@ -14,23 +14,37 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 
 ## Why trust it?
 
+- **No language model at runtime** — no model writes, scores, interprets or summarises anything. Classification, ranking and dating are transparent, rule-based and reproducible; the same inputs produce the same output.
 - **Primary sources first** — official regulator, HTA and registry APIs and feeds, not second-hand summaries.
-- **Deterministic, rule-based classification** — every item's stage, region and body come from transparent rules (no model), and every ranking shows *why* it ranks where it does.
-- **Dates are never inferred or fabricated** — they are read from the source, or shown as "date unknown."
+- **Dates are never inferred or fabricated** — they are read from the source, or shown as "date unknown" and excluded from date-based figures.
+- **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next. Every ranking shows *why* it ranks where it does.
 
-Builds are reproducible: the same inputs produce the same output, rebuilt automatically every morning.
+Rebuilt automatically every morning.
+
+---
+
+## How it's organised
+
+- **Home** — an executive briefing: the day's four headline metrics, the featured development with why it matters, rule-based key insights, a compact evidence-journey strip, and the top-ranked updates.
+- **Evidence** — the full interactive feed: browse by lifecycle stage, then filter by region, source type, date and free-text search.
+- **Analysis** — breakdowns and trends across the current build: geography, regulators, HTA/payers, clinical areas, reimbursement pathways, the commercial pathway (early signals → the two gates), and trending terms versus their 28-day baseline.
+- **Methodology** — build health, how the pipeline works, what's monitored, trust & limitations, privacy, and an FAQ.
+- **About** — what it is, who it's for, and how it stays credible.
+
+An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site.
 
 ---
 
 ## Features
 
 - **Follow AI from research through reimbursement** — the six-stage evidence journey in a single view.
-- **See what matters first** — the day's top development and a ranked "worth a closer look," pulled to the top by explicit rule.
-- **Spot what's unusual** — stage activity and term mentions compared against their own recent baseline.
+- **See what matters first** — the day's featured development plus the top-ranked updates, pulled to the top by explicit rule.
+- **Spot what's unusual** — stage activity and term mentions compared against their own recent baseline (attention, not importance).
 - **Track the two gates** — *can it be sold?* (authorisation) vs *will it be paid?* (coverage).
 - **Read leading indicators** — trials registering an economic endpoint, peer-reviewed value papers.
 - **Compare activity across regions and countries** — regulators and HTA bodies across 15+ markets.
-- **Explore an interactive feed** — search, sort and filter across the six stages.
+- **Explore and filter** — search and filter the feed by stage, region, source type and date.
+- **Subscribe via RSS** — the top-ranked items as a standard feed.
 - **Private by design** — a static site with no server, no tracking and no cookies.
 
 ---
@@ -77,7 +91,7 @@ Eight ingestion paths handle the reality that sources expose data differently �
 - **Classification** into stage, jurisdiction (country → macro-region) and body (regulator / HTA-payer / professional society) is rule-based and auditable.
 - **Ranking** follows explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency); it reflects priority, not confidence, and every item exposes its own "why ranked" breakdown.
 - **Dates are never estimated.** Where a date can't be sourced it is recorded as `unknown` and excluded from any date-based figure.
-- **No causal claims** are generated beyond what the counts support, and company press releases are excluded to keep the feed independent.
+- **No causal or predictive claims** are made beyond what the counts support, and company press releases are excluded to keep the feed independent.
 
 Full definitions live in **[TAXONOMY.md](TAXONOMY.md)** — because "covered" is not one thing (a Category III CPT code, a provisional DiGA listing and a time-limited NTAP are not equivalent).
 
@@ -94,13 +108,14 @@ Alongside the daily feed, the project maintains a small hand-verified dataset tr
 - **Ingestion** — Python (`feedparser`, `requests`, `BeautifulSoup`, `PyYAML`)
 - **Automation** — GitHub Actions (scheduled daily build)
 - **Frontend** — hand-written HTML / CSS / vanilla JavaScript (no framework, no runtime dependencies)
+- **Feed** — RSS 2.0 (`feed.xml`) with an XSLT stylesheet so it also renders as a readable page in a browser
 - **Hosting** — GitHub Pages (static)
 
 ---
 
 ## Built with
 
-This project was developed using **AI-assisted software engineering**. Large language models were used to accelerate design, implementation and documentation, while decisions about product scope, taxonomy, data sources, validation and review were made by the project author.
+This project was developed using **AI-assisted software engineering** — large language models helped accelerate design, implementation and documentation, while decisions about product scope, taxonomy, data sources, validation and review were made by the project author. **The running product uses no language model:** all classification, ranking and dating are rule-based and reproducible.
 
 ## Licence & colophon
 
