@@ -1507,7 +1507,7 @@ def trends_html(items, history):
     highlight = ""
     if movers and movers[0][0] > 0:
         pct, term, now, avg = movers[0]
-        avg_txt = f"~{avg:.0f}" if avg >= 1 else "~1"
+        avg_txt = f"~{avg:.0f}" if avg >= 1 else "under 1"
         cls = TERM_CLASS.get(term, "")
         cls_tag = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
         highlight = (f'<div class="tmcard"><div class="tmcard-l">Top mover</div>'
@@ -1524,7 +1524,7 @@ def trends_html(items, history):
             cls = TERM_CLASS.get(term, "")
             cls_html = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
             if now == 0:
-                bl = f"~{avg:.0f}" if avg >= 1 else "~1"
+                bl = f"~{avg:.0f}" if avg >= 1 else "under 1"
                 bars += (f'<div class="trow"><div class="tn dim">'
                          f'<span class="tnm">{html.escape(TERM_DISPLAY.get(term, term))}</span>{cls_html}</div>'
                          f'<div class="tzero">no mentions this build (typical {bl}/build)</div></div>')
@@ -1534,7 +1534,7 @@ def trends_html(items, history):
                      f'<span class="tnm">{html.escape(TERM_DISPLAY.get(term, term))}</span>{cls_html}</div>'
                      f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
                      f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div>'
-                     f'<div class="tcount">{now} vs ~{max(avg,1):.0f}</div></div>')
+                     f'<div class="tcount">{now} vs {("~%.0f" % avg) if avg >= 1 else "under 1"}</div></div>')
         rest = f'<div class="panel" style="margin-top:10px">{bars}</div>' if bars else ""
         trending = ('<div class="sec nomt">Trending topics</div>'
                     '<div class="seccap">Terms with the largest increase vs their 28-day baseline. Small-base changes can appear large.</div>'
