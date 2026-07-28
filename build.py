@@ -1337,7 +1337,7 @@ def overview_html(items, agg, o, history=None, take=""):
     if focus:
         tops = " and ".join(f"<b>{html.escape(t)}</b>" for t, _ in focus[:2])
         ln_clin = f"Most-mentioned clinical areas: {tops}"
-    hero_lines = [x for x in (ln_mover, ln_region, ln_clin, ln_term, ln_body) if x][:3]
+    hero_lines = [x for x in (ln_mover, ln_term, ln_body, ln_clin) if x][:3]  # region/regulator lives in Snapshot + Market breakdown
     if hero_lines:
         hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
         hero = (f'<div class="hero"><div class="hero-h">Key insights</div>{hl}</div>')
@@ -1734,8 +1734,8 @@ h1{font-size:28px;margin:0 0 3px;letter-spacing:-.022em;font-weight:700}
 .digbox{border:1px solid #d6d6d6;border-radius:12px;overflow:hidden;background:#fff}
 .digbox-h{display:flex;align-items:center;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#565656;background:#f2f2f0;padding:11px 16px;cursor:pointer;list-style:none}
 .digbox-h::-webkit-details-marker{display:none}
-.digbox-h::after{content:"\25B8";margin-left:auto;color:#a8a8a8;font-size:11px;font-weight:400}
-.digbox[open]>.digbox-h::after{content:"\25BE"}
+.digbox-h::after{content:"▸";margin-left:auto;color:#a8a8a8;font-size:11px;font-weight:400}
+.digbox[open]>.digbox-h::after{content:"▾"}
 .digbox[open]>.digbox-h{border-bottom:1px solid #e6e6e6}
 .digbox-h:hover{background:#ecece9}
 .digbox-n{color:#9a9a9a;font-weight:600;margin-left:6px}
@@ -2299,6 +2299,16 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="pstep"><div class="pstep-n">4</div><div class="pstep-b"><div class="pstep-t">Rank</div><div class="pstep-d">Explicit signals — device authorisations, economic-endpoint trials, major-regulator actions, recency. Ranking reflects editorial priority, not certainty or confidence.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">5</div><div class="pstep-b"><div class="pstep-t">Rebuild &amp; publish</div><div class="pstep-d">Rebuilt automatically every morning as a static site. Privacy-preserving: no user tracking and no personal data storage.</div></div></div>
+  </div>
+  <div class="sec">What we monitor</div>
+  <div class="seccap">~65 curated sources across the evidence-to-adoption pathway. Representative examples by type — the full list and exact queries are maintained privately.</div>
+  <div class="panels">
+    <div class="panel"><div class="ph">Regulators &amp; device authorisations</div><div class="psub">FDA (openFDA), EMA, MHRA, US Federal Register, PMDA, NMPA, Health Canada, Swissmedic, TGA, MFDS, SFDA</div></div>
+    <div class="panel"><div class="ph">HTA &amp; payer bodies</div><div class="psub">NICE, CMS, IQWiG, G-BA, HAS, CADTH, PBAC, MSAC, HIRA, AIFA, TLV, Zorginstituut, HITAP, ACE</div></div>
+  </div>
+  <div class="panels" style="margin-top:8px">
+    <div class="panel"><div class="ph">Trials, evidence &amp; journals</div><div class="psub">ClinicalTrials.gov, PubMed (E-utilities), NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Value in Health, PharmacoEconomics</div></div>
+    <div class="panel"><div class="ph">Research &amp; industry</div><div class="psub">arXiv (cs.AI / cs.LG / cs.CL), lab &amp; standards blogs; STAT, Endpoints, Fierce, MedTech Dive, MassDevice</div></div>
   </div>
   <div class="sec">Editorial principles</div>
   <ul class="principles">
