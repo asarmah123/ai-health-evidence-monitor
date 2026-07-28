@@ -160,12 +160,27 @@ def when_from(entry):
     We never invent a date: undated items are marked, not stamped with 'today'.
     This keeps the site's promise that dates are read from sources, never estimated."""
     st = entry.get("published_parsed") or entry.get("updated_parsed")
-    if not st:
-        return None
-    try:
-        return datetime.fromtimestamp(time.mktime(st), tz=timezone.utc)
-    except (OverflowError, ValueError, TypeError):
-        return None
+    if st:
+        try:
+            return datetime.fromtimestamp(time.mktime(st), tz=timezone.utc)
+        except (OverflowError, ValueError, TypeError):
+            pass
+    # fallback: some feeds carry the date only as an unstructured string field.
+    # Parsed with the stdlib (RFC822 then ISO8601) — still read from the source, never invented.
+    from email.utils import parsedate_to_datetime
+    for key in ("published", "updated", "dc_date", "date", "pubdate", "issued"):
+        raw = entry.get(key)
+        if not raw:
+            continue
+        for parse in (parsedate_to_datetime,
+                      lambda r: datetime.fromisoformat(str(r).replace("Z", "+00:00"))):
+            try:
+                dt = parse(raw)
+                if dt:
+                    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            except (TypeError, ValueError, OverflowError):
+                continue
+    return None
 
 
 def load_cache(token=None) -> tuple:
@@ -782,6 +797,31 @@ def clinical_focus(items):
     return out
 
 
+_ORG_HINTS = ("univ", "hospital", "institut", "inc", "ltd", "corp", "gmbh", "co.", "co ",
+              "center", "centre", "foundation", "college", "health", "medical", "clinic",
+              "llc", " ag", " ab", " sa", "nhs", "trust", "agency", "assoc", "society",
+              "consortium", "network", "laborator", "labs", "pharma", "therapeut", "science",
+              "systems", "technolog", "genom", "diagnostic", "imaging", "school", "company",
+              "department", "national", "academy", "board", "council", "ministry", "authority",
+              "group", "plc", "biosci")
+
+
+def _is_org(name):
+    """Keep organisations, drop individual investigator names (ClinicalTrials.gov lists some
+    sponsors as a person). Keyword + shape rules, no ML."""
+    low = name.lower()
+    if any(h in low for h in _ORG_HINTS):
+        return True
+    if any(ch.isdigit() for ch in name) or any(ch in name for ch in ".,&/()"):
+        return True
+    toks = name.split()
+    if len(toks) == 1:
+        return True
+    if 2 <= len(toks) <= 3 and all(t[:1].isupper() and t.replace("-", "").replace("'", "").isalpha() for t in toks):
+        return False
+    return True
+
+
 def active_orgs(items):
     """Sponsors and applicants, from fields we already parse: ClinicalTrials.gov
     summaries begin 'Sponsor · Phase · …'; openFDA authorisations are 'Applicant · number'.
@@ -793,6 +833,8 @@ def active_orgs(items):
             continue
         name = (i.get("summary", "").split(" · ")[0] or "").split(" — ")[0].strip()
         if len(name) < 3 or name.lower() in ("unknown", "n/a"):
+            continue
+        if not _is_org(name):
             continue
         c[name] += 1
     return c.most_common(8)
@@ -1097,6 +1139,7 @@ def overview_html(items, agg, o, history=None, take=""):
             groups.setdefault(why, []).append(i)
         boxes = ""
         for why, gitems in groups.items():
+            gitems = sorted(gitems, key=lambda i: -rank_score(i)[0])
             grows = "".join(
                 f'<a class="dig" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
@@ -1106,7 +1149,11 @@ def overview_html(items, agg, o, history=None, take=""):
             wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
             boxes += (f'<details class="digbox"><summary class="digbox-h">{why}'
                       f'<span class="digbox-n">{len(gitems)}</span></summary>{wm_html}{grows}</details>')
-        digest = f'<details class="ovsec" open><summary class="secsum">Priority updates</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div><div class="digboxes">{boxes}</div></details>'
+        _WHY_PHRASE = {"Device authorisations": "new device authorisations",
+                       "Trials · economic endpoint": "trials with an economic endpoint",
+                       "Regulatory actions": "actions from a major regulator (FDA, CMS, EMA, NICE)"}
+        _cats = "; ".join(_WHY_PHRASE[w] for w in groups if w in _WHY_PHRASE) or "the day\u2019s highest-consequence updates"
+        digest = f'<details class="ovsec" open><summary class="secsum">Priority updates</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — {_cats}.</div><div class="digboxes">{boxes}</div></details>'
     else:
         digest = ('<details class="ovsec" open><summary class="secsum">Priority updates</summary>'
                   '<div class="seccap">The highest-consequence updates today, pulled to the top by rule — new device authorisations, trials with an economic endpoint, and actions from a major regulator (FDA, CMS, EMA, NICE).</div>'
@@ -1134,10 +1181,12 @@ def overview_html(items, agg, o, history=None, take=""):
             f'<div class="trow"><div class="tn">{gloss(lbl)}</div>'
             f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%;background:{GEO_C}"></div></div>'
             f'<div class="tp" style="color:{GEO_C}">{n}</div></div>' for lbl, n in rows[:6])
+    _nc = len(o.get("countries", []))
+    _clabel = f"By country (top 6 of {_nc})" if _nc > 6 else "By country"
     geo_panel = (f'<div class="panel"><div class="ph">Geography</div>'
                  f'<div class="psub">market-access activity today</div>'
                  f'<div class="subh">By region</div>{geo_rows(o.get("macro", []))}'
-                 f'<div class="subh" style="margin-top:9px">By country</div>{geo_rows(o.get("countries", []))}</div>')
+                 f'<div class="subh" style="margin-top:9px">{_clabel}</div>{geo_rows(o.get("countries", []))}</div>')
     regulators_panel = bar_panel("Regulators", "market-authorisation bodies (FDA, EMA)",
                                  bodies.get("regulator", []), "No regulator activity today.", color="#2f6f9f")
     payers_panel = bar_panel("HTA &amp; payer bodies", "coverage &amp; assessment (CMS, NICE)",
