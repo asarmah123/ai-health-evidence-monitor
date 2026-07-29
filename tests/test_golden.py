@@ -151,6 +151,40 @@ def test_stage_and_breakdown_counts():
     assert bodies == GOLDEN_BODIES
 
 
+def test_export_schema():
+    """The CSV/JSON export contract is frozen: fixed columns, self-describing JSON,
+    and 'date unknown' preserved as empty (never guessed) — downstream consumers rely on it."""
+    import tempfile, json, csv, io
+    from pathlib import Path
+    cols = ["id", "title", "url", "source", "source_type", "stage",
+            "region", "country", "date", "score", "topics"]
+    items = [
+        {"id": "e1", "title": "FDA cleared AI", "url": "https://accessdata.fda.gov/K1",
+         "source": "FDA — AI device authorisations", "layer": "regulation", "date": "2026-07-20",
+         "topics": ["fda-ai-authorisations", "oncology-ai"], "score": 10,
+         "region": "North America", "country": "United States", "stype": "Regulator"},
+        {"id": "e2", "title": "NICE recommendation", "url": "https://www.nice.org.uk/n1",
+         "source": "NICE — News", "layer": "access", "date": "",  # date unknown
+         "topics": ["nice-evaluations"], "score": 6, "region": "Europe",
+         "country": "United Kingdom", "stype": "HTA / payer"},
+    ]
+    tmp = Path(tempfile.mkdtemp())
+    orig_docs = build.DOCS
+    try:
+        build.DOCS = tmp
+        build.write_export(items)
+        payload = json.loads((tmp / "data" / "feed-latest.json").read_text())
+        assert payload["fields"] == cols
+        assert payload["count"] == 2 and payload["taxonomy_version"] == build.TAXONOMY_VERSION
+        assert payload["items"][1]["date"] == ""          # unknown date preserved, not guessed
+        assert payload["items"][0]["topics"] == "fda-ai-authorisations;oncology-ai"
+        rows = list(csv.DictReader(
+            (tmp / "data" / "feed-latest.csv").read_text(encoding="utf-8-sig").splitlines()))
+        assert list(rows[0].keys()) == cols and len(rows) == 2
+    finally:
+        build.DOCS = orig_docs
+
+
 def test_history_row_shape():
     """The daily history row carries every Phase-2 dimension, matching the site numbers."""
     build.private_put = lambda *a, **k: True   # no local/remote write during tests
