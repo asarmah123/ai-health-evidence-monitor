@@ -1043,7 +1043,7 @@ def overview_html(items, agg, o, history=None, take=""):
             "heor": "Health economics (HEOR)", "regulation": "Regulatory",
             "access": "Reimbursement", "industry": "Industry"}
     JLABEL = {"research": "Research", "clinical": "Clinical evidence",
-              "regulation": "Regulatory approval", "heor": "Health economics",
+              "regulation": "Regulatory & authorisation", "heor": "Health economics",
               "access": "Reimbursement & coverage", "industry": "Market activity"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
@@ -1080,7 +1080,7 @@ def overview_html(items, agg, o, history=None, take=""):
     journey_html = f'<div class="journey">{journey}</div>'
     # compact one-line lifecycle strip for the Home page (detailed counts live in Analysis)
     JSHORT = {"research": "Research", "clinical": "Clinical", "regulation": "Regulatory",
-              "heor": "HEOR", "access": "Coverage", "industry": "Market"}
+              "heor": "Health economics", "access": "Coverage", "industry": "Market"}
     _jnodes = []
     for k in LAYERS:
         _on = o["layers"].get(k, 0) > 0
@@ -1099,17 +1099,22 @@ def overview_html(items, agg, o, history=None, take=""):
             f'<div class="tile"><div class="tl">{t}</div><div class="tv">{v}</div>'
             f'<div class="ts">{sub if "&" in sub else html.escape(sub)}</div></div>' for t, v, sub in rows)
     gate_tiles = [
-        ("Regulatory clearance", len(o["clears"]),
+        ("Authorisation", len(o["clears"]),
          "Recent FDA AI authorisations — can it be sold? (published with a lag)."),
-        ("Coverage decision", len(o["coverage_actions"]),
-         "Recent CMS and NICE payment decisions — will it be paid?"),
+        ("Coverage", len(o["coverage_actions"]),
+         "Recent CMS and NICE payment decisions — will it be paid for?"),
     ]
-    _trial_sub = (f"{len(o['econ'])} of {len(o['trials'])} AI trials in this build."
-                  if o["trials"] else "No economic-endpoint AI trials in this build.")
+    if not o["trials"]:
+        _trial_sub = "No AI trials in this build."
+    elif not o["econ"]:
+        _trial_sub = f"None of the {len(o['trials'])} AI trials in this build included an economic endpoint."
+    else:
+        _trial_sub = f"{len(o['econ'])} of {len(o['trials'])} AI trials in this build included an economic endpoint."
     ind_tiles = [
         ("Economic-endpoint trials", len(o["econ"]), _trial_sub),
         ("HTA &amp; value papers", len(o["papers"]),
-         "Peer-reviewed value studies in this build." if o["papers"] else "No value papers in this build."),
+         "Peer-reviewed HTA and value studies in this build." if o["papers"]
+         else "No HTA or value studies in this build."),
     ]
     gate_html = render_tiles(gate_tiles)
     ind_html = render_tiles(ind_tiles)
@@ -1148,12 +1153,13 @@ def overview_html(items, agg, o, history=None, take=""):
     def bar_panel(title, sub, rows, empty, color="#9c2c2c"):
         subhtml = f'<div class="psub">{sub}</div>' if sub else ""
         if rows:
+            head = title + (f" (top 6 of {len(rows)})" if len(rows) > 6 else "")
             peak = rows[0][1] or 1
             bars = "".join(
                 f'<div class="trow"><div class="tn">{gloss(lbl)}</div>'
                 f'<div class="tb"><div class="tf" style="width:{n/peak*100:.0f}%;background:{color}"></div></div>'
                 f'<div class="tp" style="color:{color}">{n}</div></div>' for lbl, n in rows[:6])
-            return f'<div class="panel"><div class="ph">{title}</div>{subhtml}{bars}</div>'
+            return f'<div class="panel"><div class="ph">{head}</div>{subhtml}{bars}</div>'
         return f'<div class="panel"><div class="ph">{title}</div><div class="psub">{empty}</div></div>'
 
     bodies = o.get("bodies", {})
@@ -1177,7 +1183,7 @@ def overview_html(items, agg, o, history=None, take=""):
                              bodies.get("payer", []), "No HTA / payer activity today.", color="#1f8a70")
     clinfocus = bar_panel("Clinical areas", "",
                           o.get("focus", []), "No specialty clearly identified today.", color="#9c2c44")
-    pathway = bar_panel("Reimbursement pathways", "",
+    pathway = bar_panel("Coverage pathways", "",
                         o.get("pathways", []), "None mentioned today.", color="#b0842b")
 
     # compact coverage summary (full detail lives on the Coverage tab)
@@ -1302,11 +1308,6 @@ def overview_html(items, agg, o, history=None, take=""):
                + _bm(len(o["coverage_actions"]), "coverage<br>decision", hot=True)
                + _bm(o["layers"].get("clinical", 0), "clinical<br>study")
                + '</div>')
-    # low-activity empty state, so quiet days don't read as broken
-    _typ = (sum(_totp) / len(_totp)) if len(_totp) >= 3 else None
-    _quiet = len(items) < 6 or (_typ is not None and len(items) < 0.5 * _typ)
-    low_activity = ('<div class="lowact">Low activity in this build \u2014 monitoring continues across all sources.</div>'
-                    if _quiet else "")
     cta = '<button class="cta" data-goto="feed">Browse all evidence \u2192</button>'
 
     # ---- top updates: the five highest-ranked headlines, scannable ----
@@ -1348,28 +1349,29 @@ def overview_html(items, agg, o, history=None, take=""):
                         '<div class="seccap">Terms with the largest increase vs their 28-day baseline. Select one to see the updates behind it.</div>'
                         f'<div class="tchips">{_chips}</div>')
 
+    popular = popular_topics_html(items)
     home = f'''<div class="sec nomt">Today’s Brief</div>
 <div class="homedisc">Automated aggregation from public sources using transparent rules. For research only. <span class="lnk" data-goto="sources">Methodology</span></div>
 {metrics}
-{low_activity}
 <div class="briefing">
 {topstory}
 {hero}
 </div>
-<div class="jstrip-h">Today’s evidence journey <span class="jstrip-sep">·</span> <span class="lnk" data-goto="analysis">Full breakdown in Analysis →</span></div>
+<div class="jstrip-h">Today’s evidence journey <span class="jstrip-sep">·</span> <span class="lnk" data-goto="analysis">See Analysis →</span></div>
 {journey_strip}
 {top_updates}
 {trending}
+{popular}
 {cov_mini}
 <div class="homecta">{cta}</div>'''
     analysis = f'''<div class="sec nomt">Current evidence landscape</div>
-<div class="seccap">Where activity concentrates in the current build — by lifecycle stage, region, regulator, specialty and reimbursement route.</div>
+<div class="seccap">Where activity concentrates in the current build — by lifecycle stage, region, regulator, specialty and coverage route.</div>
 {journey_html}
 <div class="panels" style="margin-top:10px">{geo_panel}{regulators_panel}</div>
 <div class="panels" style="margin-top:8px">{payers_panel}{clinfocus}</div>
 <div style="margin-top:8px">{pathway}</div>
 <div class="sec">Commercial pathway</div>
-<div class="seccap">From evidence to adoption: early signals followed by commercial gates.</div>
+<div class="seccap">From evidence to adoption — early signals followed by the two commercial gates.</div>
 <div class="subh">Early signals <span class="subh-n">Economic-endpoint trials and HTA studies</span></div>
 <div class="tiles g2">{ind_html}</div>
 <div class="subh" style="margin-top:12px">Commercial gates</div>
@@ -1512,8 +1514,8 @@ def trends_html(items, history):
         cls_tag = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
         highlight = (f'<div class="tmcard"><div class="tmcard-l">Top mover</div>'
                      f'<div class="tmcard-t">{html.escape(TERM_DISPLAY.get(term, term))} {cls_tag}</div>'
-                     f'<div class="tmcard-s"><b class="tmcard-pct">{"+" if pct >= 0 else ""}{pct:.0f}%</b> · '
-                     f'{now} in this build vs {avg_txt} typical</div></div>')
+                     f'<div class="tmcard-s">{now} in this build · {avg_txt} typical · '
+                     f'<b class="tmcard-pct">{"+" if pct >= 0 else ""}{pct:.0f}%</b></div></div>')
 
     # the rest of the movers, listed below the highlight
     if len(prior) >= 3 and movers and movers[0][0] > 0:
@@ -1537,7 +1539,7 @@ def trends_html(items, history):
                      f'<div class="tcount">{now} vs {("~%.0f" % avg) if avg >= 1 else "under 1"}</div></div>')
         rest = f'<div class="panel" style="margin-top:10px">{bars}</div>' if bars else ""
         trending = ('<div class="sec">Trending topics</div>'
-                    '<div class="seccap">Terms with the largest increase vs their 28-day baseline. Small-base changes can appear large.</div>'
+                    '<div class="seccap">Terms with the largest increase vs their 28-day baseline. Small bases can produce large percentage changes.</div>'
                     f'{highlight}{rest}')
     else:
         need = max(4 - len(history), 1)
@@ -1682,6 +1684,28 @@ h1{font-size:28px;margin:0 0 3px;letter-spacing:-.022em;font-weight:700}
 .tchip:hover{background:#eaf1fb;border-color:#c7dbfa;color:#1f6feb}
 .tchip-n{font-size:11px;font-weight:700;color:#8a8a8a;background:#fff;border-radius:9px;padding:0 6px}
 .tchip:hover .tchip-n{color:#1f6feb}
+/* Follow topics */
+.tpc-strip{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 20px}
+.tpc-strip .tpc{background:#f4f6f8;border:1px solid var(--line);border-radius:16px;padding:4px 6px 4px 10px}
+.tpc-lib{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 22px;margin:2px 0 8px}
+.tpc-grp{min-width:0}
+.tpc-h{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8a8a8a;margin:2px 0 6px}
+.tpc{display:inline-flex;align-items:center;gap:7px;max-width:100%}
+.tpc-lib .tpc{display:flex;padding:5px 2px;border-bottom:1px solid #f0f0f0}
+.tpc-star{font:inherit;font-size:14px;line-height:1;color:#c2b36a;background:none;border:none;cursor:pointer;padding:0 2px;flex:none}
+.tpc-star.on{color:#c99a2e}
+.tpc-l{font-size:13.5px;color:#333;cursor:pointer;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpc-l:hover{color:#1f6feb}
+.tpc-n{font-size:11px;font-weight:700;color:#9a9a9a}
+.tpc-zero{opacity:.62}
+.tpc-rss{font-size:9.5px;font-weight:700;letter-spacing:.04em;color:#9a7a7a;background:#f6efef;border:1px solid #ecdede;border-radius:4px;padding:1px 5px;text-decoration:none;flex:none}
+.tpc-rss:hover{color:#9c2c2c;border-color:#e0c9c9}
+#your-topics{margin:0 0 4px}
+.tpc-your-h{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8a8a8a;margin:0 0 6px}
+.tpc-your{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.tpc-chip{font-size:12.5px;color:#333;background:#eef3fb;border:1px solid #d5e3f7;border-radius:14px;padding:4px 11px;cursor:pointer}
+.tpc-chip:hover{color:#1f6feb;border-color:#b9d2f2}
+@media(max-width:640px){.tpc-lib{grid-template-columns:1fr}}
 .homecta{text-align:center;margin:26px 0 4px}
 .tmcard{background:#faf6f6;border:1px solid #ecdede;border-left:3px solid #9c2c2c;border-radius:0 10px 10px 0;padding:12px 15px;margin:2px 0 0}
 .tmcard-l{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#9c2c2c;margin-bottom:4px}
@@ -1876,7 +1900,6 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .brief-l{font-size:11.5px;color:#666;margin-top:7px;line-height:1.3;text-align:center}
 .sec.nomt{margin-top:0}
 .homedisc{font-size:12px;color:#8a8a8a;line-height:1.5;margin:-4px 0 14px}
-.lowact{font-size:13px;color:#8a7a4a;background:#fbf7ec;border:1px solid #efe6cf;border-radius:8px;padding:9px 13px;margin:-6px 0 16px}
 .firstrun{font-size:13px;color:#4a6a8a;background:#f2f7fb;border:1px solid #d7e6f2;border-radius:8px;padding:9px 13px;margin:0 0 14px}
 .jstrip-h{font-size:11.5px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:#8a8a8a;margin:18px 0 9px}
 .jstrip-h .lnk{text-transform:none;letter-spacing:0;font-weight:500}
@@ -1930,9 +1953,17 @@ abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let tier='all', layer='all', hideRead=false, q='', sort='importance';
-let region='all', stype='all', dwin='all';
+let region='all', stype='all', dwin='all', topic='all';
 function withinDays(d,n){ if(!d) return false; const t=Date.parse(d); if(isNaN(t)) return false; return (Date.now()-t) <= (n+1)*864e5; }
-function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||dwin!=='all')?'':'none'; }
+function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
+const FKEY='aiheor_follow_v1';
+function followed(){ try{return JSON.parse(localStorage.getItem(FKEY)||'[]')}catch(e){return[]} }
+function toggleFollow(slug){ let a=followed(); a=a.includes(slug)?a.filter(x=>x!==slug):a.concat([slug]); try{localStorage.setItem(FKEY,JSON.stringify(a))}catch(e){} renderFollowState(); }
+function renderFollowState(){ const f=followed();
+  $$('.tpc-star').forEach(b=>{const on=f.includes(b.dataset.follow); b.textContent=on?'★':'☆'; b.classList.toggle('on',on);});
+  const box=$('#your-topics'); if(box){ box.innerHTML = f.length
+    ? ('<div class="tpc-your-h">Your topics</div><div class="tpc-your">'+f.map(s=>`<span class="tpc-chip" data-topic="${s}" role="button" tabindex="0">${esc((TOPIC_LABELS&&TOPIC_LABELS[s])||s)}</span>`).join('')+'</div>')
+    : ''; } }
 const KEY='aiheor_read_v1';
 const read=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));
 const save=()=>localStorage.setItem(KEY,JSON.stringify([...read]));
@@ -1948,8 +1979,17 @@ function goto(name){
   if(name==='feed'){ showDir(); }   // always land on the category directory
   window.scrollTo(0,0);
 }
-function showDir(){ const qq=$('#q'); if(qq) qq.value=''; q=''; $('#feed-dir').style.display='block'; $('#feed-list').style.display='none'; }
+function showDir(){ const qq=$('#q'); if(qq) qq.value=''; q=''; topic='all'; updateClear(); $('#feed-dir').style.display='block'; $('#feed-list').style.display='none'; }
 function showList(){ $('#feed-dir').style.display='none'; $('#feed-list').style.display='block'; window.scrollTo(0,0); }
+function goToTopic(slug){ topic=slug; layer='all'; q=''; const qq=$('#q'); if(qq)qq.value='';
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab==='feed'));
+  $$('.view').forEach(v=>v.classList.toggle('on',v.id==='view-feed'));
+  const T=(TOPIC_LABELS&&TOPIC_LABELS[slug])||slug;
+  const h=$('#cat-head'),l=$('#cat-lead');
+  if(h)h.textContent=T; if(l)l.textContent='Following “'+T+'” — items in this build tagged to this topic.';
+  updateClear(); showList(); render(); window.scrollTo(0,0);
+  try{history.replaceState(null,'','?topic='+encodeURIComponent(slug));}catch(e){}
+}
 $$('.tab').forEach(t=>t.onclick=()=>goto(t.dataset.tab));
 document.addEventListener('click',e=>{
   const g=e.target.closest('[data-goto]'); if(g){e.preventDefault();goto(g.dataset.goto);
@@ -1964,15 +2004,20 @@ document.addEventListener('click',e=>{
   const c=e.target.closest('.topstory[data-open]');
   if(c && !e.target.closest('a')){ const u=c.dataset.open; if(u && u!=='#') window.open(u,'_blank','noopener'); }
 });
+document.addEventListener('click',e=>{
+  const st=e.target.closest('.tpc-star'); if(st){ e.preventDefault(); toggleFollow(st.dataset.follow); return; }
+  const tp=e.target.closest('[data-topic]'); if(tp){ e.preventDefault(); goToTopic(tp.dataset.topic); }
+});
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter'&&e.key!==' ') return;
-  const t=e.target.closest('.jstep,.cat'); if(t){e.preventDefault();t.click();}
+  const t=e.target.closest('.jstep,.cat,.tpc-l,.tpc-chip'); if(t){e.preventDefault();t.click();}
 });
 
 // feed
 function render(){
   const list=ITEMS.filter(i=>tier==='all'||i.tier===tier)
                   .filter(i=>layer==='all'||i.layer===layer)
+                  .filter(i=>topic==='all'||(i.topics||[]).includes(topic))
                   .filter(i=>region==='all'||i.region===region)
                   .filter(i=>stype==='all'||i.stype===stype)
                   .filter(i=>dwin==='all'||withinDays(i.date,+dwin))
@@ -2062,6 +2107,8 @@ $$('.tchip').forEach(c=>c.onclick=()=>{
   showList(); render(); window.scrollTo(0,0);
 });
 render();
+renderFollowState();
+(function(){ try{ const p=new URLSearchParams(location.search).get('topic'); if(p && TOPIC_LABELS && TOPIC_LABELS[p]) goToTopic(p); }catch(e){} })();
 """
 
 LAYER_LABEL = {"research": "AI research & models", "clinical": "Clinical evidence & trials",
@@ -2083,47 +2130,174 @@ LAYER_NAV = {
         "Does it work in patients? Peer-reviewed studies, preprints and registered "
         "trials evaluating AI in patients."),
     "heor": ("Health economics & HTA",
-        "Is it worth paying for? Cost-effectiveness, value assessment and health "
+        "How is value assessed? Cost-effectiveness, value assessment and health "
         "technology assessment of AI."),
     "regulation": ("Regulatory & authorisation",
-        "Can it reach the market? Regulatory guidance and AI-enabled device authorisations."),
+        "Can it be authorised for market use? Regulatory guidance and AI-enabled device authorisations."),
     "access": ("Reimbursement & coverage",
         "Will healthcare systems pay for it? Coverage decisions, coding and the pathways "
         "that turn an authorisation into revenue."),
     "industry": ("Industry & funding",
-        "The business of health AI — company activity, partnerships, funding announcements and launches."),
+        "The business of health AI — company announcements, partnerships, funding and product launches."),
 }
+
+
+def _topic_text(i):
+    return (i.get("source", "") + " " + i.get("title", "") + " " + i.get("summary", "")).lower()
+
+
+# Follow-topics registry — curated saved filters, grouped by the three pillars plus clinical
+# areas. Every item is tagged at build time with the topics it matches (deterministic rules
+# only). Slugs are permanent: they become RSS feed names and shareable ?topic= URLs.
+TOPICS = [
+    {"slug": "ai-clinical-studies", "pillar": "Evidence", "label": "AI clinical studies",
+     "pred": lambda i: i["layer"] == "clinical"},
+    {"slug": "economic-endpoint-trials", "pillar": "Evidence", "label": "Economic-endpoint trials",
+     "pred": lambda i: _econ_endpoint(i)},
+    {"slug": "hta-value-evidence", "pillar": "Evidence", "label": "HTA & value evidence",
+     "pred": lambda i: i["layer"] == "heor"},
+    {"slug": "ai-research", "pillar": "Evidence", "label": "AI research & models",
+     "pred": lambda i: i["layer"] == "research"},
+    {"slug": "fda-ai-authorisations", "pillar": "Authorisation", "label": "FDA AI authorisations",
+     "pred": lambda i: i.get("source", "").startswith("FDA — AI device")},
+    {"slug": "ema-activity", "pillar": "Authorisation", "label": "EMA activity",
+     "pred": lambda i: "EMA" in i.get("source", "")},
+    {"slug": "mhra-updates", "pillar": "Authorisation", "label": "MHRA updates",
+     "pred": lambda i: "MHRA" in i.get("source", "")},
+    {"slug": "regulatory-activity", "pillar": "Authorisation", "label": "All regulatory activity",
+     "pred": lambda i: i["layer"] == "regulation"},
+    {"slug": "cms-coverage", "pillar": "Coverage", "label": "CMS coverage decisions",
+     "pred": lambda i: "CMS" in i.get("source", "")},
+    {"slug": "nice-evaluations", "pillar": "Coverage", "label": "NICE evaluations",
+     "pred": lambda i: "NICE" in i.get("source", "")},
+    {"slug": "ntap-activity", "pillar": "Coverage", "label": "NTAP activity",
+     "pred": lambda i: "ntap" in _topic_text(i) or "new technology add-on" in _topic_text(i)},
+    {"slug": "cpt-coding", "pillar": "Coverage", "label": "CPT / coding activity",
+     "pred": lambda i: "cpt" in _topic_text(i)},
+    {"slug": "diga-updates", "pillar": "Coverage", "label": "DiGA updates",
+     "pred": lambda i: "diga" in _topic_text(i)},
+    {"slug": "reimbursement-coverage", "pillar": "Coverage", "label": "All reimbursement & coverage",
+     "pred": lambda i: i["layer"] == "access"},
+    {"slug": "oncology-ai", "pillar": "Clinical area", "label": "Oncology AI",
+     "pred": lambda i: any(w in _topic_text(i) for w in ("oncolog", "cancer", "tumour", "tumor"))},
+    {"slug": "cardiology-ai", "pillar": "Clinical area", "label": "Cardiology AI",
+     "pred": lambda i: any(w in _topic_text(i) for w in ("cardio", "cardiac", "heart"))},
+    {"slug": "radiology-imaging-ai", "pillar": "Clinical area", "label": "Radiology & imaging AI",
+     "pred": lambda i: any(w in _topic_text(i) for w in ("radiolog", "imaging", "mri", "ct scan", "x-ray", "radiograph"))},
+    {"slug": "mental-health-ai", "pillar": "Clinical area", "label": "Mental-health AI",
+     "pred": lambda i: any(w in _topic_text(i) for w in ("mental health", "psychiat", "depression", "anxiety"))},
+    {"slug": "digital-therapeutics", "pillar": "Clinical area", "label": "Digital therapeutics",
+     "pred": lambda i: any(w in _topic_text(i) for w in ("digital therapeutic", "dtx", "diga"))},
+]
+TOPIC_BY_SLUG = {t["slug"]: t for t in TOPICS}
+POPULAR_TOPICS = ["fda-ai-authorisations", "cms-coverage", "nice-evaluations",
+                  "economic-endpoint-trials", "oncology-ai", "digital-therapeutics"]
+TOPIC_PILLARS = ["Evidence", "Authorisation", "Coverage", "Clinical area"]
+
+
+def tag_topics(items):
+    """Attach each item's matching topic slugs (used by the feed, Follow library and RSS)."""
+    for i in items:
+        i["topics"] = [t["slug"] for t in TOPICS if t["pred"](i)]
+    return items
+
+
+def _topic_counts(items):
+    c = {t["slug"]: 0 for t in TOPICS}
+    for i in items:
+        for s in i.get("topics", []):
+            if s in c:
+                c[s] += 1
+    return c
+
+
+_TOPIC_HELP = "Follow an evidence stream — open it in Evidence, save it in this browser, or subscribe via RSS."
+
+
+def _topic_row(t, count):
+    slug = t["slug"]
+    zero = " tpc-zero" if count == 0 else ""
+    return (f'<div class="tpc{zero}">'
+            f'<button class="tpc-star" data-follow="{slug}" aria-label="Save {html.escape(t["label"])} in this browser">☆</button>'
+            f'<span class="tpc-l" role="button" tabindex="0" data-topic="{slug}">{html.escape(t["label"])} '
+            f'<span class="tpc-n">{count}</span></span>'
+            f'<a class="tpc-rss" href="feed-{slug}.xml" title="RSS feed" target="_blank" rel="noopener">RSS</a>'
+            f'</div>')
+
+
+def popular_topics_html(items):
+    # Home strip: a curated teaser showing only topics with activity today
+    counts = _topic_counts(items)
+    rows = "".join(_topic_row(TOPIC_BY_SLUG[s], counts[s]) for s in POPULAR_TOPICS
+                   if s in TOPIC_BY_SLUG and counts.get(s, 0) > 0)
+    if not rows:
+        return ""
+    return ('<div class="sec">Follow topics</div>'
+            f'<div class="seccap">{_TOPIC_HELP}</div>'
+            f'<div class="tpc-strip">{rows}</div>')
+
+
+def topic_library_html(items):
+    # Evidence library: the full tracked vocabulary — every topic with its count (incl. 0),
+    # grouped by pillar. Zeros are kept on purpose; they show what the monitor covers.
+    counts = _topic_counts(items)
+    groups = ""
+    for pillar in TOPIC_PILLARS:
+        rows = "".join(_topic_row(t, counts.get(t["slug"], 0)) for t in TOPICS if t["pillar"] == pillar)
+        groups += f'<div class="tpc-grp"><div class="tpc-h">{html.escape(pillar)}</div>{rows}</div>'
+    return ('<div class="sec nomt">Follow topics</div>'
+            f'<div class="seccap">{_TOPIC_HELP}</div>'
+            '<div id="your-topics"></div>'
+            f'<div class="tpc-lib">{groups}</div>')
+
+
+def _rss_xml(title, desc, subset):
+    from email.utils import format_datetime
+    base = "https://asarmah123.github.io/ai-health-evidence-monitor/"
+    now_rfc = format_datetime(datetime.now(timezone.utc))
+    sep = " · "
+    parts = []
+    for i in subset:
+        d = _pdate(i.get("date", ""))
+        pub = f"<pubDate>{format_datetime(datetime(d.year, d.month, d.day, tzinfo=timezone.utc))}</pubDate>" if d else ""
+        link = safe_url(i["url"])
+        dsc = html.escape(i["source"] + sep + (i.get("date") or "date unknown"))
+        title_html = html.escape(i["title"])
+        parts.append(
+            f"<item><title>{title_html}</title>"
+            f"<link>{html.escape(link)}</link>"
+            f'<guid isPermaLink="true">{html.escape(link)}</guid>'
+            f"<description>{dsc}</description>{pub}</item>")
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<?xml-stylesheet type="text/xsl" href="feed.xsl"?>\n'
+            '<rss version="2.0"><channel>'
+            f'<title>{html.escape(title)}</title>'
+            f'<link>{base}</link>'
+            f'<description>{html.escape(desc)}</description>'
+            '<language>en-gb</language>'
+            f'<lastBuildDate>{now_rfc}</lastBuildDate>'
+            + "".join(parts) + '</channel></rss>')
 
 
 def write_rss(items):
     """Static RSS 2.0 of the day's highest-ranked items — same data as the page, honest dates."""
-    from email.utils import format_datetime
-    base = "https://asarmah123.github.io/ai-health-evidence-monitor/"
     ranked = sorted(items, key=lambda i: -rank_score(i)[0])[:40]
-    now_rfc = format_datetime(datetime.now(timezone.utc))
-    parts = []
-    for i in ranked:
-        d = _pdate(i.get("date", ""))
-        pub = f"<pubDate>{format_datetime(datetime(d.year, d.month, d.day, tzinfo=timezone.utc))}</pubDate>" if d else ""
-        link = safe_url(i["url"])
-        desc = html.escape(f'{i["source"]} \u00b7 {i.get("date") or "date unknown"}')
-        parts.append(
-            f"<item><title>{html.escape(i['title'])}</title>"
-            f"<link>{html.escape(link)}</link>"
-            f'<guid isPermaLink="true">{html.escape(link)}</guid>'
-            f"<description>{desc}</description>{pub}</item>")
-    rss = ('<?xml version="1.0" encoding="UTF-8"?>\n'
-           '<?xml-stylesheet type="text/xsl" href="feed.xsl"?>\n'
-           '<rss version="2.0"><channel>'
-           '<title>AI in Health \u2014 Evidence Monitor</title>'
-           f'<link>{base}</link>'
-           '<description>Daily market intelligence on how AI advances toward approval, reimbursement and adoption.</description>'
-           '<language>en-gb</language>'
-           f'<lastBuildDate>{now_rfc}</lastBuildDate>'
-           + "".join(parts) + '</channel></rss>')
-    (DOCS / "feed.xml").write_text(rss, encoding="utf-8")
-    # a browser opening feed.xml directly gets a clean, styled page (readers ignore the stylesheet)
+    (DOCS / "feed.xml").write_text(
+        _rss_xml("AI in Health — Evidence Monitor",
+                 "Daily market intelligence on how AI advances toward approval, reimbursement and adoption.",
+                 ranked), encoding="utf-8")
     (DOCS / "feed.xsl").write_text(FEED_XSL, encoding="utf-8")
+
+
+def write_topic_feeds(items):
+    """One RSS feed per Follow topic (feed-<slug>.xml) — deterministic subsets of the build."""
+    for t in TOPICS:
+        subset = sorted((i for i in items if t["slug"] in i.get("topics", [])),
+                        key=lambda i: -rank_score(i)[0])[:40]
+        title = "AI in Health — " + t["label"]
+        desc = t["label"] + " — " + t["pillar"] + " signals from the AI in Health monitor."
+        (DOCS / ("feed-" + t["slug"] + ".xml")).write_text(_rss_xml(title, desc, subset), encoding="utf-8")
+    print(f"  topic feeds written: {len(TOPICS)}")
 
 
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
@@ -2203,6 +2377,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     # (reference-hub panels removed from Methodology — the placeholder section was retired)
     first_build_note = ('<div class="firstrun">First build: historical comparisons will appear after future runs.</div>'
                         if (not history or len(history) < 2) else '')
+    topic_library = topic_library_html(items)
     coverage_tab = '  <div class="tab" data-tab="coverage">Coverage</div>\n' if show_coverage else ''
     coverage_view = f'<div id="view-coverage" class="view">{cov_html}</div>' if show_coverage else ''
 
@@ -2240,9 +2415,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         if allb:
             tb = max(allb, key=lambda x: x[1])
             _r = "regulator" if tb in allb_reg else "HTA/payer body"
-            parts.append(f'<b>{html.escape(str(tb[0]))}</b> most active {_r} ({tb[1]})')
+            parts.append(f'<b>{html.escape(str(tb[0]))}</b> was the most active {_r} ({tb[1]})')
         if o.get("focus"):
-            f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> top clinical area ({f0[1]})')
+            f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> was the top clinical area ({f0[1]})')
         if parts:
             active_strip = (f'<div class="activestrip"><span class="as-l">Snapshot</span> '
                             f'{" · ".join(parts)}</div>')
@@ -2273,6 +2448,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 
     items_json = (json.dumps(items).replace("<", "\\u003c").replace(">", "\\u003e")
                   .replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+    topic_labels_json = json.dumps({t["slug"]: t["label"] for t in TOPICS})
     DOCS.mkdir(parents=True, exist_ok=True)
     (DOCS / "index.html").write_text(f"""<!DOCTYPE html>
 <html lang="en"><head>
@@ -2315,7 +2491,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     placeholder="Search the latest build — title, source, regulator, country, HTA body…"></div>
   <div id="feed-dir">
     {active_strip}
-    <div class="dnote" style="margin-bottom:16px">Explore the intelligence behind today’s briefing — browse by lifecycle stage, market function, regulator or evidence type. Counts show the current build.</div>
+    {topic_library}
+    <div class="sec">Browse by stage</div>
+    <div class="dnote" style="margin-bottom:16px">Browse by lifecycle stage. Counts show the current build.</div>
     {directory_html}
     <div style="margin-top:6px"><span class="seeall" data-showall="1">View all {len(items)} updates →</span></div>
   </div>
@@ -2355,9 +2533,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="pipeline">
     <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">Curated primary sources across regulators, HTA bodies, journals and trial registries — chosen for relevance, not volume.</div></div></div>
     <div class="parrow">↓</div>
-    <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Merge exact duplicates by link, then collapse near-duplicate stories — the same event reported by several outlets — to one.</div></div></div>
+    <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Merge exact duplicates by link, then collapse near-duplicate stories about the same event into one.</div></div></div>
     <div class="parrow">↓</div>
-    <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Assign an evidence stage using transparent rules — no machine-learning model.</div></div></div>
+    <div class="pstep"><div class="pstep-n">3</div><div class="pstep-b"><div class="pstep-t">Classify</div><div class="pstep-d">Assign an evidence stage using transparent rules.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">4</div><div class="pstep-b"><div class="pstep-t">Rank</div><div class="pstep-d">Prioritise by explicit signals — authorisations, economic-endpoint trials, major-regulator actions, recency.</div></div></div>
     <div class="parrow">↓</div>
@@ -2371,17 +2549,17 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <details class="faqi"><summary>Research &amp; industry</summary>arXiv (cs.AI / cs.LG / cs.CL), lab &amp; standards blogs; STAT, Endpoints, Fierce, MedTech Dive, MassDevice</details>
   <div class="sec">Trust &amp; limitations</div>
   <ul class="principles">
-    <li><b>No generated analysis.</b> No language model writes, scores or interprets items — classification, ranking and dating are rule-based and reproducible.</li>
+    <li><b>No language model.</b> Classification, ranking and dating are rule-based and reproducible.</li>
     <li><b>No invented dates.</b> Dates are read from the source; when none exists the item reads “date unknown” and is excluded from date-based figures.</li>
     <li><b>No causal claims.</b> We report what changed and how unusual it is — never why, beyond what the counts support.</li>
     <li><b>Ranking is priority, not confidence.</b> Order follows explicit additive rules; every item shows its own “Why ranked” breakdown.</li>
     <li><b>Verify the primary source.</b> An automated monitor can miss, misclassify or fail to date an item, and sources may change or retract. Nothing here is regulatory, legal, financial or medical advice.</li>
   </ul>
   <div class="sec">Privacy &amp; technical details</div>
-  <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is a static build with no server: fetched daily from primary APIs and feeds, rendered to a single page and served from GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is available. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
+  <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from primary APIs and feeds and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
-    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption needs clinical evidence, regulatory clearance and payment pathways — so we prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade press. Company press releases are excluded to keep the feed independent.</div></div>
+    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption depends on clinical evidence, regulatory clearance and payment pathways. We therefore prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade press. Company press releases are excluded to keep the feed independent.</div></div>
     <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most updates are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
   <div class="sec">Frequently asked</div>
@@ -2389,6 +2567,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <details class="faqi"><summary>How often does it update?</summary>Once each morning, rebuilt automatically. Most updates are a day or two old; FDA device authorisations reflect the agency’s ~30-day publishing lag.</details>
     <details class="faqi"><summary>Where do the items come from?</summary>~65 curated primary sources — regulator, HTA and payer feeds, trial registries, peer-reviewed journals and established trade press — via official APIs and RSS. The full list and exact queries are maintained privately.</details>
     <details class="faqi"><summary>How is each item classified?</summary>By transparent, deterministic rules based on source, terminology and lifecycle signals — no machine-learning model decides an item’s stage, region or body. Every ranking exposes its own “Why ranked” breakdown.</details>
+    <details class="faqi"><summary>Why does an item show “date unknown”?</summary>Dates are read from the source. When a source exposes no usable date, the item is shown as “date unknown” rather than guessed, and it is excluded from any date-based figure.</details>
     <details class="faqi"><summary>Does it use AI to write or interpret the feed?</summary>No. No language model writes summaries, scores impact, or interprets any item. Classification, ranking, dating and every count come from transparent rules with no model, so the same inputs reproduce the same output.</details>
     <details class="faqi"><summary>A source I expected is missing — why?</summary>Coverage is deliberately curated for regulatory, clinical and reimbursement relevance, not volume, and company press releases are excluded. Suggestions are welcome via the repository.</details>
   </div>
@@ -2399,13 +2578,13 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="sec">What this is</div>
   <div class="abt">A daily monitor tracking how AI moves through healthcare — from research and clinical validation to regulation, HTA, reimbursement and adoption.</div>
   <div class="abt">It combines public signals from regulators, HTA bodies, payer organisations, trial registries, journals and industry sources into one daily briefing — framed around two adoption questions: <b>can it be sold?</b> (authorisation) and <b>will it be paid for?</b> (coverage).</div>
-  <div class="abt scope">Scope: currently covers healthcare AI evidence, regulation, reimbursement and market signals — designed for evidence tracking, not prediction, investment advice, or general AI news.</div>
+  <div class="abt scope">Scope: healthcare AI evidence, regulation, reimbursement and market signals — not a general AI news feed, investment advice or predictive analytics.</div>
   <div class="sec">Who it’s for</div>
-  <div class="abt">Built for market-access, HEOR, regulatory and clinical teams who need evidence, regulatory and payment signals in one place — with every item traceable to a primary source. Investors tracking healthcare AI adoption may also use it.</div>
+  <div class="abt">Built for market-access, HEOR, regulatory and clinical teams who need evidence, regulatory and payment signals in one place, with every item traceable to a primary source. Investors tracking healthcare AI adoption may also find it useful.</div>
   <div class="sec">How it stays credible</div>
-  <div class="abt">Classification and ranking follow deterministic, rule-based processes. Dates come from the source or are shown as “date unknown.” No causal or predictive claims are made. <span class="lnk" data-goto="sources">Full methodology →</span></div>
+  <div class="abt">Classification and ranking are deterministic and rule-based. Dates come from the source or are shown as “date unknown.” No causal or predictive claims are made. <span class="lnk" data-goto="sources">Full methodology →</span></div>
   <div class="sec">Contact &amp; source</div>
-  <div class="abt">The monitoring engine is open source, maintained by <a href="https://github.com/asarmah123" rel="noopener">@asarmah123</a>. Corrections and source suggestions are welcome via the <a href="https://github.com/asarmah123/ai-health-evidence-monitor" rel="noopener">GitHub repository</a>. The curated source list and ranking configuration are maintained separately.</div>
+  <div class="abt">The monitoring engine is open source and maintained by <a href="https://github.com/asarmah123" rel="noopener">@asarmah123</a>. Corrections and source suggestions are welcome via <a href="https://github.com/asarmah123/ai-health-evidence-monitor" rel="noopener">GitHub</a>. The curated source list and ranking configuration are maintained separately.</div>
 </div>
 </main>
 
@@ -2413,7 +2592,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <span class="lnk" data-goto="sources">Methodology</span><span class="fdot">&#160;·&#160;</span><details class="discmore"><summary>Build details</summary>{html.escape(status_full)}</details><span class="fdot">&#160;·&#160;</span><span class="lnk" data-goto="sources">Disclaimer</span>
 </footer>
 </div>
-<script>const ITEMS={items_json};{JS}</script>
+<script>const ITEMS={items_json};const TOPIC_LABELS={topic_labels_json};{JS}</script>
 </body></html>""", encoding="utf-8")
 
 
@@ -2709,6 +2888,7 @@ def main():
     uniq = {i["id"]: i for i in items}
     items = list(uniq.values())
     items = collapse_near_duplicates(items)
+    items = tag_topics(items)   # attach Follow-topic slugs to each item
     # HEOR lens removed: it was LLM-generated, which conflicts with the site's
     # deterministic, no-model positioning. Cache retained only for the "seen" timestamp.
     cache, cache_sha = load_cache(token)
@@ -2743,6 +2923,7 @@ def main():
            health=health, o=o, history=history, show_coverage=bool(agg),
            analysis_extra=analysis_extra)
     write_rss(items)
+    write_topic_feeds(items)
     print(f"\n✓ docs/index.html — {len(items)} items")
     if dead:
         print(f"! {len(dead)} feed(s) failed: {'; '.join(dead)}")
