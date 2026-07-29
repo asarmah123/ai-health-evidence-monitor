@@ -39,6 +39,9 @@ BROWSER_UA = dict(BOT_UA, **{
 })
 UA = BOT_UA   # default headers for the JSON-API fetchers (PubMed, Federal Register, openFDA, ctgov)
 LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
+# Bump when classification/ranking rules change, so historical analytics stay reproducible.
+TAXONOMY_VERSION = "1.0"
+_QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
                "heor": "#1f8a70", "access": "#b0842b", "industry": "#64748b"}
 TIERS = ["daily", "weekly", "monthly"]
@@ -2301,6 +2304,29 @@ def write_topic_feeds(items):
     print(f"  topic feeds written: {len(TOPICS)}")
 
 
+def write_manifest(items, health):
+    """Machine-readable build manifest (docs/build.json): build metadata for debugging,
+    telemetry and any future API/export. Not user-facing. A failed QA gate aborts before
+    this runs, so a manifest only ever describes a validated, published build."""
+    from datetime import datetime, timezone
+    manifest = {
+        "build_id": os.environ.get("GITHUB_RUN_ID", "") or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "taxonomy_version": TAXONOMY_VERSION,
+        "git_commit": os.environ.get("GITHUB_SHA", ""),
+        "items_published": len(items),
+        "sources_contributing": health.get("contributing"),
+        "sources_expected": health.get("expected"),
+        "silent_sources": len(health.get("zero_steady", [])),
+        "errored_sources": len(health.get("failed", [])),
+        "undated_items": health.get("undated"),
+        "qa": dict(_QA_STATS),
+        "qa_passed": True,
+    }
+    (DOCS / "build.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    print(f"  build.json written (taxonomy v{TAXONOMY_VERSION})")
+
+
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
 FEED_XSL = '''<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -2403,6 +2429,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         f'<div class="bh-m"><div class="bh-v" style="font-size:13px;font-weight:600">{built}</div><div class="bh-l">last built</div></div>'
         '</div>'
         '<div class="seccap">Each build reports coverage status: updated, quiet and undated sources.</div>'
+        '<div class="abt" style="margin-top:2px"><b>Publication safeguards.</b> Every build must pass automated '
+        'data-quality and source-coverage checks — required fields and a primary-source link on every item, '
+        'sane dates, and minimum source coverage. A build that fails these thresholds is withheld and the '
+        'previous validated build stays live, so only checked builds are published.</div>'
     )
 
     # "most active today" strip on the feed directory — mirrors the homepage insights
@@ -2851,6 +2881,8 @@ def validate_or_abort(items):
             fixed_dates += 1
         clean.append(i)
     total, ndrop = len(items), len(dropped)
+    _QA_STATS.update({"input": total, "published": len(clean), "dropped": ndrop,
+                      "future_dates_blanked": fixed_dates})
     print(f"  QA gate: {len(clean)} valid · {ndrop} dropped (unusable) · {fixed_dates} future dates blanked")
     if ndrop:
         print("    dropped:", dropped[:10], "…" if ndrop > 10 else "")
@@ -2960,6 +2992,7 @@ def main():
            analysis_extra=analysis_extra)
     write_rss(items)
     write_topic_feeds(items)
+    write_manifest(items, health)
 
     # output guard: the page and feed must be well-formed before this run is allowed to
     # publish. A non-zero exit here makes CI skip the commit, so the previous site stays.
