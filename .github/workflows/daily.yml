@@ -21,6 +21,12 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Golden regression tests
+        # Freeze the deterministic engine: if a ranking weight, topic rule or taxonomy
+        # label changed without a conscious re-freeze, this fails and the build is skipped,
+        # so the previous validated site stays live rather than publishing drifted output.
+        run: python tests/test_golden.py
+
       - name: Build the feed
         env:
           COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN }}

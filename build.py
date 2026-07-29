@@ -562,10 +562,13 @@ def fetch_ctgov(sources, lookback):
     return items, dead
 
 
-def log_history(items, terms, token=None, health=None):
-    """One row per build: per-layer counts, counts for each tracked term, and a compact
-    per-source health snapshot. Persisted to the private data repo via the GitHub
-    Contents API (SHA-based update) — no git push from the Action, so no merge/HEAD state."""
+def log_history(items, terms, token=None, health=None, o=None):
+    """One row per build: per-layer, per-region, per-clinical-area and per-topic counts,
+    counts for each tracked term, the QA outcome, and a compact per-source health snapshot.
+    Persisted to the private data repo via the GitHub Contents API (SHA-based update) — no
+    git push from the Action, so no merge/HEAD state. This is the substrate the Phase-2
+    time-series, momentum and per-specialty rollups read; region/clinical counts reuse the
+    exact numbers overview_stats renders, so history always matches the published site."""
     path = ROOT / "data" / "history.json"
     text, sha = private_get("history.json", token)
     if text:
@@ -591,6 +594,17 @@ def log_history(items, terms, token=None, health=None):
         # computable as history accrues — the honest, baseline-backed "what's unusual"
         "bodies": {name: cnt for role in ("regulator", "payer")
                    for name, cnt in _bc.get(role, [])},
+        # per-region and per-clinical-area counts — reuse overview_stats' numbers so the
+        # history matches the rendered site exactly. Empty if o wasn't passed (e.g. tests).
+        "regions": dict((o or {}).get("macro", [])),
+        "clinical": dict((o or {}).get("focus", [])),
+        # per-topic counts across the full Follow-topic registry (zeros kept, so the
+        # time-series has a stable column set as topics come and go from a build).
+        "topics": {t["slug"]: sum(1 for i in items if t["slug"] in i.get("topics", []))
+                   for t in TOPICS},
+        # QA outcome for this build — published/dropped/blanked + the pass flag. Only
+        # validated builds reach log_history, so passed is always True here by construction.
+        "qa": {**_QA_STATS, "passed": True},
     }
     if health:
         # compact health footprint, so "dead 1 day vs dead 5 days" becomes visible over time
@@ -2982,7 +2996,7 @@ def main():
     # Key insights and the priority digest instead.
     take = ""
 
-    row, history = log_history(items, cfg.get("trend_terms", []), token, health)
+    row, history = log_history(items, cfg.get("trend_terms", []), token, health, o)
     print(f"  history: {row['total']} items logged for {row['date']} ({len(history)} builds on record)")
 
     home_html, analysis_extra = overview_html(items, agg, o, history, take)
