@@ -13,7 +13,9 @@ TECHNICAL.md
 homepage_layout_preview.html
 first_build_preview.html
 restructure_preview.html
-data/
+# Root-only: the private cache/history dir. Anchored with a leading slash so it does
+# NOT match docs/data/ (the public CSV/JSON export, which must be committed).
+/data/
 *.env
 .env
 layout_preview.html
