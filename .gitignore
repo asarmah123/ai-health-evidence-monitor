@@ -6,8 +6,10 @@ __pycache__/
 feeds.yaml
 coverage.yaml
 lens_prompt.txt
-# Commercial strategy — keep private, not for the public repo.
+# Commercial strategy & personal notes — keep private, not for the public repo.
 PRODUCT_ROADMAP.md
+ENGINEERING_NOTES.md
+TECHNICAL.md
 homepage_layout_preview.html
 first_build_preview.html
 restructure_preview.html
