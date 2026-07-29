@@ -2341,6 +2341,60 @@ def write_manifest(items, health):
     print(f"  build.json written (taxonomy v{TAXONOMY_VERSION})")
 
 
+def write_export(items):
+    """Machine-readable export of the current build — docs/data/feed-latest.{json,csv}.
+    One row per published item, the same deterministic, rule-classified dataset the site
+    renders, so analysts and reproducible research can consume it programmatically without
+    scraping the HTML. Static and backend-free; the JSON is self-describing (build time +
+    taxonomy version) so a downloaded file is traceable to the rules that produced it. This
+    is the substrate a future API/enterprise export builds on. Called after render(), so
+    each item already carries its score, jurisdiction and source-type."""
+    from datetime import datetime, timezone
+    import csv, io
+    data_dir = DOCS / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    cols = ["id", "title", "url", "source", "source_type", "stage",
+            "region", "country", "date", "score", "topics"]
+
+    def row_of(i):
+        return {
+            "id": i.get("id", ""),
+            "title": i.get("title", ""),
+            "url": i.get("url", ""),
+            "source": i.get("source", ""),
+            "source_type": i.get("stype") or source_type(i),
+            "stage": i.get("layer", ""),
+            "region": i.get("region", ""),
+            "country": i.get("country", ""),
+            "date": i.get("date", ""),           # "" = date unknown (never guessed)
+            "score": i.get("score", 0),
+            "topics": ";".join(i.get("topics", [])),
+        }
+
+    rows = [row_of(i) for i in items]
+    payload = {
+        "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "taxonomy_version": TAXONOMY_VERSION,
+        "count": len(rows),
+        "fields": cols,
+        "notice": ("Deterministic, rule-classified aggregation of public sources. Every row "
+                   "links to its primary source; verify there before acting. Empty date = "
+                   "no usable date at source (never estimated)."),
+        "items": rows,
+    }
+    (data_dir / "feed-latest.json").write_text(
+        json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
+
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=cols)
+    w.writeheader()
+    for r in rows:
+        w.writerow(r)
+    # utf-8-sig: Excel then opens accented source names / em-dashes correctly
+    (data_dir / "feed-latest.csv").write_text(buf.getvalue(), encoding="utf-8-sig")
+    print(f"  export: docs/data/feed-latest.json + .csv ({len(rows)} items)")
+
+
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
 FEED_XSL = '''<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -2541,6 +2595,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="dnote" style="margin-bottom:16px">Browse by lifecycle stage. Counts show the current build.</div>
     {directory_html}
     <div style="margin-top:6px"><span class="seeall" data-showall="1">View all {len(items)} updates →</span></div>
+    <div class="dnote" style="margin-top:16px;font-size:12.5px">Download this build —
+      <a href="data/feed-latest.csv" download>CSV</a> · <a href="data/feed-latest.json" download>JSON</a>.
+      {len(items)} rule-classified items; every row links to its primary source.</div>
   </div>
   <div id="feed-list" style="display:none">
     <div class="catback" data-back="1">← All categories</div>
@@ -2601,7 +2658,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <li><b>Verify the primary source.</b> An automated monitor can miss, misclassify or fail to date an item, and sources may change or retract. Nothing here is regulatory, legal, financial or medical advice.</li>
   </ul>
   <div class="sec">Privacy &amp; technical details</div>
-  <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from primary APIs and feeds and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
+  <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from primary APIs and feeds and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available, and the current build can be downloaded as <a href="data/feed-latest.csv" download>CSV</a> or <a href="data/feed-latest.json" download>JSON</a>. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
     <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption depends on clinical evidence, regulatory clearance and payment pathways. We therefore prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade press. Company press releases are excluded to keep the feed independent.</div></div>
@@ -3007,6 +3064,7 @@ def main():
     write_rss(items)
     write_topic_feeds(items)
     write_manifest(items, health)
+    write_export(items)   # docs/data/feed-latest.{json,csv} — programmatic access to this build
 
     # output guard: the page and feed must be well-formed before this run is allowed to
     # publish. A non-zero exit here makes CI skip the commit, so the previous site stays.
