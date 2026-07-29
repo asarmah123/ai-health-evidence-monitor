@@ -1043,7 +1043,7 @@ def overview_html(items, agg, o, history=None, take=""):
             "heor": "Health economics (HEOR)", "regulation": "Regulatory",
             "access": "Reimbursement", "industry": "Industry"}
     JLABEL = {"research": "Research", "clinical": "Clinical evidence",
-              "regulation": "Regulatory & authorisation", "heor": "Health economics",
+              "regulation": "Regulatory & authorisation", "heor": "HEOR",
               "access": "Reimbursement & coverage", "industry": "Market activity"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
@@ -1080,7 +1080,7 @@ def overview_html(items, agg, o, history=None, take=""):
     journey_html = f'<div class="journey">{journey}</div>'
     # compact one-line lifecycle strip for the Home page (detailed counts live in Analysis)
     JSHORT = {"research": "Research", "clinical": "Clinical", "regulation": "Regulatory",
-              "heor": "Health economics", "access": "Coverage", "industry": "Market"}
+              "heor": "HEOR", "access": "Coverage", "industry": "Market"}
     _jnodes = []
     for k in LAYERS:
         _on = o["layers"].get(k, 0) > 0
@@ -2113,7 +2113,7 @@ renderFollowState();
 """
 
 LAYER_LABEL = {"research": "AI research & models", "clinical": "Clinical evidence & trials",
-               "heor": "Health economics & HTA", "regulation": "Regulatory & authorisation",
+               "heor": "HEOR & HTA", "regulation": "Regulatory & authorisation",
                "access": "Reimbursement & coverage", "industry": "Industry & funding"}
 
 # how the six layers cluster on the Feed tab
@@ -2130,7 +2130,7 @@ LAYER_NAV = {
     "clinical": ("Clinical evidence & trials",
         "Does it work in patients? Peer-reviewed studies, preprints and registered "
         "trials evaluating AI in patients."),
-    "heor": ("Health economics & HTA",
+    "heor": ("HEOR & HTA",
         "How is value assessed? Cost-effectiveness, value assessment and health "
         "technology assessment of AI."),
     "regulation": ("Regulatory & authorisation",
