@@ -1998,6 +1998,7 @@ document.addEventListener('click',e=>{
       if(h)h.textContent=g.dataset.label||'Updates';
       if(l)l.textContent=g.dataset.desc||'';
       showList();render();}
+    if(g.dataset.anchor){ const a=$('#'+g.dataset.anchor); if(a) a.scrollIntoView({block:'start'}); }
   }
 });
 document.addEventListener('click',e=>{
@@ -2547,7 +2548,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <details class="faqi"><summary>HTA &amp; payer bodies</summary>NICE, CMS, IQWiG, G-BA, HAS, CADTH, PBAC, MSAC, HIRA, AIFA, TLV, Zorginstituut, HITAP, ACE</details>
   <details class="faqi"><summary>Trials, evidence &amp; journals</summary>ClinicalTrials.gov, PubMed (E-utilities), NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Value in Health, PharmacoEconomics</details>
   <details class="faqi"><summary>Research &amp; industry</summary>arXiv (cs.AI / cs.LG / cs.CL), lab &amp; standards blogs; STAT, Endpoints, Fierce, MedTech Dive, MassDevice</details>
-  <div class="sec">Trust &amp; limitations</div>
+  <div class="sec" id="trust">Trust &amp; limitations</div>
   <ul class="principles">
     <li><b>No language model.</b> Classification, ranking and dating are rule-based and reproducible.</li>
     <li><b>No invented dates.</b> Dates are read from the source; when none exists the item reads “date unknown” and is excluded from date-based figures.</li>
@@ -2589,7 +2590,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 </main>
 
 <footer class="pagefoot">
-  <span class="lnk" data-goto="sources">Methodology</span><span class="fdot">&#160;·&#160;</span><details class="discmore"><summary>Build details</summary>{html.escape(status_full)}</details><span class="fdot">&#160;·&#160;</span><span class="lnk" data-goto="sources">Disclaimer</span>
+  <span class="lnk" data-goto="sources">Methodology</span><span class="fdot">&#160;·&#160;</span><details class="discmore"><summary>Build details</summary>{html.escape(status_full)}</details><span class="fdot">&#160;·&#160;</span><span class="lnk" data-goto="sources" data-anchor="trust">Disclaimer</span>
 </footer>
 </div>
 <script>const ITEMS={items_json};const TOPIC_LABELS={topic_labels_json};{JS}</script>
