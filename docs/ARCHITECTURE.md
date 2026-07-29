@@ -1,5 +1,6 @@
 # Architecture
 
+
 ```
   Public sources (heterogeneous)
   ┌──────────────────────────────────────────────────────────┐
