@@ -2829,6 +2829,40 @@ def collapse_near_duplicates(items):
     return [it for _, it in keep]
 
 
+def validate_or_abort(items):
+    """Pre-publish QA gate. Drops items that cannot be shown or cited (missing title/
+    source/layer, or a non-http(s) URL), blanks impossible future dates, and ABORTS the
+    build with a non-zero exit on systemic corruption or an empty result — so CI skips the
+    commit and the previous good site stays live. Deterministic; no network, no model."""
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).date()
+    clean, dropped, fixed_dates = [], [], 0
+    for i in items:
+        title = (i.get("title") or "").strip()
+        url = (i.get("url") or "").strip()
+        src = (i.get("source") or "").strip()
+        if (not title or not src or i.get("layer") not in LAYERS
+                or not (url.startswith("http://") or url.startswith("https://"))):
+            dropped.append(url or title or "?")
+            continue
+        d = _pdate(i.get("date", ""))
+        if d and d > today:                 # future date = feed anomaly → mark unknown, keep item
+            i["date"] = ""
+            fixed_dates += 1
+        clean.append(i)
+    total, ndrop = len(items), len(dropped)
+    print(f"  QA gate: {len(clean)} valid · {ndrop} dropped (unusable) · {fixed_dates} future dates blanked")
+    if ndrop:
+        print("    dropped:", dropped[:10], "…" if ndrop > 10 else "")
+    if not clean:
+        print("::error title=Empty build::0 valid items after QA — aborting so the previous site stays live")
+        sys.exit(1)
+    if total and ndrop / total > 0.25:
+        print(f"::error title=Data corruption::{ndrop}/{total} items ({ndrop/total:.0%}) failed QA — aborting")
+        sys.exit(1)
+    return clean
+
+
 # --------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
@@ -2889,6 +2923,7 @@ def main():
     uniq = {i["id"]: i for i in items}
     items = list(uniq.values())
     items = collapse_near_duplicates(items)
+    items = validate_or_abort(items)   # QA gate: drop unusable items; abort on systemic corruption
     items = tag_topics(items)   # attach Follow-topic slugs to each item
     # HEOR lens removed: it was LLM-generated, which conflicts with the site's
     # deterministic, no-model positioning. Cache retained only for the "seen" timestamp.
@@ -2925,6 +2960,20 @@ def main():
            analysis_extra=analysis_extra)
     write_rss(items)
     write_topic_feeds(items)
+
+    # output guard: the page and feed must be well-formed before this run is allowed to
+    # publish. A non-zero exit here makes CI skip the commit, so the previous site stays.
+    idx = DOCS / "index.html"
+    if not idx.exists() or idx.stat().st_size < 5000:
+        print("::error title=Bad output::index.html missing or too small — aborting publish")
+        sys.exit(1)
+    try:
+        import xml.dom.minidom as _md
+        _md.parseString((DOCS / "feed.xml").read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"::error title=Bad feed::feed.xml is not well-formed XML ({type(e).__name__}) — aborting publish")
+        sys.exit(1)
+
     print(f"\n✓ docs/index.html — {len(items)} items")
     if dead:
         print(f"! {len(dead)} feed(s) failed: {'; '.join(dead)}")

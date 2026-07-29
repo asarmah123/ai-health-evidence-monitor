@@ -25,6 +25,7 @@ jobs:
         env:
           COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN }}
           PRIVATE_REPO: ${{ secrets.PRIVATE_REPO }}
+          FAIL_ON_DEGRADE: "1"   # fail the run (skip publish) if >20% of steady feeds go silent
         run: python build.py
 
       - name: Commit the rebuilt page
