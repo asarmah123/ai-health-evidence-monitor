@@ -40,7 +40,8 @@ BROWSER_UA = dict(BOT_UA, **{
 UA = BOT_UA   # default headers for the JSON-API fetchers (PubMed, Federal Register, openFDA, ctgov)
 LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # Bump when classification/ranking rules change, so historical analytics stay reproducible.
-TAXONOMY_VERSION = "1.0"
+# 1.1: added Latin America region + European/LATAM HTA & regulator bodies (source expansion).
+TAXONOMY_VERSION = "1.1"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
                "heor": "#1f8a70", "access": "#b0842b", "industry": "#64748b"}
@@ -690,8 +691,11 @@ MACRO = {
     "South Korea": "Asia-Pacific", "India": "Asia-Pacific", "Singapore": "Asia-Pacific",
     "Thailand": "Asia-Pacific", "Canada": "North America",
     "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
+    "Belgium": "Europe", "Ireland": "Europe", "Poland": "Europe", "Spain": "Europe",
+    "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe",
     "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
     "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
+    "Brazil": "Latin America", "Mexico": "Latin America", "Argentina": "Latin America",
 }
 
 # body -> role. Regulators gate market authorisation; HTA/payers gate reimbursement;
@@ -707,6 +711,11 @@ BODY_ROLE = {
     "HITAP": "payer", "ACE": "payer", "CADTH": "payer", "MOHAP": "regulator",
     "ICER": "payer", "AIFA": "payer", "TLV": "payer", "Zorginstituut": "payer",
     "Swissmedic": "regulator", "Health Canada": "regulator", "NHSA": "payer",
+    # additional European HTA / payer bodies (per-body queries)
+    "KCE": "payer", "NCPE": "payer", "HIQA": "payer", "AOTMiT": "payer",
+    "RedETS": "payer", "Amgros": "payer", "NoMA": "payer", "Fimea": "regulator",
+    # Latin America — ANVISA/COFEPRIS/ANMAT authorise; CONITEC assesses/covers
+    "ANVISA": "regulator", "COFEPRIS": "regulator", "ANMAT": "regulator", "CONITEC": "payer",
     # professional societies & HTA networks (no binding decisions)
     "ISPOR": "professional", "HTAi": "professional", "INAHTA": "professional",
 }
@@ -716,14 +725,18 @@ BODY_ROLE = {
 SAFE_TEXT_BODIES = {"PMDA", "NMPA", "TGA", "MFDS", "HSA", "CDSCO", "SFDA", "SAHPRA",
                     "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWiG",
                     "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP",
-                    "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA", "NHSA"}
+                    "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA", "NHSA",
+                    "KCE", "NCPE", "HIQA", "AOTMiT", "RedETS", "Amgros", "NoMA", "Fimea",
+                    "ANVISA", "COFEPRIS", "ANMAT", "CONITEC"}
 
 # source-type: a cross-cutting lens for the Evidence filter — what KIND of source an
 # item is, independent of its lifecycle stage. Rule-based on source name / URL only.
 _ST_REGULATOR = ("FDA", "EMA", "MHRA", "Federal Register", "PMDA", "NMPA", "TGA", "MFDS",
-                 "SFDA", "Swissmedic", "Health Canada", "MOHAP", "HSA", "CDSCO", "SAHPRA")
+                 "SFDA", "Swissmedic", "Health Canada", "MOHAP", "HSA", "CDSCO", "SAHPRA",
+                 "ANVISA", "COFEPRIS", "ANMAT")
 _ST_PAYER = ("CMS", "NICE", "G-BA", "IQWiG", "HAS", "BfArM", "CADTH", "PBAC", "MSAC",
-             "HIRA", "NECA", "AIFA", "TLV", "Zorginstituut", "HITAP", "ACE", "ICER", "NHSA")
+             "HIRA", "NECA", "AIFA", "TLV", "Zorginstituut", "HITAP", "ACE", "ICER", "NHSA",
+             "KCE", "NCPE", "HIQA", "AOTMiT", "RedETS", "Amgros", "NoMA", "Fimea", "CONITEC")
 _ST_JOURNAL = ("PubMed", "NEJM", "Lancet", "Nature", "JAMIA", "JAMA", "BMJ",
                "Value in Health", "PharmacoEconomics", "Ground Truths")
 _ST_INDUSTRY = ("STAT", "Endpoints", "Fierce", "MedTech", "MassDevice", "MobiHealth")
@@ -775,10 +788,20 @@ def country_of(i):
         ("Italy", ["aifa", "italy"]),
         ("Sweden", ["tlv", "sweden", "tandvard"]),
         ("Netherlands", ["zorginstituut", "netherlands"]),
+        ("Belgium", ["kce", "belgium"]),
+        ("Ireland", ["ncpe", "hiqa", "ireland"]),
+        ("Poland", ["aotmit", "poland"]),
+        ("Spain", ["redets", "aemps", "spain"]),
+        ("Norway", ["legemiddelverket", "norway"]),
+        ("Finland", ["fimea", "finland"]),
+        ("Denmark", ["amgros", "denmark"]),
         ("Saudi Arabia", ["sfda", "saudi"]),
         ("South Africa", ["sahpra", "south africa"]),
         ("United Arab Emirates", ["uae", "united arab emirates", "mohap", "dubai health", "abu dhabi"]),
         ("Israel", ["israel", "israeli"]),
+        ("Brazil", ["anvisa", "conitec", "brazil", "brasil"]),
+        ("Mexico", ["cofepris", "mexico"]),
+        ("Argentina", ["anmat", "argentina"]),
         ("United Kingdom", ["nice ", " nhs", "mhra", "ukca", "early value assessment"]),
         ("European Union", ["ema ", "ce mark", "ce-mark", "eudamed", "european commission", "eu ai act", "joint clinical assessment"]),
     ]
