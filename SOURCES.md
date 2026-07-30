@@ -1,6 +1,6 @@
 # Sources
 
-Representative sources by layer. **This is not the full list** — the complete set of ~65 sources, the exact queries and the ranking configuration are maintained privately.
+Representative sources by layer. **This is not the full list** — the complete set of sources, the exact queries and the ranking configuration are maintained privately.
 
 | Layer | Sources |
 |---|---|

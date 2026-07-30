@@ -2425,7 +2425,7 @@ def write_export(items):
         "count": len(rows),
         "fields": cols,
         "notice": ("Deterministic, rule-classified aggregation of public sources. Every row "
-                   "links to its primary source; verify there before acting. Empty date = "
+                   "links to its source; verify there before acting. Empty date = "
                    "no usable date at source (never estimated)."),
         "items": rows,
     }
@@ -2600,10 +2600,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor</title>
-<meta name="description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from primary sources.">
+<meta name="description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from curated public sources.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
-<meta property="og:description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from primary sources.">
+<meta property="og:description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from curated public sources.">
 <meta property="og:url" content="https://asarmah123.github.io/ai-health-evidence-monitor/">
 <meta property="og:image" content="https://asarmah123.github.io/ai-health-evidence-monitor/preview.png">
 <meta property="og:image:width" content="1200">
@@ -2644,7 +2644,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div style="margin-top:6px"><span class="seeall" data-showall="1">View all {len(items)} updates →</span></div>
     <div class="dnote" style="margin-top:16px;font-size:12.5px">Download this build —
       <a href="data/feed-latest.csv" download>CSV</a> · <a href="data/feed-latest.json" download>JSON</a>.
-      {len(items)} rule-classified items; every row links to its primary source.</div>
+      {len(items)} rule-classified items; every row links to its source.</div>
   </div>
   <div id="feed-list" style="display:none">
     <div class="catback" data-back="1">← All categories</div>
@@ -2680,7 +2680,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 {build_health}
   <div class="sec">How the intelligence is built</div>
   <div class="pipeline">
-    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">Curated primary sources across regulators, HTA bodies, journals and trial registries — chosen for relevance, not volume.</div></div></div>
+    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">Curated primary sources — regulators, HTA bodies, journals and trial registries — supplemented by selected industry publications where primary feeds are unavailable. Chosen for relevance, not volume.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Merge exact duplicates by link, then collapse near-duplicate stories about the same event into one.</div></div></div>
     <div class="parrow">↓</div>
@@ -2691,7 +2691,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="pstep"><div class="pstep-n">5</div><div class="pstep-b"><div class="pstep-t">Publish</div><div class="pstep-d">Rebuilt automatically every morning as a static site.</div></div></div>
   </div>
   <div class="sec">What we monitor</div>
-  <div class="seccap">~65 curated sources across the evidence-to-adoption pathway. Representative examples by type — the full list and exact queries are maintained privately.</div>
+  <div class="seccap">Curated public sources spanning regulators, HTA bodies, payer organisations, trial registries, peer-reviewed journals and selected industry publications. Representative examples by type; the full list and exact queries are maintained privately.</div>
   <details class="faqi"><summary>Regulators &amp; device authorisations</summary>FDA (openFDA), EMA, MHRA, US Federal Register, PMDA, NMPA, Health Canada, Swissmedic, TGA, MFDS, SFDA</details>
   <details class="faqi"><summary>HTA &amp; payer bodies</summary>NICE, CMS, IQWiG, G-BA, HAS, CADTH, PBAC, MSAC, HIRA, AIFA, TLV, Zorginstituut, HITAP, ACE</details>
   <details class="faqi"><summary>Trials, evidence &amp; journals</summary>ClinicalTrials.gov, PubMed (E-utilities), NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Value in Health, PharmacoEconomics</details>
@@ -2702,19 +2702,19 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <li><b>No invented dates.</b> Dates are read from the source; when none exists the item reads “date unknown” and is excluded from date-based figures.</li>
     <li><b>No causal claims.</b> We report what changed and how unusual it is — never why, beyond what the counts support.</li>
     <li><b>Ranking is priority, not confidence.</b> Order follows explicit additive rules; every item shows its own “Why ranked” breakdown.</li>
-    <li><b>Verify the primary source.</b> An automated monitor can miss, misclassify or fail to date an item, and sources may change or retract. Nothing here is regulatory, legal, financial or medical advice.</li>
+    <li><b>Verify against the source.</b> An automated monitor can miss, misclassify or fail to date an item, and sources may change or retract. Nothing here is regulatory, legal, financial or medical advice.</li>
   </ul>
   <div class="sec">Privacy &amp; technical details</div>
-  <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from primary APIs and feeds and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available, and the current build can be downloaded as <a href="data/feed-latest.csv" download>CSV</a> or <a href="data/feed-latest.json" download>JSON</a>. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
+  <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from curated public APIs, feeds and official publications and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available, and the current build can be downloaded as <a href="data/feed-latest.csv" download>CSV</a> or <a href="data/feed-latest.json" download>JSON</a>. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
-    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption depends on clinical evidence, regulatory clearance and payment pathways. We therefore prioritise primary regulators, HTA agencies, trial registries, peer-reviewed literature and established trade press. Company press releases are excluded to keep the feed independent.</div></div>
+    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption depends on clinical evidence, regulatory clearance and payment pathways. We therefore prioritise primary sources — regulators, HTA agencies, trial registries and peer-reviewed literature — supplemented by established trade press where primary feeds are unavailable. Company press releases are excluded to keep the feed independent.</div></div>
     <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most updates are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
   <div class="sec">Frequently asked</div>
   <div class="faq">
     <details class="faqi"><summary>How often does it update?</summary>Once each morning, rebuilt automatically. Most updates are a day or two old; FDA device authorisations reflect the agency’s ~30-day publishing lag.</details>
-    <details class="faqi"><summary>Where do the items come from?</summary>~65 curated primary sources — regulator, HTA and payer feeds, trial registries, peer-reviewed journals and established trade press — via official APIs and RSS. The full list and exact queries are maintained privately.</details>
+    <details class="faqi"><summary>Where do the items come from?</summary>Curated public sources — regulator, HTA and payer feeds, trial registries and peer-reviewed journals (primary sources wherever available), supplemented by selected industry publications where no primary feed exists. Ingested via public APIs, feeds, official publications and, where needed, tightly scoped news queries. The full list and exact queries are maintained privately.</details>
     <details class="faqi"><summary>How is each item classified?</summary>By transparent, deterministic rules based on source, terminology and lifecycle signals — no machine-learning model decides an item’s stage, region or body. Every ranking exposes its own “Why ranked” breakdown.</details>
     <details class="faqi"><summary>Why does an item show “date unknown”?</summary>Dates are read from the source. When a source exposes no usable date, the item is shown as “date unknown” rather than guessed, and it is excluded from any date-based figure.</details>
     <details class="faqi"><summary>Does it use AI to write or interpret the feed?</summary>No. No language model writes summaries, scores impact, or interprets any item. Classification, ranking, dating and every count come from transparent rules with no model, so the same inputs reproduce the same output.</details>
@@ -2729,7 +2729,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="abt">It combines public signals from regulators, HTA bodies, payer organisations, trial registries, journals and industry sources into one daily briefing — framed around two adoption questions: <b>can it be sold?</b> (authorisation) and <b>will it be paid for?</b> (coverage).</div>
   <div class="abt scope">Scope: healthcare AI evidence, regulation, reimbursement and market signals — not a general AI news feed, investment advice or predictive analytics.</div>
   <div class="sec">Who it’s for</div>
-  <div class="abt">Built for market-access, HEOR, regulatory and clinical teams who need evidence, regulatory and payment signals in one place, with every item traceable to a primary source. Investors tracking healthcare AI adoption may also find it useful.</div>
+  <div class="abt">Built for market-access, HEOR, regulatory and clinical teams who need evidence, regulatory and payment signals in one place, with every item traceable to its source. Investors tracking healthcare AI adoption may also find it useful.</div>
   <div class="sec">How it stays credible</div>
   <div class="abt">Classification and ranking are deterministic and rule-based. Dates come from the source or are shown as “date unknown.” No causal or predictive claims are made. <span class="lnk" data-goto="sources">Full methodology →</span></div>
   <div class="sec">Contact &amp; source</div>

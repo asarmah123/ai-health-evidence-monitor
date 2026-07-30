@@ -4,7 +4,7 @@
 
 Daily intelligence on how AI technologies move through healthcare — from research and clinical validation to regulation, health technology assessment, reimbursement and adoption.
 
-`~65 curated sources` · `regulators & HTA bodies across 15+ markets` · `North America · Europe · APAC · MEA`
+`Curated public sources` · `regulators, HTA & payer bodies across 15+ markets` · `North America · Europe · APAC · MEA`
 
 It pulls public signals from regulators, journals, trial registries and industry press into one briefing that refreshes every morning — framed the way a market-access team thinks, around two questions: **can it be sold?** (authorisation) and **will it be paid for?** (coverage).
 
@@ -15,7 +15,7 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 ## Design principles
 
 - **No language model at runtime.** Classification, ranking and dating are deterministic and reproducible — the same inputs produce the same output.
-- **Primary sources first** — official regulator, HTA and registry APIs and feeds, not second-hand summaries.
+- **Primary sources first** — official regulator, HTA and registry APIs and feeds wherever available, supplemented by selected industry publications where no primary feed exists.
 - **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next.
 
 ---
@@ -71,7 +71,7 @@ Everything runs on a schedule and renders to a single static page, so there is n
 
 ## Data sources
 
-*Representative examples by layer — not the full list. The complete set of ~65 sources, exact queries and ranking configuration are maintained privately. A fuller inventory is in **[SOURCES.md](SOURCES.md)**.*
+*Representative examples by layer — not the full list. The complete set of sources, exact queries and ranking configuration are maintained privately. A fuller inventory is in **[SOURCES.md](SOURCES.md)**.*
 
 | Layer | Examples |
 |---|---|
