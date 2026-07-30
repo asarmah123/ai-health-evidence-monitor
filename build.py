@@ -562,6 +562,45 @@ def fetch_ctgov(sources, lookback):
     return items, dead
 
 
+# history.json sub-object -> column prefix, for the flat wide CSV
+_HIST_NESTED = {"layers": "stage", "regions": "region", "clinical": "clinical",
+                "topics": "topic", "bodies": "body", "terms": "term",
+                "qa": "qa", "health": "health"}
+
+
+def _history_wide_csv(hist):
+    """Flatten the history rows into a wide, Excel-ready CSV — one row per build, one column
+    per metric (stage.*, region.*, topic.*, term.*, qa.*, …). Stable column set across builds;
+    list values (e.g. silent sources) become ';'-joined. Leads with a BOM so Excel opens it
+    cleanly. Written to the private repo each build so verifying/analysing the series is just
+    'download one file, open in Excel' — no tooling, no token, no scripts."""
+    import csv, io
+    seen = {p: [] for p in _HIST_NESTED.values()}
+    for row in hist:
+        for src, pref in _HIST_NESTED.items():
+            d = row.get(src)
+            if isinstance(d, dict):
+                for k in d:
+                    key = f"{pref}.{k}"
+                    if key not in seen[pref]:
+                        seen[pref].append(key)
+    cols = ["date", "total"]
+    for pref in _HIST_NESTED.values():
+        cols += sorted(seen[pref])
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, fieldnames=cols, restval="")
+    w.writeheader()
+    for row in sorted(hist, key=lambda r: r.get("date", "")):
+        flat = {"date": row.get("date", ""), "total": row.get("total", "")}
+        for src, pref in _HIST_NESTED.items():
+            d = row.get(src)
+            if isinstance(d, dict):
+                for k, v in d.items():
+                    flat[f"{pref}.{k}"] = ";".join(map(str, v)) if isinstance(v, list) else v
+        w.writerow(flat)
+    return "﻿" + buf.getvalue()
+
+
 def log_history(items, terms, token=None, health=None, o=None):
     """One row per build: per-layer, per-region, per-clinical-area and per-topic counts,
     counts for each tracked term, the QA outcome, and a compact per-source health snapshot.
@@ -621,6 +660,14 @@ def log_history(items, terms, token=None, health=None, o=None):
     if not private_put("history.json", text_out, token, sha, f"history {today}"):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text_out)
+    # also write a flat, Excel-ready wide CSV of the whole series alongside history.json,
+    # so the owner can just download one file and open it in Excel to verify/analyse —
+    # no flattening script or token needed.
+    wide = _history_wide_csv(hist)
+    _, wsha = private_get("history-wide.csv", token)
+    if not private_put("history-wide.csv", wide, token, wsha, f"history-wide {today}"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        (path.parent / "history-wide.csv").write_text(wide, encoding="utf-8")
     return row, hist
 
 
