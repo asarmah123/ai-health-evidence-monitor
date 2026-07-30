@@ -10,6 +10,9 @@ lens_prompt.txt
 PRODUCT_ROADMAP.md
 ENGINEERING_NOTES.md
 TECHNICAL.md
+ANALYTICS_SPEC.md
+FILE_INVENTORY.md
+SOURCE_AUDIT.md
 # Owner-only utilities (historical export / verification) — not a public feature yet.
 private-tools/
 history-wide.csv
