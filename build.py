@@ -991,7 +991,7 @@ WHY_TEXT = {
     "Device authorisations": "Regulatory clearance is the first step toward deployment. "
                              "FDA publication may lag the decision date.",
     "Trials · economic endpoint": "An economic endpoint marks a trial designed to support the "
-                                  "reimbursement case, not just clinical approval.",
+                                  "reimbursement case, not just clinical validation.",
     "Regulatory actions": "A move by a major regulator or HTA body — the decisions that shape whether, "
                           "and how, an AI product reaches patients.",
 }
@@ -1278,7 +1278,7 @@ def overview_html(items, agg, o, history=None, take=""):
                              bodies.get("payer", []), "No HTA / payer activity today.", color="#1f8a70")
     clinfocus = bar_panel("Clinical areas", "",
                           o.get("focus", []), "No specialty clearly identified today.", color="#9c2c44")
-    pathway = bar_panel("Coverage pathways", "",
+    pathway = bar_panel("Coverage &amp; payment pathways", "",
                         o.get("pathways", []), "None mentioned today.", color="#b0842b")
 
     # compact coverage summary (full detail lives on the Coverage tab)
@@ -2380,7 +2380,7 @@ def write_rss(items):
     ranked = sorted(items, key=lambda i: -rank_score(i)[0])[:40]
     (DOCS / "feed.xml").write_text(
         _rss_xml("AI in Health — Evidence Monitor",
-                 "Daily market intelligence on how AI advances toward approval, reimbursement and adoption.",
+                 "Daily market intelligence on how AI advances toward authorisation, reimbursement and adoption.",
                  ranked), encoding="utf-8")
     (DOCS / "feed.xsl").write_text(FEED_XSL, encoding="utf-8")
 
@@ -2599,11 +2599,11 @@ def overtime_html(history):
         f'<div class="seccap">How the picture is changing across the last {len(rows)} daily builds. '
         'Descriptive trends only — this view gets richer as history accumulates.</div>'
         f'<div style="margin:6px 0 12px">{lgd}</div>'
-        '<div class="subh">Market activity <span class="subh-n">items per build, by stage</span></div>'
+        '<div class="subh">Daily evidence volume <span class="subh-n">items per build, by stage</span></div>'
         f'<div style="{ott}"><b>{latest}</b> items in the latest build{wk_txt}</div>'
         f'{_svg_stacked(rows, normalize=False)}'
         '<div class="subh" style="margin-top:16px">Evidence journey <span class="subh-n">stage mix over time</span></div>'
-        f'<div style="{ott}">Commercial stages (regulatory + coverage): <b>{cs_now:.0f}%</b> of the latest '
+        f'<div style="{ott}">Commercial pathway stages (authorisation + coverage): <b>{cs_now:.0f}%</b> of the latest '
         f'build vs {cs_ref:.0f}% {cs_ref_txt}</div>'
         f'{_svg_stacked(rows, normalize=True)}'
     )
@@ -2728,10 +2728,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor</title>
-<meta name="description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from curated public sources.">
+<meta name="description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory authorisation to reimbursement and market adoption. Built from curated public sources.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor">
-<meta property="og:description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory approval to reimbursement and market adoption. Built from curated public sources.">
+<meta property="og:description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory authorisation to reimbursement and market adoption. Built from curated public sources.">
 <meta property="og:url" content="https://asarmah123.github.io/ai-health-evidence-monitor/">
 <meta property="og:image" content="https://asarmah123.github.io/ai-health-evidence-monitor/preview.png">
 <meta property="og:image:width" content="1200">

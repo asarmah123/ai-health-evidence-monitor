@@ -245,7 +245,7 @@ def test_overtime_section():
              "layers": {"research": 1, "clinical": 1, "regulation": 1, "heor": 1, "access": 1, "industry": 1}}
             for d in range(1, 7)]
     out = build.overtime_html(many)
-    assert "Market activity" in out and "Evidence journey" in out
+    assert "Daily evidence volume" in out and "Evidence journey" in out
     assert out.count("<svg") == 2
     assert "<script" not in out
     for hexcol in build.STAGE_COLOR.values():
