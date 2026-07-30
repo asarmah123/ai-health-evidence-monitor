@@ -2513,6 +2513,97 @@ h1{font-size:24px;margin:0 0 6px}
 '''
 
 
+# ---------------------------------------------------------- Over-time analytics (Phase 2)
+# Deterministic, static inline-SVG charts from the accrued history. No JS, no CDN — same
+# no-dependency, reproducible ethos as the rest of the engine. Descriptive only.
+_STAGE_JLABEL = {"research": "Research", "clinical": "Clinical", "regulation": "Regulatory",
+                 "heor": "HEOR", "access": "Coverage", "industry": "Market"}
+
+
+def _svg_stacked(rows, normalize=False, height=180):
+    """One bar per build, segmented by the six stages (colours from STAGE_COLOR).
+    normalize=True renders a 100% mix. Pure function of `rows`; segments carry <title>
+    tooltips (no script). Stage counts partition the build total, so the bars reconcile."""
+    keys = LAYERS
+    W, H = 720, height
+    x0, x1, yt, yb = 44, 712, 12, height - 24
+    n = len(rows)
+    cw = (x1 - x0) / max(n, 1)
+    bw = min(cw * 0.72, 34)
+    totals = [sum(int(r.get("layers", {}).get(k, 0)) for k in keys) for r in rows]
+    maxtot = max(totals) or 1
+    parts = [f'<line x1="{x0}" y1="{yb}" x2="{x1}" y2="{yb}" stroke="#e6e4df"/>']
+    if not normalize:
+        parts.append(f'<text x="{x0-6}" y="{yt+8}" text-anchor="end" font-size="9" fill="#8a8a86">{maxtot}</text>')
+        parts.append(f'<text x="{x0-6}" y="{yb}" text-anchor="end" font-size="9" fill="#8a8a86">0</text>')
+    for idx, r in enumerate(rows):
+        tot = totals[idx]
+        x = x0 + idx * cw + (cw - bw) / 2
+        scale = (yb - yt) / (1.0 if normalize else maxtot)
+        acc = 0.0
+        for k in keys:
+            v = int(r.get("layers", {}).get(k, 0))
+            share = (v / tot) if (normalize and tot) else v
+            h = share * scale
+            if h > 0.4:
+                parts.append(
+                    f'<rect x="{x:.1f}" y="{yb-acc-h:.1f}" width="{bw:.1f}" height="{h:.1f}" '
+                    f'fill="{STAGE_COLOR[k]}" rx="0.5"><title>{html.escape(str(r.get("date","")))} · '
+                    f'{_STAGE_JLABEL[k]}: {v}</title></rect>')
+            acc += h
+    if rows:
+        parts.append(f'<text x="{x0}" y="{H-6}" font-size="9" fill="#8a8a86">{html.escape(str(rows[0].get("date","")))}</text>')
+        parts.append(f'<text x="{x1}" y="{H-6}" text-anchor="end" font-size="9" fill="#8a8a86">{html.escape(str(rows[-1].get("date","")))}</text>')
+    return f'<svg viewBox="0 0 {W} {H}" width="100%" role="img" style="max-width:720px;height:auto">{"".join(parts)}</svg>'
+
+
+def overtime_html(history):
+    """Free 'Over time' section for the Analysis tab — Market activity + Evidence journey,
+    from the accrued history. Guarded until enough daily builds exist; descriptive only."""
+    hist = [h for h in (history or []) if isinstance(h.get("layers"), dict)]
+    MIN_BUILDS = 4
+    if len(hist) < MIN_BUILDS:
+        return ('<div class="sec">Over time</div>'
+                f'<div class="dnote">Historical trends unlock as daily builds accumulate — '
+                f'{len(hist)} on record so far. This view fills in automatically over the coming days.</div>')
+    rows = hist[-30:]
+
+    def _tot(r):
+        return r.get("total") or sum(int(v) for v in r["layers"].values())
+
+    latest = _tot(rows[-1])
+    wk_txt = ""
+    if len(hist) >= 8:
+        pv = _tot(hist[-8])
+        if pv:
+            d = (latest - pv) / pv * 100
+            wk_txt = f' · {"+" if d >= 0 else ""}{d:.0f}% vs ~7 builds ago'
+
+    def _comm(r):
+        t = _tot(r)
+        return ((r["layers"].get("regulation", 0) + r["layers"].get("access", 0)) / t * 100) if t else 0
+    cs_now, cs_then = _comm(rows[-1]), _comm(rows[0])
+
+    lgd = "".join(
+        f'<span style="display:inline-flex;align-items:center;gap:4px;margin:0 12px 4px 0;font-size:11px;color:#565656">'
+        f'<i style="width:10px;height:10px;border-radius:2px;background:{STAGE_COLOR[k]};display:inline-block"></i>'
+        f'{_STAGE_JLABEL[k]}</span>' for k in LAYERS)
+    ott = 'font-size:12.5px;color:#4a4a4a;margin:2px 0 8px'
+    return (
+        '<div class="sec">Over time</div>'
+        f'<div class="seccap">How the picture is changing across the last {len(rows)} daily builds. '
+        'Descriptive trends only — this view gets richer as history accumulates.</div>'
+        f'<div style="margin:6px 0 12px">{lgd}</div>'
+        '<div class="subh">Market activity <span class="subh-n">items per build, by stage</span></div>'
+        f'<div style="{ott}"><b>{latest}</b> items in the latest build{wk_txt}</div>'
+        f'{_svg_stacked(rows, normalize=False)}'
+        '<div class="subh" style="margin-top:16px">Evidence journey <span class="subh-n">stage mix over time</span></div>'
+        f'<div style="{ott}">Commercial stages (regulatory + coverage): <b>{cs_now:.0f}%</b> of the latest '
+        f'build vs {cs_then:.0f}% at the start of this window</div>'
+        f'{_svg_stacked(rows, normalize=True)}'
+    )
+
+
 def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", health=None, o=None, history=None, show_coverage=True, analysis_extra=""):
     order = {t: n for n, t in enumerate(TIERS)}
     # dated items first (newest first); undated ("") sort naturally to the bottom
@@ -2521,6 +2612,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 
     counts = {k: sum(1 for i in items if i["layer"] == k) for k in LAYERS}
     prior_h = (history or [])[:-1]
+    _overtime = overtime_html(history)   # Phase-2 'Over time' analytics section (Analysis tab)
     def cat_delta(k):
         base = [h["layers"][k] for h in prior_h[-7:] if isinstance(h.get("layers"), dict) and k in h["layers"]]
         if len(base) < 2:
@@ -2704,6 +2796,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="dnote" style="margin-bottom:14px">Activity and trends across this build. Shows where attention is moving, not the whole market.</div>
   {first_build_note}
   {analysis_extra}
+  {_overtime}
   {trend_html}
 </div>
 

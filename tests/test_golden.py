@@ -230,6 +230,29 @@ def test_geo_and_body_classification():
     assert all(name != "NoMA" for role in bc.values() for name, _ in role)
 
 
+def test_overtime_section():
+    """Phase-2 Over-time analytics: guarded below the minimum build count; above it,
+    renders both charts (Market activity + Evidence journey) with all six stage colours
+    and a reconciled commercial-stage share. Deterministic, no <script>."""
+    few = [{"date": f"2026-07-0{i}", "total": 3,
+            "layers": {"research": 1, "clinical": 1, "regulation": 1, "heor": 0, "access": 0, "industry": 0}}
+           for i in range(1, 3)]
+    out_few = build.overtime_html(few)
+    assert "Over time" in out_few and "unlock" in out_few.lower()
+    assert "<svg" not in out_few          # no chart rendered below the guard
+
+    many = [{"date": f"2026-07-{d:02d}", "total": 6,
+             "layers": {"research": 1, "clinical": 1, "regulation": 1, "heor": 1, "access": 1, "industry": 1}}
+            for d in range(1, 7)]
+    out = build.overtime_html(many)
+    assert "Market activity" in out and "Evidence journey" in out
+    assert out.count("<svg") == 2
+    assert "<script" not in out
+    for hexcol in build.STAGE_COLOR.values():
+        assert hexcol in out, f"missing stage colour {hexcol}"
+    assert "33%" in out                    # commercial share = (regulation+access)/total = 2/6
+
+
 def test_history_row_shape():
     """The daily history row carries every Phase-2 dimension, matching the site numbers."""
     build.private_put = lambda *a, **k: True   # no local/remote write during tests
