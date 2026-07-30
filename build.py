@@ -2582,7 +2582,12 @@ def overtime_html(history):
     def _comm(r):
         t = _tot(r)
         return ((r["layers"].get("regulation", 0) + r["layers"].get("access", 0)) / t * 100) if t else 0
-    cs_now, cs_then = _comm(rows[-1]), _comm(rows[0])
+    cs_now = _comm(rows[-1])
+    # compare to ~7 builds ago (not the window start, which can be an incomplete early row)
+    if len(hist) >= 8:
+        cs_ref, cs_ref_txt = _comm(hist[-8]), "~7 builds ago"
+    else:
+        cs_ref, cs_ref_txt = _comm(rows[0]), "at the start of this window"
 
     lgd = "".join(
         f'<span style="display:inline-flex;align-items:center;gap:4px;margin:0 12px 4px 0;font-size:11px;color:#565656">'
@@ -2599,7 +2604,7 @@ def overtime_html(history):
         f'{_svg_stacked(rows, normalize=False)}'
         '<div class="subh" style="margin-top:16px">Evidence journey <span class="subh-n">stage mix over time</span></div>'
         f'<div style="{ott}">Commercial stages (regulatory + coverage): <b>{cs_now:.0f}%</b> of the latest '
-        f'build vs {cs_then:.0f}% at the start of this window</div>'
+        f'build vs {cs_ref:.0f}% {cs_ref_txt}</div>'
         f'{_svg_stacked(rows, normalize=True)}'
     )
 
