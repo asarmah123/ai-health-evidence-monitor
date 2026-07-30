@@ -27,9 +27,11 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 - **Spot what's unusual** — stage activity and term mentions compared against their own recent baseline (attention, not importance).
 - **Track the two gates** — *can it be sold?* (authorisation) vs *will it be paid?* (coverage).
 - **Read leading indicators** — trials registering an economic endpoint, peer-reviewed value papers.
-- **Compare activity across regions and countries** — regulators and HTA bodies across 15+ markets.
+- **Compare activity across regions and countries** — regulators, HTA and payer bodies across 15+ markets.
 - **Explore and filter** — search and filter the feed by stage, region, source type and date.
-- **Subscribe via RSS** — the top-ranked items as a standard feed.
+- **Follow topics** — subscribe to curated evidence streams (FDA authorisations, CMS coverage, NICE evaluations, oncology AI, digital therapeutics…) via a shareable link and a per-topic RSS feed.
+- **Subscribe via RSS** — the top-ranked items as a standard feed, plus a feed per Follow topic.
+- **Download the data** — each build exported as CSV and JSON.
 - **Private by design** — a static site with no server, no tracking and no cookies.
 
 ---
@@ -42,7 +44,7 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 - **Methodology** — pipeline, sources, limitations, privacy and FAQ.
 - **About** — purpose, audience and credibility principles.
 
-An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site.
+An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site, together with a feed per Follow topic and a CSV/JSON export of each build.
 
 ---
 
@@ -101,7 +103,7 @@ Full definitions are in **[TAXONOMY.md](TAXONOMY.md)**. A separate clearance-to-
 - Python ingestion pipeline
 - GitHub Actions scheduled builds
 - Static HTML / CSS / JavaScript frontend
-- RSS feed generation
+- RSS feed generation (main + per-topic) and CSV/JSON export
 - GitHub Pages hosting
 
 ---

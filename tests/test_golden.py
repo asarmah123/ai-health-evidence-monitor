@@ -185,6 +185,34 @@ def test_export_schema():
         build.DOCS = orig_docs
 
 
+def test_geo_and_body_classification():
+    """Freeze the geo + body rules added with the source expansion (taxonomy 1.1):
+    LATAM resolves to Latin America, new European bodies map correctly, and the NoMA
+    word-boundary guard doesn't misfire on oncology terms like 'melanoma'."""
+    cases = [
+        # source, layer, title, expected country, expected region, expected source_type
+        ("LATAM — device authorisation (ANVISA / COFEPRIS)", "regulation",
+         "ANVISA approves AI ECG device in Brazil", "Brazil", "Latin America", "Regulator"),
+        ("LATAM — HTA & coverage (CONITEC)", "access",
+         "CONITEC recommends coverage of AI screening", "Brazil", "Latin America", "HTA / payer"),
+        ("LATAM — device authorisation (ANVISA / COFEPRIS)", "regulation",
+         "COFEPRIS authorises AI software in Mexico", "Mexico", "Latin America", "Regulator"),
+        ("Netherlands — Zorginstituut", "access",
+         "Zorginstituut assesses AI diagnostic", "Netherlands", "Europe", "HTA / payer"),
+    ]
+    for src, layer, title, country, region, stype in cases:
+        i = {"source": src, "layer": layer, "title": title, "summary": "", "url": "https://news.google.com/x"}
+        assert build.country_of(i) == country, f"{title}: country {build.country_of(i)} != {country}"
+        assert build.MACRO.get(country) == region, f"{country} region != {region}"
+        assert build.source_type(i) == stype, f"{title}: source_type {build.source_type(i)} != {stype}"
+    # NoMA (Norway) must not be tagged from oncology text
+    mel = {"source": "AI/ML intervention trials", "layer": "clinical",
+           "title": "AI for melanoma detection", "summary": "oncology", "url": "https://clinicaltrials.gov/x"}
+    assert build.country_of(mel) is None
+    bc = build._body_role_counts([mel])
+    assert all(name != "NoMA" for role in bc.values() for name, _ in role)
+
+
 def test_history_row_shape():
     """The daily history row carries every Phase-2 dimension, matching the site numbers."""
     build.private_put = lambda *a, **k: True   # no local/remote write during tests
