@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-07-30T16:27:13Z",
+ "generated_at": "2026-07-30T16:53:56Z",
  "taxonomy_version": "1.2",
- "count": 224,
+ "count": 214,
  "fields": [
   "id",
   "title",
@@ -1279,6 +1279,19 @@
    "topics": "ai-clinical-studies"
   },
   {
+   "id": "8538dcca1adf",
+   "title": "Predictors of atrial fibrillation recurrence after catheter ablation: a systematic review.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42530789/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 4,
+   "topics": "hta-value-evidence"
+  },
+  {
    "id": "da2fbab581ec",
    "title": "Association Between Clinical Outcome Measures and Sonomyography-Derived Metrics in Individuals with Spinal Cord Injury",
    "url": "https://www.medrxiv.org/content/10.64898/2026.07.27.26358334v1?rss=1",
@@ -1433,19 +1446,6 @@
    "date": "2026-07-29",
    "score": 4,
    "topics": "regulatory-activity"
-  },
-  {
-   "id": "5431f8deb851",
-   "title": "Insights Into Policies, Stakeholders, and Governance of Breast Pump Provision in Germany.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42522882/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 4,
-   "topics": "hta-value-evidence"
   },
   {
    "id": "ba48d353af0a",
@@ -1680,32 +1680,6 @@
    "date": "2026-07-27",
    "score": 2,
    "topics": "ai-clinical-studies;digital-therapeutics"
-  },
-  {
-   "id": "f627e82e8339",
-   "title": "Artificial Intelligence and the Financialization of Medical Knowledge.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42507464/",
-   "source": "JAMA Network — AI in medicine",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-27",
-   "score": 1,
-   "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "cd52b9113469",
-   "title": "The iPatient Meets the iDoctor.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42507375/",
-   "source": "JAMA Network — AI in medicine",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-27",
-   "score": 1,
-   "topics": "ai-clinical-studies"
   },
   {
    "id": "5730c48f567b",
@@ -1955,71 +1929,6 @@
    "topics": "ai-clinical-studies;digital-therapeutics"
   },
   {
-   "id": "72ba0786ba30",
-   "title": "How Generative AI Should Transform Clinical Decision Support.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42490104/",
-   "source": "JAMA Network — AI in medicine",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 1,
-   "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "2e65ca75d45a",
-   "title": "Insurance Coverage and Health Care Affordability Among Adults in New York City: A Cross-Sectional Analysis, January 2022.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42492043/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 3,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "2bd243478415",
-   "title": "Digital phenotyping of CGM engagement reveals distinct glycemic outcomes.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42490562/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 3,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "066f532178b7",
-   "title": "Beyond Coverage Expansion: Exploring Persistent Barriers to CGM Utilization in the Clinical Environment.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42489809/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 3,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "b7b3805b26fb",
-   "title": "Perspectives on digital recovery platforms in perioperative care: insights from patients and clinicians.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42489026/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 3,
-   "topics": "hta-value-evidence"
-  },
-  {
    "id": "d39a1ef9680f",
    "title": "Open models recap: more on Kimi K3, Qwen 3.8, Xi's WAIC speech, distillation, the open-closed gap, and what's next",
    "url": "https://www.interconnects.ai/p/open-models-recap-more-on-kimi-k3",
@@ -2086,7 +1995,7 @@
   },
   {
    "id": "e7413b4cb031",
-   "title": "Aurobindo Pharma's CuraTeQ Biologics receives ANVISA nod for Hyderabad biosimilars facility",
+   "title": "Aurobindo Pharma's CuraTeQ Biologics receives ANVISA nod for Hyderabad biosimilars facility - business-standard.com",
    "url": "https://news.google.com/rss/articles/CBMigwJBVV95cUxQbEtqaGVsMmVFVy1qbUIxSllTSVI1NF9OUkpXWTh5V0dUMjVfbjgxdDd3YV90a2RFRVRWNWpZZF8zdzNITzdxYjNmTzk2MzlGajhHakN0NVlRQ1JudnhFRkdUZ1JITG1LNl9hOG5HZ2N6X2RtN3FXbVBHcWdrQ3JZQ20tdUJsdzlwTk95OGVHSGhNUm5obTFoYTlneE84TzNMcjcyNEUxNmN3M3pBNV90am1IWUlHTV94VDhXb2UyVm42ZVdUSkcySXNkQV82SVFObUdac2xfQjk4TG1UNjZaamZDUHJNR1ZHUzR5aFZJX1BqY2pnazFQWnpHa0llczQ4VXpJ0gGIAkFVX3lxTE1nTzdrQkhKZ3czd3dtSHM1dV8xSE5KczFTb0h4NXAtdjNtc1hHRDlPQklaUVNmelp4NFBxb0oyZ3Q0S19zRmE1dDY4ZlNHTWtfY2IzS1p3bFVIWUpSajlXQlFwTUNqMVYzWmF6TEtxdFRLY0NaVGlLaWU5MXA1emdxck5NRDNrRnRBQUUtUXJXNG5GRVRNZWw4VXA3dHJJOVFwOEczcmg1R3M3anU4Q1RNUUE2ejlJWWdfeXZldVlheWhfbEh0ZnlfS3d1VEVEUFlIcUtaQ2pIaUZQZ2V3eWVsaGoxOEVmbDQyaGIyRDZFWjlHQVNUcmEyRG9jTmMyR1lXeTBoX2pWYw?oc=5",
    "source": "LATAM — device authorisation (ANVISA / COFEPRIS)",
    "source_type": "Regulator",
@@ -2111,48 +2020,9 @@
    "topics": "hta-value-evidence;mental-health-ai"
   },
   {
-   "id": "63add38ce806",
-   "title": "Rethinking Sterile Packaging Practices for Reusable Medical Equipment.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42486277/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-22",
-   "score": 2,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "b8acbcd5f5d3",
-   "title": "A systematic review of economic evidence of artificial intelligence in healthcare.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42501469/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-21",
-   "score": 2,
-   "topics": "hta-value-evidence"
-  },
-  {
    "id": "10f44909d644",
    "title": "Artificial Intelligence-Supported Virtual Nursing at Home: A Systematic Review.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42528052/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-21",
-   "score": 2,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "4d340620db48",
-   "title": "Integration of routine health information, population surveys and environmental data for predictive modelling of non-communicable diseases in Africa: a systematic review protocol.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42516715/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
    "stage": "heor",
@@ -2174,32 +2044,6 @@
    "date": "2026-07-20",
    "score": 0,
    "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "1eac3d2acbd3",
-   "title": "Applying a convergence methodology in multi-country, multi-stakeholder workshops to co-develop national digital health blueprints: Case studies from Maldives, Nepal, and Timor-Leste.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42483564/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-20",
-   "score": 2,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "87758a8e3223",
-   "title": "HPV vaccination in the WHO South-East Asia Region: A scoping review of uptake, implementation challenges, and pathways to acceleration.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42518306/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "",
-   "score": 2,
-   "topics": "hta-value-evidence"
   },
   {
    "id": "c34f5bdb34e6",
@@ -2343,6 +2187,19 @@
    "date": "2026-07-28",
    "score": 2,
    "topics": "ai-clinical-studies;mental-health-ai"
+  },
+  {
+   "id": "325ac9021056",
+   "title": "Maternal 6-valent group B Streptococcus vaccine in non-pregnant and pregnant females: a randomized phase 1/2 trial",
+   "url": "https://www.nature.com/articles/s41591-026-04558-5",
+   "source": "Nature Medicine",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-28",
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "1f4de50663b7",
@@ -2629,6 +2486,19 @@
    "date": "2026-07-22",
    "score": 0,
    "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "24c9a669f928",
+   "title": "Effectiveness of app-based interventions for glucose management, cardiometabolic and mental health, and related risk factors: an umbrella review with meta-analysis.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42481261/",
+   "source": "Lancet Digital Health",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-21",
+   "score": 0,
+   "topics": "ai-clinical-studies;cardiology-ai;mental-health-ai"
   },
   {
    "id": "2250fa1068eb",
