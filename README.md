@@ -4,7 +4,7 @@
 
 Daily intelligence on how AI technologies move through healthcare — from research and clinical validation to regulation, health technology assessment, reimbursement and adoption.
 
-`Curated public sources` · `regulators, HTA & payer bodies across 15+ markets` · `North America · Europe · APAC · MEA`
+`Curated public sources` · `regulators, HTA & payer bodies across 20+ markets` · `North America · Europe · APAC · LATAM · MEA`
 
 It pulls public signals from regulators, journals, trial registries and industry press into one briefing that refreshes every morning — framed the way a market-access team thinks, around two questions: **can it be sold?** (authorisation) and **will it be paid for?** (coverage).
 
@@ -80,8 +80,8 @@ Everything runs on a schedule and renders to a single static page, so there is n
 | **Research** | arXiv (cs.AI / cs.LG / cs.CL) |
 | **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine |
 | **HEOR & HTA** | ICER, HTAi, ISPOR, PubMed AI × HTA searches |
-| **Regulation** | FDA, EMA, MHRA, PMDA (openFDA, US Federal Register) |
-| **Reimbursement** | CMS, NICE, DiGA, G-BA/IQWiG, CADTH, PBAC |
+| **Regulation** | FDA, EMA, MHRA, PMDA, ANVISA (openFDA, US Federal Register) |
+| **Reimbursement** | CMS, NICE, DiGA, G-BA/IQWiG, CADTH, PBAC, CONITEC |
 | **Industry** | STAT, Endpoints, Fierce, MedTech Dive |
 
 ---

@@ -185,6 +185,23 @@ def test_export_schema():
         build.DOCS = orig_docs
 
 
+def test_term_counting_word_boundary():
+    """Trend terms count with a leading word boundary (taxonomy 1.2): 'agent' counts
+    agent/agents/agentic but NOT 'reagent'; embedded substrings don't inflate the count."""
+    build.private_put = lambda *a, **k: True
+    items = [
+        {"id": "t1", "source": "arXiv", "layer": "research", "url": "https://arxiv.org/abs/1",
+         "title": "An agentic AI agent coordinates multiple agents", "summary": ""},
+        {"id": "t2", "source": "PubMed — AI × HTA/HEOR", "layer": "clinical", "url": "https://pubmed.ncbi.nlm.nih.gov/2/",
+         "title": "Diagnostic reagent assay", "summary": "reagents prepared"},
+    ]
+    build.validate_or_abort(items)
+    row, _ = build.log_history(items, ["agent", "bias"], token=None,
+                              health={"contributing": 2, "expected": 2, "zero_steady": [], "failed": [], "undated": 0})
+    assert row["terms"]["agent"] == 3, f"agent counted {row['terms']['agent']} (want 3: agentic/agent/agents, not reagent)"
+    assert row["terms"]["bias"] == 0, f"bias counted {row['terms']['bias']} (no 'bias' word present)"
+
+
 def test_geo_and_body_classification():
     """Freeze the geo + body rules added with the source expansion (taxonomy 1.1):
     LATAM resolves to Latin America, new European bodies map correctly, and the NoMA

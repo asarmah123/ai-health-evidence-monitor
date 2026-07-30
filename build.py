@@ -41,7 +41,9 @@ UA = BOT_UA   # default headers for the JSON-API fetchers (PubMed, Federal Regis
 LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # Bump when classification/ranking rules change, so historical analytics stay reproducible.
 # 1.1: added Latin America region + European/LATAM HTA & regulator bodies (source expansion).
-TAXONOMY_VERSION = "1.1"
+# 1.2: trend terms counted with a leading word boundary (\bterm) — excludes embedded
+#      substrings like "reagent" for "agent"; one-time discontinuity in term history.
+TAXONOMY_VERSION = "1.2"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
                "heor": "#1f8a70", "access": "#b0842b", "industry": "#64748b"}
@@ -629,7 +631,10 @@ def log_history(items, terms, token=None, health=None, o=None):
         "date": today,
         "total": len(items),
         "layers": {l: sum(1 for i in items if i["layer"] == l) for l in LAYERS},
-        "terms": {t: blob.count(t.lower()) for t in terms},
+        # Leading word boundary (\bterm): counts the term and its natural suffixes
+        # (agent→agents/agentic) but NOT embedded substrings (reagent), so ambiguous short
+        # terms aren't inflated. Changed in taxonomy 1.2 — a one-time step in term history.
+        "terms": {t: len(re.findall(r"\b" + re.escape(t.lower()), blob)) for t in terms},
         # per-body counts (regulators + payers) so "above/below its recent norm" becomes
         # computable as history accrues — the honest, baseline-backed "what's unusual"
         "bodies": {name: cnt for role in ("regulator", "payer")
@@ -726,8 +731,11 @@ SAFE_TEXT_BODIES = {"PMDA", "NMPA", "TGA", "MFDS", "HSA", "CDSCO", "SFDA", "SAHP
                     "PBAC", "MSAC", "HIRA", "NECA", "Chuikyo", "MHRA", "BfArM", "IQWiG",
                     "G-BA", "ISPOR", "HTAi", "HITAP", "CADTH", "MOHAP",
                     "ICER", "AIFA", "TLV", "Zorginstituut", "Swissmedic", "Health Canada", "INAHTA", "NHSA",
-                    "KCE", "NCPE", "HIQA", "AOTMiT", "RedETS", "Amgros", "NoMA", "Fimea",
+                    "KCE", "NCPE", "HIQA", "AOTMiT", "RedETS", "Amgros", "Fimea",
                     "ANVISA", "COFEPRIS", "ANMAT", "CONITEC"}
+                    # NoMA (Norway) deliberately NOT free-text matched: "noma" is also a
+                    # disease word (and other acronyms), so it would false-positive. It stays
+                    # in BODY_ROLE and would match only via a dedicated source name.
 
 # source-type: a cross-cutting lens for the Evidence filter — what KIND of source an
 # item is, independent of its lifecycle stage. Rule-based on source name / URL only.
@@ -2601,7 +2609,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["stype"] = source_type(i)
 
     # Evidence-tab filter options, from what's actually in this build
-    _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Middle East & Africa"]
+    _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]
     _regs = [r for r in _REG_ORDER if any(i.get("region") == r for i in items)]
     _ST_ORDER = ["Regulator", "HTA / payer", "Trial registry", "Journal / evidence",
                  "Preprint / research", "Industry press", "Other"]
@@ -2715,8 +2723,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   </div>
   <div class="sec">What we monitor</div>
   <div class="seccap">Curated public sources spanning regulators, HTA bodies, payer organisations, trial registries, peer-reviewed journals and selected industry publications. Representative examples by type; the full list and exact queries are maintained privately.</div>
-  <details class="faqi"><summary>Regulators &amp; device authorisations</summary>FDA (openFDA), EMA, MHRA, US Federal Register, PMDA, NMPA, Health Canada, Swissmedic, TGA, MFDS, SFDA</details>
-  <details class="faqi"><summary>HTA &amp; payer bodies</summary>NICE, CMS, IQWiG, G-BA, HAS, CADTH, PBAC, MSAC, HIRA, AIFA, TLV, Zorginstituut, HITAP, ACE</details>
+  <details class="faqi"><summary>Regulators &amp; device authorisations</summary>FDA (openFDA), EMA, MHRA, US Federal Register, PMDA, NMPA, Health Canada, Swissmedic, TGA, MFDS, SFDA, ANVISA, COFEPRIS</details>
+  <details class="faqi"><summary>HTA &amp; payer bodies</summary>NICE, CMS, IQWiG, G-BA, HAS, CADTH, PBAC, MSAC, HIRA, AIFA, TLV, Zorginstituut, HITAP, ACE, CONITEC</details>
   <details class="faqi"><summary>Trials, evidence &amp; journals</summary>ClinicalTrials.gov, PubMed (E-utilities), NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Value in Health, PharmacoEconomics</details>
   <details class="faqi"><summary>Research &amp; industry</summary>arXiv (cs.AI / cs.LG / cs.CL), lab &amp; standards blogs; STAT, Endpoints, Fierce, MedTech Dive, MassDevice</details>
   <div class="sec" id="trust">Trust &amp; limitations</div>
