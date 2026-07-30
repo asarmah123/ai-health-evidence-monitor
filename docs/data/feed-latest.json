@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-07-30T15:15:54Z",
- "taxonomy_version": "1.1",
- "count": 226,
+ "generated_at": "2026-07-30T15:37:35Z",
+ "taxonomy_version": "1.2",
+ "count": 228,
  "fields": [
   "id",
   "title",
@@ -57,6 +57,45 @@
    "topics": ""
   },
   {
+   "id": "dfce41ec8c97",
+   "title": "UCB stock slides despite Bimzelx revenue beating forecasts",
+   "url": "https://endpoints.news/ucb-stock-slides-despite-bimzelx-revenue-beating-forecasts/",
+   "source": "Endpoints News",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
+  },
+  {
+   "id": "5fa337d07f2e",
+   "title": "Garijo's plan to revamp Sanofi: an R&D cleanup, more M&A and a China push",
+   "url": "https://endpoints.news/garijos-plan-to-revamp-sanofi-an-rd-cleanup-more-ma-and-a-china-push/",
+   "source": "Endpoints News",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "Asia-Pacific",
+   "country": "China",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
+  },
+  {
+   "id": "a652a6db288c",
+   "title": "Pfizer's Phase 3 win for Litfulo; Braveheart, Attovia eye IPOs of $275M, $182M",
+   "url": "https://endpoints.news/pfizers-phase-3-win-for-litfulo-braveheart-attovia-eye-ipos-of-275m-182m/",
+   "source": "Endpoints News",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": "cardiology-ai"
+  },
+  {
    "id": "093eb3e00351",
    "title": "AtaiBeckley attracted co-development and royalty offers before $2.8B Lilly deal",
    "url": "https://endpoints.news/ataibeckley-attracted-co-development-and-royalty-offers-before-2-8b-lilly-deal/",
@@ -86,45 +125,6 @@
    "id": "baa147709e60",
    "title": "Betting big on alternative health plans",
    "url": "https://endpoints.news/betting-big-on-alternative-health-plans/",
-   "source": "Endpoints News",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "2026-07-30",
-   "score": 3,
-   "topics": ""
-  },
-  {
-   "id": "7474ea589f06",
-   "title": "Ipsen has 'firepower' for more deals with €2B war chest",
-   "url": "https://endpoints.news/ipsen-has-firepower-for-more-deals-with-e2b-war-chest/",
-   "source": "Endpoints News",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "2026-07-30",
-   "score": 3,
-   "topics": ""
-  },
-  {
-   "id": "27fe35572a8d",
-   "title": "Gerresheimer divests two businesses worth €1.5B; Resilience, Lilly boost injectable pen capacity",
-   "url": "https://endpoints.news/gerresheimer-divests-two-businesses-worth-e1-5b-resilience-lilly-boost-injectable-pen-capacity/",
-   "source": "Endpoints News",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "2026-07-30",
-   "score": 3,
-   "topics": ""
-  },
-  {
-   "id": "7574db88145e",
-   "title": "Alnylam cuts Amvuttra sales guidance as demand shifts, hurting stock",
-   "url": "https://endpoints.news/alnylam-cuts-amvuttra-sales-guidance-as-demand-shifts-hurting-stock/",
    "source": "Endpoints News",
    "source_type": "Industry press",
    "stage": "industry",
@@ -850,6 +850,19 @@
    "topics": "hta-value-evidence"
   },
   {
+   "id": "03c2ce302616",
+   "title": "Johnson & Johnson Ottava milestone shows how ‘innovation is not a straight line’",
+   "url": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQNUhYcE1mUG5Ra1ZqZVUzY0xBZzItTERpQ2VQaTJoSFh0OHo2Vl84d1FaeEJSLWpHN3VudGxUQktyWUtlRVVERktwZG9wU2NQdzJTZ2JVNkhBMW52SXRIRVZIT05wTDFTdWtYOUQ5N0JnUTlKM3Z5MmE3UTYtY252SzVqeDRXeXptM0VsNA?oc=5",
+   "source": "MassDevice",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-22",
+   "score": 1,
+   "topics": ""
+  },
+  {
    "id": "edd884e3eb65",
    "title": "Introducing Gemini 3.6 Flash, 3.5 Flash-Lite, and 3.5 Flash Cyber",
    "url": "https://deepmind.google/blog/introducing-gemini-3-6-flash-3-5-flash-lite-and-3-5-flash-cyber/",
@@ -907,19 +920,6 @@
    "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxNQWRyb2FlQVdxN0VOOFdtZ3FfTTFucEpLTlQyV3NCWTh2dGIyWWZ1TzljYmxvOURuNTNiWGhwSEtyM2pic19janUtTTVQVnkxaGpiUzVqYVdQUHQyS0hqWHV6anF0UEJsdnFIeWVXX0NQQ0NJeHphWnB4ZzMzeFNGVW5rRzlsOFRiMWtMaENBV2JKN2gxQmI0amtjdw?oc=5",
    "source": "Healthcare IT News",
    "source_type": "Other",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "2026-07-20",
-   "score": 1,
-   "topics": ""
-  },
-  {
-   "id": "ec53cbd6c791",
-   "title": "Biotronik unveils new AI capability for spinal cord stim tech",
-   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxPMUlvZDRaUVFmcWNIaHdiZWpueThTa3MtUFRRQWRnNTZiTHY1dzlMQWpNTGtoTUdxcFJidk5FOWxoZG5rcGt2RnZKZW5LNERsOEVhOTVXMVNOMHFGeWhPU3dmdUZUX3VvVkdreGpiWVBKM3dpWnFQQlFYenZnN0lVTGxIM1FLbTRfRnJ0QVNYZjkyc1U?oc=5",
-   "source": "MassDevice",
-   "source_type": "Industry press",
    "stage": "industry",
    "region": "",
    "country": "",
@@ -1032,19 +1032,6 @@
    "topics": ""
   },
   {
-   "id": "7a62c945e3fd",
-   "title": "Attovia, Braveheart and Vogenx seek more than $500M across trio of IPOs",
-   "url": "https://www.fiercebiotech.com/biotech/attovia-braveheart-and-vogenx-seek-more-500m-ipos",
-   "source": "Fierce Biotech",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "",
-   "score": 1,
-   "topics": "cardiology-ai"
-  },
-  {
    "id": "39ae4bd25c74",
    "title": "Labcorp posts higher Q2 earnings on strength of diagnostics, lab services; adjusts full-year guidance",
    "url": "https://www.fiercebiotech.com/medtech/labcorp-posts-higher-2q-earnings-strength-diagnostics-lab-services-adjusts-full-year",
@@ -1058,9 +1045,9 @@
    "topics": ""
   },
   {
-   "id": "dbe265da6b63",
-   "title": "EMA appoints new Deputy Executive Director and new Head of Veterinary Medicines",
-   "url": "https://www.ema.europa.eu/en/news/ema-appoints-new-deputy-executive-director-new-head-veterinary-medicines",
+   "id": "c8eb2326045b",
+   "title": "New leadership team appointments",
+   "url": "https://www.ema.europa.eu/en/news/new-leadership-team-appointments",
    "source": "EMA — News",
    "source_type": "Regulator",
    "stage": "regulation",
@@ -1069,6 +1056,19 @@
    "date": "2026-07-30",
    "score": 7,
    "topics": "ema-activity;regulatory-activity"
+  },
+  {
+   "id": "3313bee6a404",
+   "title": "Regulatory Affairs Specialist II – Electrophysiology (on-site)",
+   "url": "https://news.google.com/rss/articles/CBMi2wFBVV95cUxQMnpLeEtUMS1sWVVqTGQyWGdyWGVEMmppMl94bDNMZ3pHSUFXdDFJYzktSDdTUU5abFphUkxQdVNlTXpObFFEZDd5eEFqTzRlRWZNelRsbDlVdURtY29fdGc1Y2ZqUEE0N3RTR3FCbUpOM05lcWg3RDN6dWUzMXRaWUhUd0tuNE5ydHVuSlNkbHVlZXVCMlYzbTZXR1N3eUdyWnloM1pBQnUtOHo4Y0N2cTk0RWIxbTdLWFJIUGdwVWI5MVVkU3BSd0djSkMyWW42YWlLRkVTODByT1k?oc=5",
+   "source": "RAPS Regulatory Focus",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 4,
+   "topics": "regulatory-activity"
   },
   {
    "id": "984d71f7f427",
@@ -1378,6 +1378,19 @@
    "stage": "regulation",
    "region": "Asia-Pacific",
    "country": "South Korea",
+   "date": "2026-07-29",
+   "score": 4,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "a808d28a6a80",
+   "title": "Regulatory Affairs Professionals Society",
+   "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxPUEZQZU5hS0JwZldDdGJYR2F6S1J2c3N0MGh6MGY5WE1oZmhhSkprTF82Yy1HMnh5dHk4emtuUHNLcUp4a1BlWk9UX2Y2ZVM0azFZQjF0dHFMeFNJUm9CTmFfdE40cEJkaHhTMzVIa0daa0wyZUk5cS1RamsxTllXdER3eTdNdFY0akNnT1o4Z0xMdkJsb1VhbDY3WVJFdw?oc=5",
+   "source": "RAPS Regulatory Focus",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "",
+   "country": "",
    "date": "2026-07-29",
    "score": 4,
    "topics": "regulatory-activity"
@@ -1773,6 +1786,19 @@
    "topics": "diga-updates;reimbursement-coverage;digital-therapeutics"
   },
   {
+   "id": "8e069dd63786",
+   "title": "China Radio Frequency Skin Tightening Device - Market Analysis, Forecast, Size, Trends and Insights",
+   "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxPZU1DUlE4Ty1QUEZ3VVFlWGRPdGpySXktWUVYNTQ5eUw4RTdtZXB0T1o3TGNXUFU5cC1nNElCTGdScHE2Wjh3SExDdXhNZGl1R2d5THpuLThEZk5rcWVhNDVYbDByZmExYWZ1N3RwaHlIZXNHLVdrRnB2aWkwNmN1QURtYlQ5dXJIM0xPMVJDMEF2MWpObjFIT2xRMk1rMHliczVlVXdRSzdOblZlUjNMNklNTjVWRU1UbnlNV3NRWS1uS2c?oc=5",
+   "source": "China AI medical device & reimbursement",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Asia-Pacific",
+   "country": "China",
+   "date": "2026-07-26",
+   "score": 3,
+   "topics": "regulatory-activity"
+  },
+  {
    "id": "428f918f716c",
    "title": "Diga Réé Tey Ba Sonou😂😂😂 Latzo & Bamba Douane Ay Nitt😂😂 Edmonton Weather (lsrcil4xVo)",
    "url": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE96SmFVY3V5X3B0cUJkRmdCTTNWdG0wX0ZGU0NhSVJmOE14eHVvSlJQOW5mVjI2cDFCZ0N2dW9lSEdRLXRoWmVVVHBMWkM2TEZ3UExwc1MtbkozZ1k?oc=5",
@@ -1807,19 +1833,6 @@
    "stage": "regulation",
    "region": "Asia-Pacific",
    "country": "South Korea",
-   "date": "2026-07-24",
-   "score": 3,
-   "topics": "regulatory-activity"
-  },
-  {
-   "id": "a4eb8ebfe34a",
-   "title": "Regulatory Affairs Professionals Society",
-   "url": "https://news.google.com/rss/articles/CBMiekFVX3lxTE5SUy0tUXUyTXRjRjV5MnNpMHJtTFVFRDZMZDNRNVpCY0YxZ0FJUHBpNlBoT2tsRl9WNTBEaU15MHJ5N0F5LXIxMkM2SVVnTFFtTTJtd25UbTJzeEFHTmdXTk5BTWtPMGo1dVpLRmpETHhqSVlEbDZ2alJR?oc=5",
-   "source": "RAPS Regulatory Focus",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "",
-   "country": "",
    "date": "2026-07-24",
    "score": 3,
    "topics": "regulatory-activity"
@@ -2148,6 +2161,19 @@
    "date": "2026-07-22",
    "score": 2,
    "topics": "hta-value-evidence"
+  },
+  {
+   "id": "635ed97b9e33",
+   "title": "Role of AI Healthcare Solutions in Saudi’s Care Domain",
+   "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxPcVhsVDhQYld6b0FyY194X3U1R2xqVVpnMXdzem9vMEtnRFRJNWxfT2JyczR6UUhJdmdQRV9xcWFyZ0lRZTFvTGZtMlRmX1B4NTFKYkJ4aExNYWUzMTZ1MFdRZFJuNGpqRmoyWEpmTVlzQnJIVFU2STNZd1NMNVNZMVRObFFib1Zlc3h5ZVNn?oc=5",
+   "source": "MEA AI device & digital health regulation",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Middle East & Africa",
+   "country": "Saudi Arabia",
+   "date": "2026-07-21",
+   "score": 2,
+   "topics": "regulatory-activity"
   },
   {
    "id": "b8acbcd5f5d3",
