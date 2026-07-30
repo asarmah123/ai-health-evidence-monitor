@@ -10,6 +10,9 @@ lens_prompt.txt
 PRODUCT_ROADMAP.md
 ENGINEERING_NOTES.md
 TECHNICAL.md
+# Owner-only utilities (historical export / verification) — not a public feature yet.
+private-tools/
+history-wide.csv
 homepage_layout_preview.html
 first_build_preview.html
 restructure_preview.html
