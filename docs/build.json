@@ -1,13 +1,13 @@
 {
-  "build_id": "30651267660",
-  "generated_at": "2026-07-31T17:28:59Z",
+  "build_id": "30651660630",
+  "generated_at": "2026-07-31T17:34:56Z",
   "taxonomy_version": "1.6",
-  "git_commit": "2b9a5f5181f8271eb2541c709f80a2568389ba55",
+  "git_commit": "a15259cf532293fad426c8bf044a7af7c47be0a7",
   "items_published": 129,
   "sources_contributing": 37,
   "sources_expected": 74,
   "silent_sources": 0,
-  "errored_sources": 1,
+  "errored_sources": 0,
   "undated_items": 5,
   "qa": {
     "input": 129,
