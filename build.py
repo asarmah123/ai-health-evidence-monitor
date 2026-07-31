@@ -44,9 +44,11 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 1.2: trend terms counted with a leading word boundary (\bterm) — excludes embedded
 #      substrings like "reagent" for "agent"; one-time discontinuity in term history.
 # 1.3: native RSS/scrape feeds gated for AI/digital-health relevance (general non-AI items
-#      like leadership appointments, drug approvals and epidemiology are dropped). Query-based
-#      paths were already AI-scoped. Reduces volume — a one-time step in per-stage/total history.
-TAXONOMY_VERSION = "1.3"
+#      like leadership appointments, drug approvals and epidemiology are dropped).
+# 1.4: AI-relevance gate made global — also covers the other broad paths that aren't AI-scoped
+#      (general CMS Federal Register notices, whole-journal PubMed, site-scoped news). Only
+#      inherently-AI sources are exempt. Further one-time volume reduction in history.
+TAXONOMY_VERSION = "1.4"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -238,9 +240,31 @@ _AI_RE = re.compile(
 
 def _ai_relevant(title, summary=""):
     """Deterministic keyword test: is this item about AI / digital-health tech? Hyphens are
-    normalised to spaces so 'deep-learning' and 'AI-enabled' match. Gates native feeds only."""
+    normalised to spaces so 'deep-learning' and 'AI-enabled' match."""
     text = (title + " " + (summary or "")).lower().replace("-", " ")
     return _AI_RE.search(text) is not None
+
+
+# Sources trusted as inherently AI — keyword-filtering these would wrongly drop real AI items
+# whose title carries no keyword (a device trade name, a clinical trial title, an NEJM AI paper).
+# Everything else must pass the keyword test, because its query/feed is NOT AI-scoped.
+_AI_NATIVE_SOURCES = {"arXiv", "NEJM AI",
+                      "AI/ML intervention trials", "Digital therapeutic & device trials"}
+
+
+def _ai_native(i):
+    s = i.get("source", "")
+    return (i.get("layer") == "research"                 # frontier-AI newsletters + arXiv
+            or s in _AI_NATIVE_SOURCES
+            or s.startswith("FDA — AI device"))           # openFDA authorisations
+
+
+def relevance_gate(items):
+    """Global AI/digital-health gate. Keeps items from inherently-AI sources as-is; everything
+    else (native RSS, whole-journal PubMed, general CMS Federal Register notices, site-scoped
+    news) must match the AI keyword test. Deterministic; the single place relevance is enforced."""
+    return [i for i in items
+            if _ai_native(i) or _ai_relevant(i.get("title", ""), i.get("summary", ""))]
 
 
 def fetch_rss(sources, cutoff, cap):
@@ -259,11 +283,8 @@ def fetch_rss(sources, cutoff, cap):
             # The tier-based health check flags this only for daily sources.
             print(f"  · {s['name']}: feed returned no entries", file=sys.stderr)
             continue
-        _REACHABLE_SOURCES.add(s["name"])   # reachable with content, even if all relevance-filtered
+        _REACHABLE_SOURCES.add(s["name"])   # reachable with content; relevance filtering is global
 
-        # gate native feeds to AI / digital-health items; exempt frontier-AI newsletters (research)
-        # and any source explicitly flagged broad:true
-        ai_gate = s.get("layer") != "research" and not s.get("broad")
         kept = 0
         for e in parsed.entries:
             if kept >= cap:
@@ -275,14 +296,11 @@ def fetch_rss(sources, cutoff, cap):
             title = clean(e.get("title", ""), 200)
             if not link or not title:
                 continue
-            summary = clean(e.get("summary", ""))
-            if ai_gate and not _ai_relevant(title, summary):
-                continue   # native feed item not about AI / digital health — skip
             items.append({
                 "id": uid(link), "title": title, "url": link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when.strftime("%Y-%m-%d") if when else "",
-                "summary": summary,
+                "summary": clean(e.get("summary", "")),
             })
             kept += 1
     return items, dead
@@ -389,8 +407,6 @@ def fetch_scrape(sources):
             if s["match"] not in href or len(text) < 25:
                 continue
             full = urljoin(s["url"], href)
-            if not s.get("broad") and not _ai_relevant(text):
-                continue   # scraped link not about AI / digital health — skip
             if full in seen:
                 continue
             seen.add(full)
@@ -3242,6 +3258,13 @@ def main():
     sc, d3 = fetch_scrape(cfg["scrape"])
     items += sc; dead += d3
     print(f"  {len(sc)} links")
+
+    # AI / digital-health relevance gate — drop general non-AI items from broad feeds/queries
+    # (regulator news, whole-journal HEOR, general CMS notices, site-scoped press). Sources that
+    # are inherently AI (openFDA, arXiv, frontier newsletters, AI trial queries, NEJM AI) pass as-is.
+    _pre = len(items)
+    items = relevance_gate(items)
+    print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
     uniq = {i["id"]: i for i in items}
