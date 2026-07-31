@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-07-31T17:20:13Z",
- "taxonomy_version": "1.5",
- "count": 128,
+ "generated_at": "2026-07-31T17:28:59Z",
+ "taxonomy_version": "1.6",
+ "count": 129,
  "fields": [
   "id",
   "title",
@@ -1243,6 +1243,19 @@
    "id": "f627e82e8339",
    "title": "Artificial Intelligence and the Financialization of Medical Knowledge.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42507464/",
+   "source": "JAMA Network — AI in medicine",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-27",
+   "score": 1,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "cd52b9113469",
+   "title": "The iPatient Meets the iDoctor.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42507375/",
    "source": "JAMA Network — AI in medicine",
    "source_type": "Journal / evidence",
    "stage": "clinical",
