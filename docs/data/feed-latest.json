@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-07-31T17:10:51Z",
- "taxonomy_version": "1.4",
- "count": 122,
+ "generated_at": "2026-07-31T17:20:13Z",
+ "taxonomy_version": "1.5",
+ "count": 128,
  "fields": [
   "id",
   "title",
@@ -551,6 +551,19 @@
    "topics": ""
   },
   {
+   "id": "197616293d57",
+   "title": "CMS Proposes Payment Frameworks for “Software as a Medical Service”",
+   "url": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxOR0hHeE1PMUJMTnpOc0hWcEduXzRoUFptVDIzdmJPZXhpTnMzNmlwa0RybDdqRmVlbVh5ZHhUTlNTWWNWSTNta3NXWEdBVGNLb0xQM1RUQ1RVNVgwa3VsWXQ4S0ZRYVpJQ3J6YnVkT3IyclVVVmZuYlFqMTUtREtNajRQd2EzZUk4MXRJ?oc=5",
+   "source": "AI device reimbursement & coding",
+   "source_type": "Other",
+   "stage": "access",
+   "region": "",
+   "country": "",
+   "date": "2026-07-23",
+   "score": 4,
+   "topics": "reimbursement-coverage"
+  },
+  {
    "id": "15eb5b1c419a",
    "title": "Accelerating the frontiers of scientific discovery: Google’s $40M commitment to the Genesis Mission",
    "url": "https://deepmind.google/blog/accelerating-the-frontiers-of-scientific-discovery-googles-40m-commitment-to-the-genesis-mission/",
@@ -837,19 +850,6 @@
    "topics": "mhra-updates;regulatory-activity"
   },
   {
-   "id": "185d30198c3c",
-   "title": "MHRA clarifies medical device rules for AI scribes in the NHS",
-   "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxQVUJwX3kxeUNaeW1LWGkzemNsSDdjM0ctdGphT0cwSWVwRHNYYUV0NFV4Y2Jwa3VmNC1TMmVld1pyeURzNXZIM2NndTQ1TXFoWUZfZ0hoUEh4RTlQTG4yYnJ1Z1piZmFYbS1zb0FTNE1VOW9iQ0dDb1NqMWdSUDlEdENKaUtHZGl0WGRGNHp2NDU2cTV1c1R4aW1QOXItQ2ty?oc=5",
-   "source": "MHRA (UK)",
-   "source_type": "Regulator",
-   "stage": "regulation",
-   "region": "Europe",
-   "country": "United Kingdom",
-   "date": "2026-07-30",
-   "score": 7,
-   "topics": "mhra-updates;regulatory-activity"
-  },
-  {
    "id": "4d93f616a5a8",
    "title": "AI in healthcare should not replace human judgement – HIQA",
    "url": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPUmxNQVI5bnhVZTZJQnJwbDBlTDltaV9jWXZiZjVpYlUxczlud29TT2JGSDJ6M3NnWkFoMkNEYmtqLVN3R0RtbXV0UmcxNzlJRlM1V0lzenJpNmlwaUxqenVtMnRGcmNHNmtrTHprOThGMFhoeHdZeDhNcjFDUTRSLWQ5dlJuMXotb1ZFT3ZfR3pHUE1oOW1R?oc=5",
@@ -952,6 +952,19 @@
    "date": "2026-07-30",
    "score": 4,
    "topics": "hta-value-evidence;oncology-ai"
+  },
+  {
+   "id": "8538dcca1adf",
+   "title": "Predictors of atrial fibrillation recurrence after catheter ablation: a systematic review.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42530789/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 4,
+   "topics": "hta-value-evidence"
   },
   {
    "id": "07215be2fb3f",
@@ -1058,6 +1071,19 @@
    "topics": "ai-clinical-studies;digital-therapeutics"
   },
   {
+   "id": "1ffb4152afe5",
+   "title": "Use of heart rate variability in prediction of clinical deterioration in critically ill hospitalised adults: a systematic review protocol.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42526930/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 4,
+   "topics": "hta-value-evidence;cardiology-ai"
+  },
+  {
    "id": "14803fc98b30",
    "title": "The use of artificial intelligence to predict postoperative outcomes following percutaneous nephrolithotomy: A systematic review of prognostic modeling studies.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42525584/",
@@ -1134,6 +1160,19 @@
    "date": "2026-07-28",
    "score": 2,
    "topics": "ai-clinical-studies;digital-therapeutics"
+  },
+  {
+   "id": "3643bdf340a5",
+   "title": "Applications, technical foundations and challenges of digital twins for chronic disease management: A scoping review.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42534416/",
+   "source": "PubMed — digital health value & reimbursement",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-28",
+   "score": 3,
+   "topics": "hta-value-evidence"
   },
   {
    "id": "6c0bc8dc9b3d",
@@ -1370,6 +1409,19 @@
    "topics": "ai-clinical-studies;digital-therapeutics"
   },
   {
+   "id": "2bd243478415",
+   "title": "Digital phenotyping of CGM engagement reveals distinct glycemic outcomes.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42490562/",
+   "source": "PubMed — digital health value & reimbursement",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-23",
+   "score": 2,
+   "topics": "hta-value-evidence"
+  },
+  {
    "id": "d39a1ef9680f",
    "title": "Open models recap: more on Kimi K3, Qwen 3.8, Xi's WAIC speech, distillation, the open-closed gap, and what's next",
    "url": "https://www.interconnects.ai/p/open-models-recap-more-on-kimi-k3",
@@ -1526,6 +1578,19 @@
    "topics": "ai-clinical-studies"
   },
   {
+   "id": "d14743549d64",
+   "title": "Medical Devices; General Hospital and Personal Use Devices; Classification of the Diabetes Digital Behavioral Therapeutic Device",
+   "url": "https://www.federalregister.gov/documents/2026/07/24/2026-14986/medical-devices-general-hospital-and-personal-use-devices-classification-of-the-diabetes-digital",
+   "source": "FDA — digital health & devices",
+   "source_type": "Regulator",
+   "stage": "regulation",
+   "region": "North America",
+   "country": "United States",
+   "date": "2026-07-24",
+   "score": 6,
+   "topics": "regulatory-activity"
+  },
+  {
    "id": "fefc461c0234",
    "title": "Global health suffers when corporate AI sovereigns reign.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42498610/",
@@ -1537,6 +1602,19 @@
    "date": "2026-07-24",
    "score": 1,
    "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "7a05862e996c",
+   "title": "National CLEAR Programme launches NHS pilot to evaluate AVT",
+   "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQOXpiVFBzSkdXN1dmbnc5elNBdm1aTDZWcTBScFQ1VmU1SFZvN2tZMG4zZ1h3Qi1ZZm1aU1hwT2FYYzhSN3ZURHlrOF9OOXBFa3BlU0pBWXpNZ21sZXBBeTZDR1NycEZPR3RfOUVYck16MUtiYzVpekI2XzA3M3JGcjVBM1VHMVhYOXFhcU1aR2Nod2t3MGcxWWJGem5KUjA?oc=5",
+   "source": "NIST AI risk management & assurance",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Europe",
+   "country": "United Kingdom",
+   "date": "2026-07-23",
+   "score": 2,
+   "topics": "regulatory-activity"
   },
   {
    "id": "9d2f84d13106",
