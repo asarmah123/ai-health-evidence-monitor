@@ -230,6 +230,31 @@ def test_geo_and_body_classification():
     assert all(name != "NoMA" for role in bc.values() for name, _ in role)
 
 
+def test_ai_relevance_filter():
+    """Native feeds are gated for AI/digital-health relevance: real AI/digital items pass;
+    clearly non-AI items (appointments, drug approvals, epidemiology, generic notices) drop."""
+    keep = [
+        "MHRA calls for regulation of AI in healthcare",
+        "Deep-learning model detects atrial fibrillation on ECG",
+        "FDA clears AI-enabled triage software",
+        "DiGA listing for a prescription digital therapeutic",
+        "Machine learning predicts hospital readmission",
+        "Autonomous computer-aided detection cleared for colonoscopy",
+    ]
+    drop = [
+        "EMA appoints new Deputy Executive Director and Head of Veterinary Medicines",
+        "Thousands of patients to benefit from new daily pill for heart condition",
+        "Global economic burden of depression in 154 countries",
+        "Field Safety Notices: 29 June to 03 July 2026",
+        "New leadership team appointments",
+        "New lung preservation machine could make donor lungs available",
+    ]
+    for t in keep:
+        assert build._ai_relevant(t), f"should KEEP: {t}"
+    for t in drop:
+        assert not build._ai_relevant(t), f"should DROP: {t}"
+
+
 def test_overtime_section():
     """Phase-2 Over-time analytics: guarded below the minimum build count; above it,
     renders both charts (Market activity + Evidence journey) with all six stage colours
