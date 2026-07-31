@@ -50,7 +50,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #      inherently-AI sources are exempt. Further one-time volume reduction in history.
 # 1.5: recover clear AI false-negatives — add ambient voice (AI scribes), software-as-a-medical
 #      (service+device), digital twin/phenotyping/behavioural; exempt the AI×HTA PubMed query.
-TAXONOMY_VERSION = "1.5"
+# 1.6: also exempt the JAMA/BMJ 'AI in medicine' PubMed queries (AI-scoped, so clinical-titled
+#      AI papers were slipping through).
+TAXONOMY_VERSION = "1.6"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -253,7 +255,8 @@ def _ai_relevant(title, summary=""):
 # Everything else must pass the keyword test, because its query/feed is NOT AI-scoped.
 _AI_NATIVE_SOURCES = {"arXiv", "NEJM AI",
                       "AI/ML intervention trials", "Digital therapeutic & device trials",
-                      "PubMed — AI × HTA/HEOR"}   # query REQUIRES AI/ML in the abstract
+                      # PubMed queries that REQUIRE AI/ML in the abstract — clinical titles are still AI
+                      "PubMed — AI × HTA/HEOR", "JAMA Network — AI in medicine", "BMJ — AI in medicine"}
 
 
 def _ai_native(i):
@@ -2531,23 +2534,6 @@ def write_export(items):
     print(f"  export: docs/data/feed-latest.json + .csv ({len(rows)} items)")
 
 
-def write_dropped_sample(dropped):
-    """TEMPORARY audit artifact — the items the relevance gate removed this build, so false
-    negatives can be inspected on real data. Writes docs/data/dropped-sample.json (grouped by
-    source). Remove this call once the gate scope is settled."""
-    from datetime import datetime, timezone
-    data_dir = DOCS / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    rows = [{"source": i.get("source", ""), "layer": i.get("layer", ""),
-             "title": i.get("title", ""), "date": i.get("date", "")} for i in dropped]
-    rows.sort(key=lambda r: (r["source"], r["title"]))
-    payload = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-               "dropped_count": len(rows), "items": rows}
-    (data_dir / "dropped-sample.json").write_text(
-        json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
-    print(f"  dropped-sample.json written ({len(rows)} items filtered by relevance gate)")
-
-
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
 FEED_XSL = '''<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -3283,12 +3269,9 @@ def main():
     # AI / digital-health relevance gate — drop general non-AI items from broad feeds/queries
     # (regulator news, whole-journal HEOR, general CMS notices, site-scoped press). Sources that
     # are inherently AI (openFDA, arXiv, frontier newsletters, AI trial queries, NEJM AI) pass as-is.
-    _pre_items = items
+    _pre = len(items)
     items = relevance_gate(items)
-    _kept_ids = {id(i) for i in items}
-    _dropped = [i for i in _pre_items if id(i) not in _kept_ids]
-    print(f"  relevance gate: {len(items)}/{len(_pre_items)} items are AI / digital-health")
-    write_dropped_sample(_dropped)   # TEMP audit artifact — remove after gate scope is settled
+    print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
     uniq = {i["id"]: i for i in items}
