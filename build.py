@@ -2527,6 +2527,23 @@ def write_export(items):
     print(f"  export: docs/data/feed-latest.json + .csv ({len(rows)} items)")
 
 
+def write_dropped_sample(dropped):
+    """TEMPORARY audit artifact — the items the relevance gate removed this build, so false
+    negatives can be inspected on real data. Writes docs/data/dropped-sample.json (grouped by
+    source). Remove this call once the gate scope is settled."""
+    from datetime import datetime, timezone
+    data_dir = DOCS / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    rows = [{"source": i.get("source", ""), "layer": i.get("layer", ""),
+             "title": i.get("title", ""), "date": i.get("date", "")} for i in dropped]
+    rows.sort(key=lambda r: (r["source"], r["title"]))
+    payload = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "dropped_count": len(rows), "items": rows}
+    (data_dir / "dropped-sample.json").write_text(
+        json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"  dropped-sample.json written ({len(rows)} items filtered by relevance gate)")
+
+
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
 FEED_XSL = '''<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -3262,9 +3279,12 @@ def main():
     # AI / digital-health relevance gate — drop general non-AI items from broad feeds/queries
     # (regulator news, whole-journal HEOR, general CMS notices, site-scoped press). Sources that
     # are inherently AI (openFDA, arXiv, frontier newsletters, AI trial queries, NEJM AI) pass as-is.
-    _pre = len(items)
+    _pre_items = items
     items = relevance_gate(items)
-    print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health")
+    _kept_ids = {id(i) for i in items}
+    _dropped = [i for i in _pre_items if id(i) not in _kept_ids]
+    print(f"  relevance gate: {len(items)}/{len(_pre_items)} items are AI / digital-health")
+    write_dropped_sample(_dropped)   # TEMP audit artifact — remove after gate scope is settled
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
     uniq = {i["id"]: i for i in items}
