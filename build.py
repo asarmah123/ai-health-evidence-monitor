@@ -43,8 +43,12 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 1.1: added Latin America region + European/LATAM HTA & regulator bodies (source expansion).
 # 1.2: trend terms counted with a leading word boundary (\bterm) — excludes embedded
 #      substrings like "reagent" for "agent"; one-time discontinuity in term history.
-TAXONOMY_VERSION = "1.2"
+# 1.3: native RSS/scrape feeds gated for AI/digital-health relevance (general non-AI items
+#      like leadership appointments, drug approvals and epidemiology are dropped). Query-based
+#      paths were already AI-scoped. Reduces volume — a one-time step in per-stage/total history.
+TAXONOMY_VERSION = "1.3"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
+_REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
                "heor": "#1f8a70", "access": "#b0842b", "industry": "#64748b"}
 TIERS = ["daily", "weekly", "monthly"]
@@ -214,6 +218,31 @@ def save_cache(cache: dict, token=None, sha=None) -> None:
 
 
 # ------------------------------------------------------------------ fetching
+# ---- AI-relevance gate for native feeds --------------------------------------------------
+# Native RSS/scrape sources publish their WHOLE output — regulator news, journal tables of
+# contents, trade press — most of which isn't about AI. The query-based paths (Google-News,
+# PubMed, ClinicalTrials, openFDA, Federal Register) are already AI-scoped by their queries;
+# native feeds are not. So we apply a deterministic keyword gate to keep only AI / digital-
+# health items. Frontier-AI newsletters (layer 'research') and any source flagged `broad: true`
+# are exempt. Transparent and tunable — no model.
+_AI_RE = re.compile(
+    r"\b(?:ai|ml|nlp|llm|samd|diga)\b"
+    r"|artificial intelligence|machine learning|deep learning|neural network"
+    r"|large language model|foundation model|\bgenerative\b|computer vision"
+    r"|natural language processing|predictive model|predictive analytic"
+    r"|clinical decision support|decision support|computer aided|algorithm|autonomous"
+    r"|software as a medical device|digital therapeutic|digital health"
+    r"|digital medicine|digital biomarker|radiomics|automated detection"
+    r"|automated diagnosis|automated triage|chatbot")
+
+
+def _ai_relevant(title, summary=""):
+    """Deterministic keyword test: is this item about AI / digital-health tech? Hyphens are
+    normalised to spaces so 'deep-learning' and 'AI-enabled' match. Gates native feeds only."""
+    text = (title + " " + (summary or "")).lower().replace("-", " ")
+    return _AI_RE.search(text) is not None
+
+
 def fetch_rss(sources, cutoff, cap):
     items, dead = [], []
     for s in sources:
@@ -230,7 +259,11 @@ def fetch_rss(sources, cutoff, cap):
             # The tier-based health check flags this only for daily sources.
             print(f"  · {s['name']}: feed returned no entries", file=sys.stderr)
             continue
+        _REACHABLE_SOURCES.add(s["name"])   # reachable with content, even if all relevance-filtered
 
+        # gate native feeds to AI / digital-health items; exempt frontier-AI newsletters (research)
+        # and any source explicitly flagged broad:true
+        ai_gate = s.get("layer") != "research" and not s.get("broad")
         kept = 0
         for e in parsed.entries:
             if kept >= cap:
@@ -242,11 +275,14 @@ def fetch_rss(sources, cutoff, cap):
             title = clean(e.get("title", ""), 200)
             if not link or not title:
                 continue
+            summary = clean(e.get("summary", ""))
+            if ai_gate and not _ai_relevant(title, summary):
+                continue   # native feed item not about AI / digital health — skip
             items.append({
                 "id": uid(link), "title": title, "url": link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when.strftime("%Y-%m-%d") if when else "",
-                "summary": clean(e.get("summary", "")),
+                "summary": summary,
             })
             kept += 1
     return items, dead
@@ -353,6 +389,8 @@ def fetch_scrape(sources):
             if s["match"] not in href or len(text) < 25:
                 continue
             full = urljoin(s["url"], href)
+            if not s.get("broad") and not _ai_relevant(text):
+                continue   # scraped link not about AI / digital health — skip
             if full in seen:
                 continue
             seen.add(full)
@@ -2809,7 +2847,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
 {build_health}
   <div class="sec">How the intelligence is built</div>
   <div class="pipeline">
-    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">Curated primary sources — regulators, HTA bodies, journals and trial registries — supplemented by selected industry publications where primary feeds are unavailable. Chosen for relevance, not volume.</div></div></div>
+    <div class="pstep"><div class="pstep-n">1</div><div class="pstep-b"><div class="pstep-t">Collect</div><div class="pstep-d">Curated primary sources — regulators, HTA bodies, journals and trial registries — supplemented by selected industry publications where primary feeds are unavailable. Chosen for relevance, not volume; general feeds are filtered to AI and digital-health items by transparent keyword rules.</div></div></div>
     <div class="parrow">↓</div>
     <div class="pstep"><div class="pstep-n">2</div><div class="pstep-b"><div class="pstep-t">Deduplicate</div><div class="pstep-d">Merge exact duplicates by link, then collapse near-duplicate stories about the same event into one.</div></div></div>
     <div class="parrow">↓</div>
@@ -2911,12 +2949,19 @@ def diagnostics(items, cfg, dead):
     # 1. per-source counts + zero-yield flags
     print(f"sources contributing: {len(by_src)} / {len(expected)} expected")
     failed = {d.split(":")[0].strip() for d in dead}
-    steady_zero = [n for n in expected if _steady(n) and by_src.get(n, 0) == 0 and n not in failed]
+    # reachable-but-empty (fetched OK, all items relevance-filtered) is quiet, NOT breakage —
+    # so the AI-relevance gate can't spuriously trip the degrade abort on a low-AI-news day.
+    steady_zero = [n for n in expected if _steady(n) and by_src.get(n, 0) == 0
+                   and n not in failed and n not in _REACHABLE_SOURCES]
+    relevance_quiet = [n for n in expected if _steady(n) and by_src.get(n, 0) == 0
+                       and n not in failed and n in _REACHABLE_SOURCES]
     quiet = [n for n in expected if not _steady(n) and by_src.get(n, 0) == 0 and n not in failed]
     if steady_zero:
         print(f"  ! DAILY sources with zero items (possible breakage): {steady_zero}")
     else:
-        print("  ✓ every daily, non-failed source produced at least one item")
+        print("  ✓ every daily, non-failed source produced an item (or was relevance-filtered)")
+    if relevance_quiet:
+        print(f"  · daily feeds reachable but no AI-relevant items today (normal): {relevance_quiet}")
     if quiet:
         print(f"  · quiet weekly/monthly feeds & queries (zero is normal): {len(quiet)}")
 
