@@ -240,6 +240,9 @@ def test_ai_relevance_filter():
         "DiGA listing for a prescription digital therapeutic",
         "Machine learning predicts hospital readmission",
         "Autonomous computer-aided detection cleared for colonoscopy",
+        "MHRA clarifies regulatory status of ambient voice technologies in the NHS",
+        "CMS proposes payment frameworks for software as a medical service",
+        "Digital twins for chronic disease management",
     ]
     drop = [
         "EMA appoints new Deputy Executive Director and Head of Veterinary Medicines",
@@ -263,6 +266,7 @@ def test_relevance_gate():
         {"source": "NEJM AI", "layer": "clinical", "title": "Detecting sepsis earlier", "summary": ""},
         {"source": "arXiv", "layer": "research", "title": "Scaling transformers", "summary": ""},
         {"source": "AI/ML intervention trials", "layer": "clinical", "title": "Triage RCT for chest pain", "summary": ""},
+        {"source": "PubMed — AI × HTA/HEOR", "layer": "heor", "title": "Predictors of atrial fibrillation recurrence after ablation", "summary": ""},
         {"source": "CMS — coverage & payment notices", "layer": "access",
          "title": "Medicare Program; Prospective Payment System for Skilled Nursing Facilities", "summary": ""},
         {"source": "Value in Health", "layer": "heor", "title": "Cost-effectiveness of statins", "summary": ""},
@@ -270,7 +274,8 @@ def test_relevance_gate():
     ]
     kept = {i["title"] for i in build.relevance_gate(items)}
     assert {"OmniScan 3000", "Detecting sepsis earlier", "Scaling transformers",
-            "Triage RCT for chest pain", "Cost-effectiveness of an AI triage tool"} <= kept
+            "Triage RCT for chest pain", "Predictors of atrial fibrillation recurrence after ablation",
+            "Cost-effectiveness of an AI triage tool"} <= kept
     assert "Medicare Program; Prospective Payment System for Skilled Nursing Facilities" not in kept
     assert "Cost-effectiveness of statins" not in kept
 
