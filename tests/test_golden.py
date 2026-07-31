@@ -255,6 +255,26 @@ def test_ai_relevance_filter():
         assert not build._ai_relevant(t), f"should DROP: {t}"
 
 
+def test_relevance_gate():
+    """The global gate keeps inherently-AI sources even without a keyword (device names,
+    trial/journal titles), and drops non-AI items from broad, non-AI-scoped sources."""
+    items = [
+        {"source": "FDA — AI device authorisations", "layer": "regulation", "title": "OmniScan 3000", "summary": ""},
+        {"source": "NEJM AI", "layer": "clinical", "title": "Detecting sepsis earlier", "summary": ""},
+        {"source": "arXiv", "layer": "research", "title": "Scaling transformers", "summary": ""},
+        {"source": "AI/ML intervention trials", "layer": "clinical", "title": "Triage RCT for chest pain", "summary": ""},
+        {"source": "CMS — coverage & payment notices", "layer": "access",
+         "title": "Medicare Program; Prospective Payment System for Skilled Nursing Facilities", "summary": ""},
+        {"source": "Value in Health", "layer": "heor", "title": "Cost-effectiveness of statins", "summary": ""},
+        {"source": "Value in Health", "layer": "heor", "title": "Cost-effectiveness of an AI triage tool", "summary": ""},
+    ]
+    kept = {i["title"] for i in build.relevance_gate(items)}
+    assert {"OmniScan 3000", "Detecting sepsis earlier", "Scaling transformers",
+            "Triage RCT for chest pain", "Cost-effectiveness of an AI triage tool"} <= kept
+    assert "Medicare Program; Prospective Payment System for Skilled Nursing Facilities" not in kept
+    assert "Cost-effectiveness of statins" not in kept
+
+
 def test_overtime_section():
     """Phase-2 Over-time analytics: guarded below the minimum build count; above it,
     renders both charts (Market activity + Evidence journey) with all six stage colours
