@@ -48,7 +48,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 1.4: AI-relevance gate made global — also covers the other broad paths that aren't AI-scoped
 #      (general CMS Federal Register notices, whole-journal PubMed, site-scoped news). Only
 #      inherently-AI sources are exempt. Further one-time volume reduction in history.
-TAXONOMY_VERSION = "1.4"
+# 1.5: recover clear AI false-negatives — add ambient voice (AI scribes), software-as-a-medical
+#      (service+device), digital twin/phenotyping/behavioural; exempt the AI×HTA PubMed query.
+TAXONOMY_VERSION = "1.5"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -228,13 +230,14 @@ def save_cache(cache: dict, token=None, sha=None) -> None:
 # health items. Frontier-AI newsletters (layer 'research') and any source flagged `broad: true`
 # are exempt. Transparent and tunable — no model.
 _AI_RE = re.compile(
-    r"\b(?:ai|ml|nlp|llm|samd|diga)\b"
+    r"\b(?:ai|ml|nlp|llm|samd|diga|avt)\b"
     r"|artificial intelligence|machine learning|deep learning|neural network"
     r"|large language model|foundation model|\bgenerative\b|computer vision"
     r"|natural language processing|predictive model|predictive analytic"
     r"|clinical decision support|decision support|computer aided|algorithm|autonomous"
-    r"|software as a medical device|digital therapeutic|digital health"
-    r"|digital medicine|digital biomarker|radiomics|automated detection"
+    r"|software as a medical|digital therapeutic|digital health"          # 'medical' covers device + service
+    r"|digital medicine|digital biomarker|digital twin|digital phenotyping"
+    r"|ambient voice|digital behavio|radiomics|automated detection"       # ambient voice = AI scribes
     r"|automated diagnosis|automated triage|chatbot")
 
 
@@ -249,7 +252,8 @@ def _ai_relevant(title, summary=""):
 # whose title carries no keyword (a device trade name, a clinical trial title, an NEJM AI paper).
 # Everything else must pass the keyword test, because its query/feed is NOT AI-scoped.
 _AI_NATIVE_SOURCES = {"arXiv", "NEJM AI",
-                      "AI/ML intervention trials", "Digital therapeutic & device trials"}
+                      "AI/ML intervention trials", "Digital therapeutic & device trials",
+                      "PubMed — AI × HTA/HEOR"}   # query REQUIRES AI/ML in the abstract
 
 
 def _ai_native(i):
