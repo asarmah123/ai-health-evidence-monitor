@@ -1,0 +1,912 @@
+{
+ "generated_at": "2026-07-31T17:10:47Z",
+ "dropped_count": 151,
+ "items": [
+  {
+   "source": "AI device reimbursement & coding",
+   "layer": "access",
+   "title": "CMS Proposes Payment Frameworks for “Software as a Medical Service”",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "APAC AI device regulation & reimbursement",
+   "layer": "regulation",
+   "title": "HIRA chief adopts 'merchant's mindset' in push for evidence-based policy",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "APAC AI device regulation & reimbursement",
+   "layer": "regulation",
+   "title": "데일리팜코리아, 데일리팜 영문뉴스, dailypharmkorea",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "Additional European HTA (BE/IE/PL/ES/Nordics/CH)",
+   "layer": "access",
+   "title": "\"Noma Mngoma trends\": Fans can't stop talking about her latest viral photo",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "Additional European HTA (BE/IE/PL/ES/Nordics/CH)",
+   "layer": "access",
+   "title": "Noma Security strengthens presence in APAC with new VP for APJ",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "CMS — coverage & payment notices",
+   "layer": "access",
+   "title": "Agency Information Collection Activities: Submission for OMB Review; Comment Request",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "CMS — coverage & payment notices",
+   "layer": "access",
+   "title": "Medicaid Program; Amending the Indirect Hold Harmless Threshold of Health Care-Related Taxes",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "CMS — coverage & payment notices",
+   "layer": "access",
+   "title": "Medicare Program; FY 2027 Inpatient Psychiatric Facilities Prospective Payment System-Rate Update",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "CMS — coverage & payment notices",
+   "layer": "access",
+   "title": "Medicare Program; Prospective Payment System and Consolidated Billing for Skilled Nursing Facilities; Updates to the Quality Reporting Program for Federal Fiscal Year 2027",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Canada — CADTH & Health Canada",
+   "layer": "access",
+   "title": "DIAGNOS Receives Health Canada Medical Device Licence for",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "Canada — CADTH & Health Canada",
+   "layer": "access",
+   "title": "Health Canada Strengthens the Drug and Medical Device Shortage Framework",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "China AI medical device & reimbursement",
+   "layer": "regulation",
+   "title": "China Radio Frequency Skin Tightening Device - Market Analysis, Forecast, Size, Trends and Insights",
+   "date": "2026-07-26"
+  },
+  {
+   "source": "China AI medical device & reimbursement",
+   "layer": "regulation",
+   "title": "China’s First Commercial Brain Implant Shows Why Neurotechnology Needs Governance",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "EMA — News",
+   "layer": "regulation",
+   "title": "Meeting highlights from the Committee for Medicinal Products for Human Use (CHMP) 20-23 July 2026",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "EMA — News",
+   "layer": "regulation",
+   "title": "New leadership team appointments",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "EU Joint Clinical Assessment (EUnetHTA / HTACG)",
+   "layer": "access",
+   "title": "As JCAs Reach Orphan Drugs, Developers Face A 2028 Deadline And No Fix In Sight",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "EU Joint Clinical Assessment (EUnetHTA / HTACG)",
+   "layer": "access",
+   "title": "Commission publishes joint clinical assessment reports on two new lung cancer medicines",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "Endpoints News",
+   "layer": "industry",
+   "title": "Chasing Vertex, Latigo reports non-opioid pain drug succeeds in key trial",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Endpoints News",
+   "layer": "industry",
+   "title": "Karyopharm shares crater on second Phase 3 flop for Xpovio in endometrial cancer",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Endpoints News",
+   "layer": "industry",
+   "title": "Moderna's norovirus vaccine readout is delayed because of too few infections",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Endpoints News",
+   "layer": "industry",
+   "title": "Novo Nordisk rocked by late-stage cardiovascular drug failure",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Endpoints News",
+   "layer": "industry",
+   "title": "Ratio collects $70M for its radiopharmaceutical trials; Vogenx plans $67M IPO",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "FDA Sentinel (real-world evidence)",
+   "layer": "heor",
+   "title": "2026 ISPE Annual Meeting",
+   "date": ""
+  },
+  {
+   "source": "FDA Sentinel (real-world evidence)",
+   "layer": "heor",
+   "title": "Calcitonin Gene-related Peptide (CGRP) Inhibitors",
+   "date": ""
+  },
+  {
+   "source": "FDA Sentinel (real-world evidence)",
+   "layer": "heor",
+   "title": "Glucagon-Like Peptide-1 Receptor Agonists",
+   "date": ""
+  },
+  {
+   "source": "FDA Sentinel (real-world evidence)",
+   "layer": "heor",
+   "title": "fluoropyrimidine",
+   "date": ""
+  },
+  {
+   "source": "FDA Sentinel (real-world evidence)",
+   "layer": "heor",
+   "title": "infliximab biosimilars",
+   "date": ""
+  },
+  {
+   "source": "FDA — AI guidance & notices",
+   "layer": "regulation",
+   "title": "Statement of Organization, Functions, and Delegations of Authority",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "FDA — digital health & devices",
+   "layer": "regulation",
+   "title": "Medical Devices; General Hospital and Personal Use Devices; Classification of the Diabetes Digital Behavioral Therapeutic Device",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "FDA — digital health & devices",
+   "layer": "regulation",
+   "title": "Statement of Organization, Functions, and Delegations of Authority",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "Fierce Biotech",
+   "layer": "industry",
+   "title": "Apnimed’s IPO dream comes true with upsized $192M IPO to fund sleep apnea pill launch",
+   "date": ""
+  },
+  {
+   "source": "Fierce Biotech",
+   "layer": "industry",
+   "title": "BMS CEO Boerner doesn’t ‘feel any compulsion to chase deals’ despite lack of M&A this year",
+   "date": ""
+  },
+  {
+   "source": "Fierce Biotech",
+   "layer": "industry",
+   "title": "Chutes & Ladders—Legend CEO departs without successor in place",
+   "date": ""
+  },
+  {
+   "source": "Fierce Biotech",
+   "layer": "industry",
+   "title": "From Abu Dhabi to Brazil, every region is vying for the ‘new emerging economy’ of biotech",
+   "date": ""
+  },
+  {
+   "source": "Fierce Biotech",
+   "layer": "industry",
+   "title": "Novo Nordisk left praying to Artemis and Hermes to salvage CKD program after phase 3 fail",
+   "date": ""
+  },
+  {
+   "source": "Fierce Biotech",
+   "layer": "industry",
+   "title": "Replimune’s twice-rejected melanoma drug prevails in FDA adcomm",
+   "date": ""
+  },
+  {
+   "source": "Fierce Healthcare",
+   "layer": "industry",
+   "title": "Cigna CEO: Express Scripts seeing 'significant early interest' from clients for new rebate-free PBM model",
+   "date": ""
+  },
+  {
+   "source": "Fierce Healthcare",
+   "layer": "industry",
+   "title": "Court rejects states' bid to delay Medicaid work requirements rollout",
+   "date": ""
+  },
+  {
+   "source": "Fierce Healthcare",
+   "layer": "industry",
+   "title": "Free research hub Nila aims to demystify menopause, other hormone conditions",
+   "date": ""
+  },
+  {
+   "source": "Fierce Healthcare",
+   "layer": "industry",
+   "title": "Op-ed: Hospitals on the edge, a time for CMS to do no harm",
+   "date": ""
+  },
+  {
+   "source": "HTAi",
+   "layer": "heor",
+   "title": "HTAi Review | July 27",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "Health Affairs",
+   "layer": "heor",
+   "title": "Corporate Consolidation And The Youth Mental Health Crisis: Evidence From Medicaid Managed Care In 2022.",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "Healthcare IT News",
+   "layer": "industry",
+   "title": "AnMed given 72 hours to respond to demands in ransomware incident",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "Healthcare IT News",
+   "layer": "industry",
+   "title": "Ascension's telehealth strategy: Building an enterprise, not a program",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "Healthcare IT News",
+   "layer": "industry",
+   "title": "Children's Nebraska IT leader says innovation must become a core competency",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "Healthcare IT News",
+   "layer": "industry",
+   "title": "MaineHealth to lay off more than 80 IT staff",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "INAHTA (HTA network)",
+   "layer": "heor",
+   "title": "2025-2028 INAHTA Strategic Plan",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "INAHTA (HTA network)",
+   "layer": "heor",
+   "title": "20260709_Präsentation_INAHTA_Vortrag",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "INAHTA (HTA network)",
+   "layer": "heor",
+   "title": "INAHTA Board CCI Policy",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "Good Practices Reports & More",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "Health Technology Assessment",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "ISPOR Presentations Database",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "ISPOR Presentations Database",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "Patient-Centered Research",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "Specialized Treatment Areas",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — AI Strategic Initiative",
+   "layer": "heor",
+   "title": "US Healthcare System Overview",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "A Systematic Review of Quantitative Health Preference Methods to Support Value Clarification and Shared-Decision Making",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "Designing and Implementing Real World Patient Reported Outcomes - Emerging Recommendations",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "Methods for Evaluation of Surrogate Endpoints for HTA Decision Making",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "Modeling Good Research Practices - Overview: Report 1",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "Principles of Good Practice for Budget Impact Analysis I",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "Principles of Good Practice for Budget Impact Analysis II",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "Recommendations on the Selection, Development, and Modification of Performance Outcome (PerfO) Assessments",
+   "date": ""
+  },
+  {
+   "source": "ISPOR — Good Practices",
+   "layer": "heor",
+   "title": "View All Reports and Sub-Categories",
+   "date": ""
+  },
+  {
+   "source": "JAMA Network — AI in medicine",
+   "layer": "clinical",
+   "title": "The iPatient Meets the iDoctor.",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "JAMIA",
+   "layer": "clinical",
+   "title": "Characterization and Validation of EHR Computable Phenotypes for Long COVID Using Patient-Reported Symptoms: Insights from the Nationwide RECOVER Program.",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "JAMIA",
+   "layer": "clinical",
+   "title": "PhenoSS: phenotype semantic similarity-based approach for rare disease prediction and patient clustering.",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "JAMIA",
+   "layer": "clinical",
+   "title": "Real-time EHR secure messaging to coordinate emergency department disposition for 30-day revisit patients.",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "JAMIA",
+   "layer": "clinical",
+   "title": "Tipping the balance: impact of class imbalance correction on the performance of clinical risk prediction models.",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "JAMIA",
+   "layer": "clinical",
+   "title": "Veteran health information exchange volume and 30-day readmissions, avoidable hospitalizations, and in-hospital mortality: evidence from community and Veterans Health Administration direct care.",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "JAMIA",
+   "layer": "clinical",
+   "title": "Who is doing informatics work in US governmental public health agencies?",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "LATAM — HTA & coverage (CONITEC)",
+   "layer": "access",
+   "title": "State Department map of Africa mislabels every country at AIDS conference",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "LATAM — device authorisation (ANVISA / COFEPRIS)",
+   "layer": "regulation",
+   "title": "Aurobindo Pharma's CuraTeQ Biologics receives ANVISA nod for Hyderabad biosimilars facility",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "LATAM — device authorisation (ANVISA / COFEPRIS)",
+   "layer": "regulation",
+   "title": "When ANVISA's Clock Runs Out",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "Lancet Digital Health",
+   "layer": "clinical",
+   "title": "Effectiveness of app-based interventions for glucose management, cardiometabolic and mental health, and related risk factors: an umbrella review with meta-analysis.",
+   "date": "2026-07-21"
+  },
+  {
+   "source": "MHRA (UK)",
+   "layer": "regulation",
+   "title": "MHRA clarifies regulatory status of ambient voice technologies used in the NHS",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "MHRA — device & drug safety alerts",
+   "layer": "regulation",
+   "title": "Class 4 Medicines Defect Notification: Neuraxpharm UK Ltd, Tuzulby prolonged-release chewable tablets, EL(26)A/36",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "MHRA — device & drug safety alerts",
+   "layer": "regulation",
+   "title": "Field Safety Notices: 20 to 24 July 2026",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "MHRA — device & drug safety alerts",
+   "layer": "regulation",
+   "title": "Field Safety Notices: 29 June to 03 July 2026",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "MHRA — device & drug safety alerts",
+   "layer": "regulation",
+   "title": "MHRA Safety Roundup: July 2026",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "MassDevice",
+   "layer": "industry",
+   "title": "Boston Scientific cuts 2026 guidance again despite Q2 beats",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "MassDevice",
+   "layer": "industry",
+   "title": "Boston Scientific set to cut jobs in restructuring effort",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "MassDevice",
+   "layer": "industry",
+   "title": "Johnson & Johnson wins FDA nod for Ottava surgical robot",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "MassDevice",
+   "layer": "industry",
+   "title": "Latest Medical Device News on MassDevice",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "MassDevice",
+   "layer": "industry",
+   "title": "Medtronic leads $37M Series C for AFib ablation mapping tech developer CoreMap",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "MassDevice",
+   "layer": "industry",
+   "title": "Medtronic pulls hundreds of remote workers back to the office",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "MedTech Dive",
+   "layer": "industry",
+   "title": "FTC sues Hims & Hers over alleged privacy violations, deceptive billing practices",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "MedTech Dive",
+   "layer": "industry",
+   "title": "MMI to expand study of robotic microsurgery for Alzheimer’s",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "MedTech Dive",
+   "layer": "industry",
+   "title": "Medtronic leads $37M investment in ablation mapping startup CoreMap",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "MedTech Dive",
+   "layer": "industry",
+   "title": "Siemens Healthineers, Cleveland Clinic form 10-year alliance",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "MedTech Dive",
+   "layer": "industry",
+   "title": "Stryker catching up on orders, manufacturing after cyberattack",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "MedTech Dive",
+   "layer": "industry",
+   "title": "What J&J’s Ottava robot brings to the surgical table",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "MobiHealthNews",
+   "layer": "industry",
+   "title": "Function secures $450M in growth financing",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "MobiHealthNews",
+   "layer": "industry",
+   "title": "J.P. Morgan report shows biopharma, medtech investment strong in H1 2026",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "MobiHealthNews",
+   "layer": "industry",
+   "title": "Psychiatry's future depends on digital tools",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "NICE — News",
+   "layer": "access",
+   "title": "New draft PMOS guideline recommends annual review and could mean quicker diagnosis",
+   "date": "2026-07-01"
+  },
+  {
+   "source": "NICE — News",
+   "layer": "access",
+   "title": "New lung preservation machine could make hundreds of unused donor lungs available for transplant",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "NICE — News",
+   "layer": "access",
+   "title": "New technologies could help cut years-long wait for endometriosis diagnosis, says NICE",
+   "date": "2026-07-07"
+  },
+  {
+   "source": "NICE — News",
+   "layer": "access",
+   "title": "Novel life-saving liver procedure recommended, potentially enabling hundreds more transplants",
+   "date": "2026-07-08"
+  },
+  {
+   "source": "NICE — News",
+   "layer": "access",
+   "title": "Thousands eligible for new chronic heart failure treatment following NICE recommendation",
+   "date": "2026-07-16"
+  },
+  {
+   "source": "NICE — News",
+   "layer": "access",
+   "title": "Thousands of patients to benefit from new daily pill for serious heart condition",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "NIST AI risk management & assurance",
+   "layer": "regulation",
+   "title": "National CLEAR Programme launches NHS pilot to evaluate AVT",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "Nature Medicine",
+   "layer": "clinical",
+   "title": "Deciphering the role of histidine in cancer",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "Nature Medicine",
+   "layer": "clinical",
+   "title": "Humanoid robots perform successful surgery in animals",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Nature Medicine",
+   "layer": "clinical",
+   "title": "Reducing the diagnostic odyssey in rare disease: why screening is not the only answer",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "Nature Medicine",
+   "layer": "clinical",
+   "title": "‘Heading’ the ball linked to spikes in neural damage biomarkers",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "OHDSI Blog",
+   "layer": "heor",
+   "title": "Weekly OHDSI Digest – July 27, 2026",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "PCORnet (real-world evidence)",
+   "layer": "heor",
+   "title": "Participant Recruitment and Outcomes Data Collection in PCORnet® Study RESTORE: a Large, Multisite Pragmatic Clinical Trial",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "PCORnet (real-world evidence)",
+   "layer": "heor",
+   "title": "Research Concepts Template",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "PCORnet (real-world evidence)",
+   "layer": "heor",
+   "title": "Save the date: PCORI to Announce New Funding Opportunities for PCORnet® Studies on August 4",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "A Cost-Effectiveness Model of Semaglutide 2.4 mg, Resmetirom 80 mg, and Resmetirom 100 mg Versus Standard of Care for the Treatment of Metabolic Dysfunction-Associated Steatohepatitis in the United States.",
+   "date": "2026-07-26"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "COVID-19-Related Healthcare Utilization and Costs in a Large Insured US Population, 2021-2025.",
+   "date": "2026-07-26"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "Collaborating for Affordable Patient Access to Medicines: Review of the First Decade of the Beneluxa Initiative in Pharmaceutical Policy.",
+   "date": "2026-07-25"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "Cost Effectiveness of Interventions for Perinatal Anxiety and/or Depression: A Systematic Review of Global Evidence.",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "Cost-Effectiveness and Budget Impact of Lung Cancer Screening: A Systematic Review.",
+   "date": "2026-07-22"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "Cost-Effectiveness of Adult Hepatitis A Vaccination Strategies in Korea Under an Aging Susceptibility Profile.",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "PharmacoEconomics",
+   "layer": "heor",
+   "title": "Uncertainty in Economic Evaluation: A Pragmatic Guide for Health Technology Assessment (HTA) Agencies in Resource-Constrained Settings.",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "PubMed — AI × HTA/HEOR",
+   "layer": "heor",
+   "title": "Predictors of atrial fibrillation recurrence after catheter ablation: a systematic review.",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "PubMed — AI × HTA/HEOR",
+   "layer": "heor",
+   "title": "Promoting patient empowerment in chronic care: A scoping review of key facilitating factors.",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "PubMed — AI × HTA/HEOR",
+   "layer": "heor",
+   "title": "Use of heart rate variability in prediction of clinical deterioration in critically ill hospitalised adults: a systematic review protocol.",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Applications, technical foundations and challenges of digital twins for chronic disease management: A scoping review.",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Beyond Coverage Expansion: Exploring Persistent Barriers to CGM Utilization in the Clinical Environment.",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Digital phenotyping of CGM engagement reveals distinct glycemic outcomes.",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "HPV vaccination in the WHO South-East Asia Region: A scoping review of uptake, implementation challenges, and pathways to acceleration.",
+   "date": "2026-12-01"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Insights Into Policies, Stakeholders, and Governance of Breast Pump Provision in Germany.",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Insurance Coverage and Health Care Affordability Among Adults in New York City: A Cross-Sectional Analysis, January 2022.",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Integrating MCDA and economic evaluation into a rule-based framework for hospital-level health technology assessment.",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "Perspectives on digital recovery platforms in perioperative care: insights from patients and clinicians.",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "PubMed — digital health value & reimbursement",
+   "layer": "heor",
+   "title": "YouTube as a source of patient information on robot-assisted radical prostatectomy: a cross-sectional study of quality, reliability, transparency, and content gaps.",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "RAPS Regulatory Focus",
+   "layer": "regulation",
+   "title": "RAPS Workshop: Cybersecurity Unauthorized: The Latest in Medical Device Cybersecurity",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "RAPS Regulatory Focus",
+   "layer": "regulation",
+   "title": "RF Quarterly, June 22: Regulatory history",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "RAPS Regulatory Focus",
+   "layer": "regulation",
+   "title": "Regulatory Affairs Professionals Society",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "RAPS Regulatory Focus",
+   "layer": "regulation",
+   "title": "Regulatory Affairs Professionals Society",
+   "date": "2026-07-24"
+  },
+  {
+   "source": "RAPS Regulatory Focus",
+   "layer": "regulation",
+   "title": "Regulatory Affairs Professionals Society",
+   "date": "2026-07-27"
+  },
+  {
+   "source": "RAPS Regulatory Focus",
+   "layer": "regulation",
+   "title": "Regulatory Affairs Specialist II – Electrophysiology (on-site)",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "STAT — Health Tech",
+   "layer": "industry",
+   "title": "STAT+: CMS evaluates one year of health tech progress, announces eight new pledge categories",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "STAT — Health Tech",
+   "layer": "industry",
+   "title": "STAT+: Hims misled consumers and violated their privacy, FTC alleges in a lawsuit",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "STAT — Health Tech",
+   "layer": "industry",
+   "title": "STAT+: Three questions with Whoop’s new CMO",
+   "date": "2026-07-28"
+  },
+  {
+   "source": "STAT — Pharmalot",
+   "layer": "industry",
+   "title": "STAT+: Pharmalittle: We’re reading about a Novo setback, support for Replimune’s melanoma drug, and more",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "STAT — Pharmalot",
+   "layer": "industry",
+   "title": "STAT+: Pharmalittle: We’re reading about a fugitive who became a biotech exec, a hospital suing Lilly, and more",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "STAT — Pharmalot",
+   "layer": "industry",
+   "title": "STAT+: Pharmalittle: We’re reading about an FDA panel nixing a Duchenne drug, FTC suing Hims & Hers, and more",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "STAT — Pharmalot",
+   "layer": "industry",
+   "title": "STAT+: Rising oil prices can boost the cost of some medicines. One expert says it’s time to lower reliance on fossil fuels",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "STAT — Pharmalot",
+   "layer": "industry",
+   "title": "STAT+: Trump administration revises rebate pilot for 340B drug discount program, angering hospitals",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "STAT — Pharmalot",
+   "layer": "industry",
+   "title": "STAT+: Up and down the ladder: The latest comings and goings",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "Value in Health",
+   "layer": "heor",
+   "title": "Economic Evaluation of Mindfulness-Oriented Recovery Enhancement for the Treatment of Opioid Misuse.",
+   "date": "2026-07-23"
+  },
+  {
+   "source": "Value in Health",
+   "layer": "heor",
+   "title": "Health-Related Quality of Life and Utility Values in Chinese Patients with Non-Small-Cell Lung Cancer: A Multicenter Study.",
+   "date": "2026-07-30"
+  },
+  {
+   "source": "Value in Health",
+   "layer": "heor",
+   "title": "Short Bowel Syndrome with Intestinal Failure: Healthcare Resource Utilization and Cost of Care in a Large US Claims Database.",
+   "date": "2026-07-21"
+  },
+  {
+   "source": "Value in Health",
+   "layer": "heor",
+   "title": "Systematic Review of Health Economic Evaluations of Oral Nutritional Supplement Interventions in Older Adults: An ISPOR Special Interest Group Report.",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "medRxiv — Health Informatics",
+   "layer": "clinical",
+   "title": "Association Between Clinical Outcome Measures and Sonomyography-Derived Metrics in Individuals with Spinal Cord Injury",
+   "date": "2026-07-29"
+  },
+  {
+   "source": "medRxiv — Health Informatics",
+   "layer": "clinical",
+   "title": "Evolutionary history and gut microbial genome size in health and disease",
+   "date": "2026-07-31"
+  },
+  {
+   "source": "medRxiv — Health Informatics",
+   "layer": "clinical",
+   "title": "Predicting Deprescribing of High-Risk Medications Using Provider EHR Use and Patient Characteristics",
+   "date": "2026-07-29"
+  }
+ ]
+}
