@@ -67,7 +67,11 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.1: evidence-type + strength metadata — a deterministic item-level layer (RCT, systematic review,
 #      regulatory guidance, funding deal, commentary …) with a coarse strength badge (Primary /
 #      Secondary / Policy / Market / Commentary). Additive only; stage counts and history unchanged.
-TAXONOMY_VERSION = "2.1"
+# 2.2: research-layer precision — frontier-AI newsletters / company blogs (product launches, training
+#      programmes) that passed the health gate are routed to industry; research keeps preprint/journal
+#      contributions only. Adds a healthcare-relevance field (Direct clinical / Healthcare operations /
+#      Biomedical research / Adjacent AI / General AI).
+TAXONOMY_VERSION = "2.2"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -398,6 +402,17 @@ def refine_heor_layer(items):
             text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
             if not _HEOR_RE.search(text):
                 i["layer"] = "clinical"
+    return items
+
+
+def refine_research_layer(items):
+    """Research is preprint/journal research only. Frontier-AI newsletters and company blogs that
+    passed the health gate — product launches ('Launching Health in ChatGPT'), training programmes,
+    capability posts — are not research contributions; route them to industry (market/product news).
+    Keyed off source type so it's robust: arXiv/medRxiv/journals stay, newsletters/blogs move."""
+    for i in items:
+        if i.get("layer") == "research" and source_type(i) not in ("Preprint / research", "Journal / evidence"):
+            i["layer"] = "industry"
     return items
 
 
@@ -1041,6 +1056,43 @@ def classify_evidence(i):
     if st == "Journal / evidence" or layer == "clinical":
         return "Journal study", "Primary evidence"
     return "Industry news", "Market signal"
+
+
+# --- healthcare-relevance metadata -------------------------------------------
+# WHERE in healthcare an item applies — separates direct clinical work from operations, upstream
+# biomedical research, and merely AI-adjacent capability. Deterministic; complements the evidence
+# type. Prevents category leakage (e.g. an ops copilot or a general-capability post reading as
+# clinical research). Ordered: operations & biomedical are checked before the broad clinical net.
+_REL_OPS = re.compile(r"\bscribe|ambient (voice|scribe|documentation)|documentation burden|revenue cycle"
+                      r"|\brcm\b|prior author|\bbilling\b|\bcoding\b|scheduling|staffing|workflow|throughput"
+                      r"|back office|call cent|customer service|\bclaims\b|administrative|operational"
+                      r"|note taking|\bcopilot\b|contact cent")
+_REL_BIO = re.compile(r"drug discovery|drug design|genomic|\bgenome\b|\bprotein\b|molecul|\bcompound\b"
+                      r"|target identification|biomarker discovery|scientific computing|preclinical"
+                      r"|in silico|\bomics\b|sequencing|small molecule|\bassay\b|scientific discovery")
+_REL_CLIN = re.compile(r"clinical|patient|diagnos|treatment|therap|\bdisease\b|\btrial\b|oncolog|cardio"
+                       r"|radiolog|imaging|screening|triage|decision support|prognos|surger|surgic|\bicu\b"
+                       r"|sepsis|\bstroke\b|tumou?r|cancer|mental health|colonoscop|endoscop|patholog"
+                       r"|echocard|retina|dementia|depress|arrhythmia|diabet")
+_REL_ADJ = re.compile(r"\bagentic\b|foundation model|general.purpose|frontier model|coding agent|gui agent"
+                      r"|world model|open weights|reasoning model|\brobotics\b|scientific computing")
+
+
+def healthcare_relevance(i):
+    """Direct clinical / Healthcare operations / Biomedical research / Adjacent AI / General AI."""
+    t = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+    layer = i.get("layer", "")
+    if _REL_OPS.search(t):
+        return "Healthcare operations"
+    if _REL_BIO.search(t):
+        return "Biomedical research"
+    if _REL_CLIN.search(t):
+        return "Direct clinical"
+    if _REL_ADJ.search(t):
+        return "Adjacent AI"
+    if layer in ("clinical", "regulation", "access", "heor"):
+        return "Direct clinical"        # health-system item with no sharper signal
+    return "Adjacent AI"
 
 
 def country_of(i):
@@ -2222,6 +2274,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .ev-pol{background:#eaf2fd;color:#1f4f8f;border-color:#d3e2f5}
 .ev-mkt{background:#fbf1e0;color:#8a5a17;border-color:#f0dcbd}
 .ev-com{background:#f1f1f2;color:#666;border-color:#e0e0e2}
+.rel{font-size:10.5px;font-weight:500;letter-spacing:.02em;color:#7a6a55;background:#f6f2ea;padding:2px 7px;border-radius:4px}
 .whyrank{display:inline-block;margin-left:14px}
 .whyrank>summary{cursor:pointer;font-size:12px;color:var(--mute);list-style:none}
 .whyrank>summary::-webkit-details-marker{display:none}
@@ -2329,9 +2382,9 @@ abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let tier='all', layer='all', hideRead=false, q='', sort='importance';
-let region='all', stype='all', dwin='all', topic='all', strength='all';
+let region='all', stype='all', dwin='all', topic='all', strength='all', relevance='all';
 function withinDays(d,n){ if(!d) return false; const t=Date.parse(d); if(isNaN(t)) return false; return (Date.now()-t) <= (n+1)*864e5; }
-function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
+function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||relevance!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
 const FKEY='aiheor_follow_v1';
 function followed(){ try{return JSON.parse(localStorage.getItem(FKEY)||'[]')}catch(e){return[]} }
 function toggleFollow(slug){ let a=followed(); a=a.includes(slug)?a.filter(x=>x!==slug):a.concat([slug]); try{localStorage.setItem(FKEY,JSON.stringify(a))}catch(e){} renderFollowState(); }
@@ -2399,6 +2452,7 @@ function render(){
                   .filter(i=>region==='all'||i.region===region)
                   .filter(i=>stype==='all'||i.stype===stype)
                   .filter(i=>strength==='all'||i.strength===strength)
+                  .filter(i=>relevance==='all'||i.relevance===relevance)
                   .filter(i=>dwin==='all'||withinDays(i.date,+dwin))
                   .filter(i=>!(hideRead&&read.has(i.id)))
                   .filter(i=>!q||((i.title+' '+i.source+' '+(i.summary||'')).toLowerCase().includes(q)));
@@ -2415,7 +2469,8 @@ function render(){
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
         <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
-        ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}</div>
+        ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}
+        ${i.relevance&&i.relevance!=='Direct clinical'?`<span class="rel">${esc(i.relevance)}</span>`:''}</div>
       <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
       ${i.summary?`<div class="summ">${esc(i.summary)}</div>`:''}
       <div class="acts">
@@ -2431,6 +2486,7 @@ function render(){
   if(region!=='all')fp.push(esc(region));
   if(stype!=='all')fp.push(esc(stype));
   if(strength!=='all')fp.push(esc(strength));
+  if(relevance!=='all')fp.push(esc(relevance));
   if(dwin!=='all')fp.push('last '+dwin+' days');
   if(q)fp.push('“'+esc(q)+'”');
   $('#count').innerHTML = fp.length
@@ -2465,9 +2521,10 @@ function applyFilter(){ updateClear();
 const fRegion=$('#fregion'); if(fRegion) fRegion.onchange=()=>{region=fRegion.value;applyFilter();};
 const fStype=$('#fstype'); if(fStype) fStype.onchange=()=>{stype=fStype.value;applyFilter();};
 const fStrength=$('#fstrength'); if(fStrength) fStrength.onchange=()=>{strength=fStrength.value;applyFilter();};
+const fRel=$('#frel'); if(fRel) fRel.onchange=()=>{relevance=fRel.value;applyFilter();};
 const fDate=$('#fdate'); if(fDate) fDate.onchange=()=>{dwin=fDate.value;applyFilter();};
-const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';dwin='all';
-  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fDate)fDate.value='all';
+const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';relevance='all';dwin='all';
+  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fRel)fRel.value='all'; if(fDate)fDate.value='all';
   updateClear(); render();};
 const qi=$('#q');
 if(qi) qi.oninput=()=>{q=qi.value.trim().toLowerCase();
@@ -2718,7 +2775,7 @@ def write_export(items):
     data_dir = DOCS / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     cols = ["id", "title", "url", "source", "source_type", "stage",
-            "evidence_type", "evidence_strength",
+            "evidence_type", "evidence_strength", "healthcare_relevance",
             "region", "country", "date", "score", "topics"]
 
     def row_of(i):
@@ -2734,6 +2791,7 @@ def write_export(items):
             "stage": i.get("layer", ""),
             "evidence_type": _et,
             "evidence_strength": _str,
+            "healthcare_relevance": i.get("relevance") or healthcare_relevance(i),
             "region": i.get("region", ""),
             "country": i.get("country", ""),
             "date": i.get("date", ""),           # "" = date unknown (never guessed)
@@ -2997,6 +3055,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["region"] = MACRO.get(_c, "") if _c else ""
         i["stype"] = source_type(i)
         i["etype"], i["strength"] = classify_evidence(i)
+        i["relevance"] = healthcare_relevance(i)
 
     # Evidence-tab filter options, from what's actually in this build
     _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]
@@ -3006,12 +3065,16 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     _stys = [s for s in _ST_ORDER if any(i.get("stype") == s for i in items)]
     _STR_ORDER = ["Primary evidence", "Secondary evidence", "Policy signal", "Market signal", "Commentary"]
     _strs = [s for s in _STR_ORDER if any(i.get("strength") == s for i in items)]
+    _REL_ORDER = ["Direct clinical", "Healthcare operations", "Biomedical research", "Adjacent AI", "General AI"]
+    _rels = [s for s in _REL_ORDER if any(i.get("relevance") == s for i in items)]
     region_opts = ('<option value="all">All regions</option>'
                    + "".join(f'<option value="{html.escape(r)}">{html.escape(r)}</option>' for r in _regs))
     stype_opts = ('<option value="all">All source types</option>'
                   + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _stys))
     strength_opts = ('<option value="all">All evidence</option>'
                      + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _strs))
+    relevance_opts = ('<option value="all">All relevance</option>'
+                      + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _rels))
     date_opts = ('<option value="all">Any date</option>'
                  '<option value="7">Last 7 days</option>'
                  '<option value="30">Last 30 days</option>'
@@ -3079,6 +3142,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
       <label class="sortl">Region <select id="fregion" class="sortsel">{region_opts}</select></label>
       <label class="sortl">Type <select id="fstype" class="sortsel">{stype_opts}</select></label>
       <label class="sortl">Evidence <select id="fstrength" class="sortsel">{strength_opts}</select></label>
+      <label class="sortl">Relevance <select id="frel" class="sortsel">{relevance_opts}</select></label>
       <label class="sortl">Date <select id="fdate" class="sortsel">{date_opts}</select></label>
       <label class="sortl">Sort
         <select id="sort" class="sortsel">
@@ -3515,6 +3579,7 @@ def main():
     items = apply_source_caps(items, _caps)
     items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
     items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
+    items = refine_research_layer(items) # research precision: newsletters/product news → industry
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
