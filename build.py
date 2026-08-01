@@ -64,7 +64,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #      and excludes private-insurer AI; (e) HEOR reclassifier moves non-economic AI reviews → clinical.
 # 2.0: health-only Research — the research layer (frontier-AI newsletters + arXiv) is now health-gated,
 #      keeping AI-in-health work and dropping general-AI capability news. Completes the precision pass.
-TAXONOMY_VERSION = "2.0"
+# 2.1: evidence-type + strength metadata — a deterministic item-level layer (RCT, systematic review,
+#      regulatory guidance, funding deal, commentary …) with a coarse strength badge (Primary /
+#      Secondary / Policy / Market / Commentary). Additive only; stage counts and history unchanged.
+TAXONOMY_VERSION = "2.1"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -980,6 +983,64 @@ def source_type(i):
     if any(k in s for k in _ST_INDUSTRY):
         return "Industry press"
     return "Other"
+
+
+# --- evidence-type + strength metadata ---------------------------------------
+# A second, item-level layer on top of the source-assigned stage: WHAT KIND of evidence each
+# item is (RCT, systematic review, regulatory guidance, funding deal, commentary …) and how much
+# evidential weight it carries. Deterministic keyword/source rules — the point is that a press
+# release should not visually compete with an RCT. 'strength' is the coarse badge; 'etype' the
+# fine label. Both are descriptive, never a quality rating of the underlying work.
+_EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective\b|\bcommentary\b"
+                         r"|\bcomment\b|\breply\b|correction|retraction|\berratum\b")
+_EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
+                      r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
+_EV_META = re.compile(r"meta.analysis")
+_EV_SYS = re.compile(r"systematic review|scoping review|narrative review|literature review|umbrella review")
+_EV_ECON = re.compile(r"cost.?effective|cost.?util|cost.?benefit|budget impact|economic evaluation"
+                      r"|\bqaly\b|pharmacoeconom|willingness.to.pay|value assessment")
+_EV_RWE = re.compile(r"real.world|registry.based|observational|\brwe\b|post.?market|pharmacovigilance"
+                     r"|safety surveillance")
+_EV_RCT = re.compile(r"randomi[sz]ed (controlled )?trial|\brct\b")
+_EV_PROTO = re.compile(r"study protocol|trial protocol|protocol for")
+
+
+def classify_evidence(i):
+    """Return (etype, strength). Order matters: overrides (commentary, deals) first, then
+    study designs, then a source-type / stage backbone."""
+    st = i.get("stype") or source_type(i)
+    layer = i.get("layer", "")
+    t = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+    if _EV_COMMENT.search(t):
+        return "Commentary", "Commentary"
+    if (layer == "industry" or st == "Industry press") and _EV_DEAL.search(t):
+        return "Funding / deal", "Market signal"
+    if _EV_META.search(t):
+        return "Meta-analysis", "Secondary evidence"
+    if _EV_SYS.search(t):
+        return "Systematic review", "Secondary evidence"
+    if _EV_ECON.search(t):
+        return "Economic evaluation", "Primary evidence"
+    if _EV_RWE.search(t):
+        return "Real-world evidence", "Primary evidence"
+    if st == "Trial registry":
+        return "Trial registry", "Primary evidence"
+    if _EV_RCT.search(t):
+        return "RCT", "Primary evidence"
+    if _EV_PROTO.search(t):
+        return "Study protocol", "Primary evidence"
+    # source-type / stage backbone
+    if st == "Regulator" or layer == "regulation":
+        return "Regulatory guidance", "Policy signal"
+    if st == "HTA / payer" or layer == "access":
+        return "HTA / coverage", "Policy signal"
+    if layer == "heor":
+        return "HEOR / value", "Secondary evidence"
+    if st == "Preprint / research" or layer == "research":
+        return "Preprint", "Primary evidence"
+    if st == "Journal / evidence" or layer == "clinical":
+        return "Journal study", "Primary evidence"
+    return "Industry news", "Market signal"
 
 
 def country_of(i):
@@ -2155,6 +2216,12 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .sortl{font-size:12px;color:#7a7a7a;display:inline-flex;align-items:center;gap:5px}
 .sortsel{font-size:12.5px;padding:5px 8px;border:1px solid #dcdcdc;border-radius:7px;background:#fff;color:var(--ink);font-family:inherit;cursor:pointer}
 .geo{font-size:10.5px;font-weight:600;letter-spacing:.03em;color:#2f6f9f;background:#eef4fa;padding:2px 7px;border-radius:4px}
+.ev{font-size:10.5px;font-weight:600;letter-spacing:.02em;padding:2px 8px;border-radius:4px;background:#f0f0f0;color:#555;border:1px solid transparent}
+.ev-prim{background:#edf6ee;color:#236b30;border-color:#cfe6d3}
+.ev-sec{background:#e9f5f2;color:#177a63;border-color:#c9e7df}
+.ev-pol{background:#eaf2fd;color:#1f4f8f;border-color:#d3e2f5}
+.ev-mkt{background:#fbf1e0;color:#8a5a17;border-color:#f0dcbd}
+.ev-com{background:#f1f1f2;color:#666;border-color:#e0e0e2}
 .whyrank{display:inline-block;margin-left:14px}
 .whyrank>summary{cursor:pointer;font-size:12px;color:var(--mute);list-style:none}
 .whyrank>summary::-webkit-details-marker{display:none}
@@ -2262,9 +2329,9 @@ abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let tier='all', layer='all', hideRead=false, q='', sort='importance';
-let region='all', stype='all', dwin='all', topic='all';
+let region='all', stype='all', dwin='all', topic='all', strength='all';
 function withinDays(d,n){ if(!d) return false; const t=Date.parse(d); if(isNaN(t)) return false; return (Date.now()-t) <= (n+1)*864e5; }
-function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
+function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
 const FKEY='aiheor_follow_v1';
 function followed(){ try{return JSON.parse(localStorage.getItem(FKEY)||'[]')}catch(e){return[]} }
 function toggleFollow(slug){ let a=followed(); a=a.includes(slug)?a.filter(x=>x!==slug):a.concat([slug]); try{localStorage.setItem(FKEY,JSON.stringify(a))}catch(e){} renderFollowState(); }
@@ -2278,6 +2345,7 @@ const read=new Set(JSON.parse(localStorage.getItem(KEY)||'[]'));
 const save=()=>localStorage.setItem(KEY,JSON.stringify([...read]));
 const LABEL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
 const SC={research:'#6a4c93',clinical:'#9c2c44',regulation:'#2f6f9f',heor:'#1f8a70',access:'#b0842b',industry:'#64748b'};
+const EVC={'Primary evidence':'ev-prim','Secondary evidence':'ev-sec','Policy signal':'ev-pol','Market signal':'ev-mkt','Commentary':'ev-com'};
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const safeUrl=u=>(/^https?:\/\//i.test(u||'')?u:'#');
 
@@ -2330,6 +2398,7 @@ function render(){
                   .filter(i=>topic==='all'||(i.topics||[]).includes(topic))
                   .filter(i=>region==='all'||i.region===region)
                   .filter(i=>stype==='all'||i.stype===stype)
+                  .filter(i=>strength==='all'||i.strength===strength)
                   .filter(i=>dwin==='all'||withinDays(i.date,+dwin))
                   .filter(i=>!(hideRead&&read.has(i.id)))
                   .filter(i=>!q||((i.title+' '+i.source+' '+(i.summary||'')).toLowerCase().includes(q)));
@@ -2344,6 +2413,7 @@ function render(){
   $('#feed').innerHTML = list.map(i=>`
     <div class="card ${read.has(i.id)?'read':''}" style="border-left:3px solid ${SC[i.layer]||'#dcdcdc'}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
+        ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
         <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}</div>
       <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
@@ -2360,6 +2430,7 @@ function render(){
   const fp=[];
   if(region!=='all')fp.push(esc(region));
   if(stype!=='all')fp.push(esc(stype));
+  if(strength!=='all')fp.push(esc(strength));
   if(dwin!=='all')fp.push('last '+dwin+' days');
   if(q)fp.push('“'+esc(q)+'”');
   $('#count').innerHTML = fp.length
@@ -2393,9 +2464,10 @@ function applyFilter(){ updateClear();
   render(); }
 const fRegion=$('#fregion'); if(fRegion) fRegion.onchange=()=>{region=fRegion.value;applyFilter();};
 const fStype=$('#fstype'); if(fStype) fStype.onchange=()=>{stype=fStype.value;applyFilter();};
+const fStrength=$('#fstrength'); if(fStrength) fStrength.onchange=()=>{strength=fStrength.value;applyFilter();};
 const fDate=$('#fdate'); if(fDate) fDate.onchange=()=>{dwin=fDate.value;applyFilter();};
-const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';dwin='all';
-  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fDate)fDate.value='all';
+const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';dwin='all';
+  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fDate)fDate.value='all';
   updateClear(); render();};
 const qi=$('#q');
 if(qi) qi.oninput=()=>{q=qi.value.trim().toLowerCase();
@@ -2646,9 +2718,13 @@ def write_export(items):
     data_dir = DOCS / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     cols = ["id", "title", "url", "source", "source_type", "stage",
+            "evidence_type", "evidence_strength",
             "region", "country", "date", "score", "topics"]
 
     def row_of(i):
+        _et, _str = (i.get("etype"), i.get("strength"))
+        if _et is None:
+            _et, _str = classify_evidence(i)
         return {
             "id": i.get("id", ""),
             "title": i.get("title", ""),
@@ -2656,6 +2732,8 @@ def write_export(items):
             "source": i.get("source", ""),
             "source_type": i.get("stype") or source_type(i),
             "stage": i.get("layer", ""),
+            "evidence_type": _et,
+            "evidence_strength": _str,
             "region": i.get("region", ""),
             "country": i.get("country", ""),
             "date": i.get("date", ""),           # "" = date unknown (never guessed)
@@ -2918,6 +2996,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["country"] = _c
         i["region"] = MACRO.get(_c, "") if _c else ""
         i["stype"] = source_type(i)
+        i["etype"], i["strength"] = classify_evidence(i)
 
     # Evidence-tab filter options, from what's actually in this build
     _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]
@@ -2925,10 +3004,14 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     _ST_ORDER = ["Regulator", "HTA / payer", "Trial registry", "Journal / evidence",
                  "Preprint / research", "Industry press", "Other"]
     _stys = [s for s in _ST_ORDER if any(i.get("stype") == s for i in items)]
+    _STR_ORDER = ["Primary evidence", "Secondary evidence", "Policy signal", "Market signal", "Commentary"]
+    _strs = [s for s in _STR_ORDER if any(i.get("strength") == s for i in items)]
     region_opts = ('<option value="all">All regions</option>'
                    + "".join(f'<option value="{html.escape(r)}">{html.escape(r)}</option>' for r in _regs))
     stype_opts = ('<option value="all">All source types</option>'
                   + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _stys))
+    strength_opts = ('<option value="all">All evidence</option>'
+                     + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _strs))
     date_opts = ('<option value="all">Any date</option>'
                  '<option value="7">Last 7 days</option>'
                  '<option value="30">Last 30 days</option>'
@@ -2995,6 +3078,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <div class="fbar">{tier_btns}<span class="spacer"></span>
       <label class="sortl">Region <select id="fregion" class="sortsel">{region_opts}</select></label>
       <label class="sortl">Type <select id="fstype" class="sortsel">{stype_opts}</select></label>
+      <label class="sortl">Evidence <select id="fstrength" class="sortsel">{strength_opts}</select></label>
       <label class="sortl">Date <select id="fdate" class="sortsel">{date_opts}</select></label>
       <label class="sortl">Sort
         <select id="sort" class="sortsel">
