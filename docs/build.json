@@ -1,17 +1,17 @@
 {
-  "build_id": "30703687661",
-  "generated_at": "2026-08-01T14:25:08Z",
+  "build_id": "30708727556",
+  "generated_at": "2026-08-01T16:43:25Z",
   "taxonomy_version": "2.10",
-  "git_commit": "e6f2d2f9b04c4e88a68941687ccf40d9db24543d",
-  "items_published": 104,
+  "git_commit": "6438041fa4ae4137b3a3e3c01dda49c572234c23",
+  "items_published": 101,
   "sources_contributing": 39,
   "sources_expected": 74,
   "silent_sources": 0,
   "errored_sources": 2,
   "undated_items": 7,
   "qa": {
-    "input": 104,
-    "published": 104,
+    "input": 101,
+    "published": 101,
     "dropped": 0,
     "future_dates_blanked": 0
   },
