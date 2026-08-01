@@ -157,14 +157,15 @@ def test_export_schema():
     import tempfile, json, csv, io
     from pathlib import Path
     cols = ["id", "title", "url", "source", "source_type", "stage",
-            "evidence_type", "evidence_strength", "healthcare_relevance",
+            "evidence_type", "evidence_strength", "healthcare_relevance", "ai_modality",
             "region", "country", "date", "score", "topics"]
     items = [
         {"id": "e1", "title": "FDA cleared AI", "url": "https://accessdata.fda.gov/K1",
          "source": "FDA — AI device authorisations", "layer": "regulation", "date": "2026-07-20",
          "topics": ["fda-ai-authorisations", "oncology-ai"], "score": 10,
          "region": "North America", "country": "United States", "stype": "Regulator",
-         "etype": "Regulatory guidance", "strength": "Policy signal", "relevance": "Direct clinical"},
+         "etype": "Regulatory guidance", "strength": "Policy signal", "relevance": "Direct clinical",
+         "modality": "Imaging AI"},
         {"id": "e2", "title": "NICE recommendation", "url": "https://www.nice.org.uk/n1",
          "source": "NICE — News", "layer": "access", "date": "",  # date unknown
          "topics": ["nice-evaluations"], "score": 6, "region": "Europe",
@@ -400,6 +401,18 @@ def test_research_layer_precision():
     assert lay["TLDR AI"] == "industry"                     # newsletter → industry
 
 
+def test_ai_modality():
+    """AI-modality tag; blank when no clear signal."""
+    mod = lambda t: build.ai_modality({"title": t, "summary": ""})
+    assert mod("Deep-learning echocardiographic measurements") == "Imaging AI"
+    assert mod("AI scribes take clinical notes") == "Generative AI / LLM"
+    assert mod("A digital therapeutic for PTSD") == "Digital therapeutic"
+    assert mod("Surgical robotics platform") == "Robotics"
+    assert mod("Wearable temperature monitoring model") == "Remote monitoring"
+    assert mod("AI-driven small-molecule drug discovery and target identification") == "Drug discovery AI"
+    assert mod("CMS proposes a payment framework") == ""     # no modality signal → blank
+
+
 def test_healthcare_relevance():
     """Direct clinical vs operations vs biomedical vs adjacent."""
     rel = lambda t, layer="clinical": build.healthcare_relevance({"title": t, "layer": layer, "summary": ""})
@@ -422,8 +435,11 @@ def test_evidence_classification():
     assert ev("Responsible AI in medical imaging: a systematic review", "clinical", stype="Journal / evidence") == ("Systematic review", "Secondary evidence")
     assert ev("Cost-effectiveness of an AI triage tool", "heor", stype="Journal / evidence") == ("Economic evaluation", "Primary evidence")
     assert ev("AI scribes are not medical devices, MHRA says", "regulation", stype="Regulator") == ("Regulatory guidance", "Policy signal")
+    assert ev("FDA classification of the diabetes digital therapeutic device", "regulation", stype="Regulator") == ("Regulatory authorisation", "Policy signal")
+    assert ev("EU AI Act radiology: beyond compliance to patient safety", "regulation") == ("AI governance", "Policy signal")
     assert ev("CMS proposes payment framework for software", "access") == ("HTA / coverage", "Policy signal")
-    assert ev("WellSpan Health, Hippocratic AI ink multi-year partnership", "industry", stype="Industry press") == ("Funding / deal", "Market signal")
+    assert ev("WellSpan Health, Hippocratic AI ink multi-year partnership", "industry", stype="Industry press") == ("Partnership", "Market signal")
+    assert ev("Startup raises $40M Series B for AI imaging", "industry", stype="Industry press") == ("Funding round", "Market signal")
     assert ev("Retraction notice to Integrating Generative AI", "heor", source="Value in Health", stype="Journal / evidence") == ("Commentary", "Commentary")
     assert ev("AI-Assisted Optical Diagnosis (CADx)", "clinical", stype="Trial registry") == ("Trial registry", "Primary evidence")
     assert ev("A foundation model for colonoscopy", "research", stype="Preprint / research") == ("Preprint", "Primary evidence")

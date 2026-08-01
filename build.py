@@ -71,7 +71,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #      programmes) that passed the health gate are routed to industry; research keeps preprint/journal
 #      contributions only. Adds a healthcare-relevance field (Direct clinical / Healthcare operations /
 #      Biomedical research / Adjacent AI / General AI).
-TAXONOMY_VERSION = "2.2"
+# 2.3: AI-modality field (Imaging / LLM / CDS / Digital therapeutic / Predictive / Robotics / Monitoring
+#      / Drug discovery); finer evidence types for regulation (Authorisation vs AI governance vs
+#      Guidance) and industry (Acquisition / Funding round / Partnership / Product launch / Deployment).
+TAXONOMY_VERSION = "2.3"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1018,6 +1021,17 @@ _EV_RWE = re.compile(r"real.world|registry.based|observational|\brwe\b|post.?mar
                      r"|safety surveillance")
 _EV_RCT = re.compile(r"randomi[sz]ed (controlled )?trial|\brct\b")
 _EV_PROTO = re.compile(r"study protocol|trial protocol|protocol for")
+# regulation: separate market-access permission from AI-governance policy
+_EV_GOV = re.compile(r"\bai act\b|\bnist\b|governance|ethics framework|transparency code"
+                     r"|risk management framework|assurance framework|responsible ai|\bstandards?\b for")
+_EV_AUTH = re.compile(r"clearance|cleared|510\(k\)|de novo|authoris|authoriz|\bapproval\b|\bapproved\b"
+                      r"|ce mark|\bmdr\b|licen[sc]e|classification|premarket|marketing author")
+# industry: commercial-event subtype
+_EV_ACQ = re.compile(r"acqui|merger|buyout|takeover")
+_EV_FUND = re.compile(r"raises?|funding round|series [a-e]\b|\bfunding\b|\binvest|\bipo\b|venture|\bseed\b")
+_EV_PARTN = re.compile(r"partnership|\bpartners\b|\bpact\b|collaborat|alliance|licensing|\bink(s|ed)?\b|joins? forces")
+_EV_LAUNCH = re.compile(r"launch|unveil|introduc|debut|\breleases?\b|rolls? out|white label")
+_EV_DEPLOY = re.compile(r"deploy|go live|implementation|contract|selects?|\btaps\b|adopt")
 
 
 def classify_evidence(i):
@@ -1028,8 +1042,18 @@ def classify_evidence(i):
     t = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
     if _EV_COMMENT.search(t):
         return "Commentary", "Commentary"
-    if (layer == "industry" or st == "Industry press") and _EV_DEAL.search(t):
-        return "Funding / deal", "Market signal"
+    if layer == "industry" or st == "Industry press":
+        if _EV_ACQ.search(t):
+            return "Acquisition", "Market signal"
+        if _EV_FUND.search(t):
+            return "Funding round", "Market signal"
+        if _EV_PARTN.search(t):
+            return "Partnership", "Market signal"
+        if _EV_LAUNCH.search(t):
+            return "Product launch", "Market signal"
+        if _EV_DEPLOY.search(t):
+            return "Deployment", "Market signal"
+        # else fall through to the backbone → "Industry news"
     if _EV_META.search(t):
         return "Meta-analysis", "Secondary evidence"
     if _EV_SYS.search(t):
@@ -1046,6 +1070,10 @@ def classify_evidence(i):
         return "Study protocol", "Primary evidence"
     # source-type / stage backbone
     if st == "Regulator" or layer == "regulation":
+        if _EV_GOV.search(t):
+            return "AI governance", "Policy signal"
+        if _EV_AUTH.search(t):
+            return "Regulatory authorisation", "Policy signal"
         return "Regulatory guidance", "Policy signal"
     if st == "HTA / payer" or layer == "access":
         return "HTA / coverage", "Policy signal"
@@ -1093,6 +1121,37 @@ def healthcare_relevance(i):
     if layer in ("clinical", "regulation", "access", "heor"):
         return "Direct clinical"        # health-system item with no sharper signal
     return "Adjacent AI"
+
+
+# --- AI-modality metadata ----------------------------------------------------
+# WHAT KIND of AI the item is about. Deterministic; blank when no clear signal (policy/funding
+# items often have none — better empty than guessed). Ordered most-specific first.
+_MOD_DTX = re.compile(r"digital (behavio(u)?ral )?therapeutic|\bdiga\b|prescription digital|\bdtx\b|serious game")
+_MOD_IMG = re.compile(r"imaging|radiolog|echocard|colonoscop|endoscop|mammograph|\bmri\b|x ray|ultrasound"
+                      r"|retinal|dermatolog|histopath|pathology|computer vision|vision language|optical diagnos"
+                      r"|\bcadx\b|neuroimaging")
+_MOD_LLM = re.compile(r"large language model|\bllm\b|generative|chatbot|foundation model|\bgpt\b"
+                      r"|ambient (voice|scribe|documentation)|\bscribe|natural language|clinical dialogue"
+                      r"|conversational|\bnlp\b")
+_MOD_CDS = re.compile(r"decision support|\bcds\b|risk model|risk stratif|\bpredict|early warning|\btriage\b"
+                      r"|clinical alert|prognostic")
+_MOD_ROBO = re.compile(r"\brobot|telesurgery")
+_MOD_MON = re.compile(r"wearable|remote monitoring|continuous glucose|\bcgm\b|smart home|biosensor|\bsensor"
+                      r"|remote patient")
+_MOD_DRUG = re.compile(r"drug discovery|drug design|target identification|small molecule"
+                       r"|protein (structure|folding|design)|molecular")
+_MOD_PRED = re.compile(r"machine learning|deep learning|predictive analytic|classification|neural network|\balgorithm")
+
+
+def ai_modality(i):
+    t = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+    for rx, lab in ((_MOD_DTX, "Digital therapeutic"), (_MOD_IMG, "Imaging AI"),
+                    (_MOD_LLM, "Generative AI / LLM"), (_MOD_CDS, "Clinical decision support"),
+                    (_MOD_ROBO, "Robotics"), (_MOD_MON, "Remote monitoring"),
+                    (_MOD_DRUG, "Drug discovery AI"), (_MOD_PRED, "Predictive ML")):
+        if rx.search(t):
+            return lab
+    return ""
 
 
 def country_of(i):
@@ -2275,6 +2334,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .ev-mkt{background:#fbf1e0;color:#8a5a17;border-color:#f0dcbd}
 .ev-com{background:#f1f1f2;color:#666;border-color:#e0e0e2}
 .rel{font-size:10.5px;font-weight:500;letter-spacing:.02em;color:#7a6a55;background:#f6f2ea;padding:2px 7px;border-radius:4px}
+.mod{font-size:10.5px;font-weight:500;letter-spacing:.02em;color:#4a4a63;background:#eeeef4;padding:2px 7px;border-radius:4px}
 .whyrank{display:inline-block;margin-left:14px}
 .whyrank>summary{cursor:pointer;font-size:12px;color:var(--mute);list-style:none}
 .whyrank>summary::-webkit-details-marker{display:none}
@@ -2382,9 +2442,9 @@ abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let tier='all', layer='all', hideRead=false, q='', sort='importance';
-let region='all', stype='all', dwin='all', topic='all', strength='all', relevance='all';
+let region='all', stype='all', dwin='all', topic='all', strength='all', relevance='all', modality='all';
 function withinDays(d,n){ if(!d) return false; const t=Date.parse(d); if(isNaN(t)) return false; return (Date.now()-t) <= (n+1)*864e5; }
-function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||relevance!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
+function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||relevance!=='all'||modality!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
 const FKEY='aiheor_follow_v1';
 function followed(){ try{return JSON.parse(localStorage.getItem(FKEY)||'[]')}catch(e){return[]} }
 function toggleFollow(slug){ let a=followed(); a=a.includes(slug)?a.filter(x=>x!==slug):a.concat([slug]); try{localStorage.setItem(FKEY,JSON.stringify(a))}catch(e){} renderFollowState(); }
@@ -2453,6 +2513,7 @@ function render(){
                   .filter(i=>stype==='all'||i.stype===stype)
                   .filter(i=>strength==='all'||i.strength===strength)
                   .filter(i=>relevance==='all'||i.relevance===relevance)
+                  .filter(i=>modality==='all'||i.modality===modality)
                   .filter(i=>dwin==='all'||withinDays(i.date,+dwin))
                   .filter(i=>!(hideRead&&read.has(i.id)))
                   .filter(i=>!q||((i.title+' '+i.source+' '+(i.summary||'')).toLowerCase().includes(q)));
@@ -2470,6 +2531,7 @@ function render(){
         ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
         <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}
+        ${i.modality?`<span class="mod">${esc(i.modality)}</span>`:''}
         ${i.relevance&&i.relevance!=='Direct clinical'?`<span class="rel">${esc(i.relevance)}</span>`:''}</div>
       <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
       ${i.summary?`<div class="summ">${esc(i.summary)}</div>`:''}
@@ -2487,6 +2549,7 @@ function render(){
   if(stype!=='all')fp.push(esc(stype));
   if(strength!=='all')fp.push(esc(strength));
   if(relevance!=='all')fp.push(esc(relevance));
+  if(modality!=='all')fp.push(esc(modality));
   if(dwin!=='all')fp.push('last '+dwin+' days');
   if(q)fp.push('“'+esc(q)+'”');
   $('#count').innerHTML = fp.length
@@ -2522,9 +2585,10 @@ const fRegion=$('#fregion'); if(fRegion) fRegion.onchange=()=>{region=fRegion.va
 const fStype=$('#fstype'); if(fStype) fStype.onchange=()=>{stype=fStype.value;applyFilter();};
 const fStrength=$('#fstrength'); if(fStrength) fStrength.onchange=()=>{strength=fStrength.value;applyFilter();};
 const fRel=$('#frel'); if(fRel) fRel.onchange=()=>{relevance=fRel.value;applyFilter();};
+const fMod=$('#fmod'); if(fMod) fMod.onchange=()=>{modality=fMod.value;applyFilter();};
 const fDate=$('#fdate'); if(fDate) fDate.onchange=()=>{dwin=fDate.value;applyFilter();};
-const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';relevance='all';dwin='all';
-  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fRel)fRel.value='all'; if(fDate)fDate.value='all';
+const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';relevance='all';modality='all';dwin='all';
+  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fRel)fRel.value='all'; if(fMod)fMod.value='all'; if(fDate)fDate.value='all';
   updateClear(); render();};
 const qi=$('#q');
 if(qi) qi.oninput=()=>{q=qi.value.trim().toLowerCase();
@@ -2775,7 +2839,7 @@ def write_export(items):
     data_dir = DOCS / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     cols = ["id", "title", "url", "source", "source_type", "stage",
-            "evidence_type", "evidence_strength", "healthcare_relevance",
+            "evidence_type", "evidence_strength", "healthcare_relevance", "ai_modality",
             "region", "country", "date", "score", "topics"]
 
     def row_of(i):
@@ -2792,6 +2856,7 @@ def write_export(items):
             "evidence_type": _et,
             "evidence_strength": _str,
             "healthcare_relevance": i.get("relevance") or healthcare_relevance(i),
+            "ai_modality": i.get("modality", ai_modality(i)),
             "region": i.get("region", ""),
             "country": i.get("country", ""),
             "date": i.get("date", ""),           # "" = date unknown (never guessed)
@@ -3056,6 +3121,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["stype"] = source_type(i)
         i["etype"], i["strength"] = classify_evidence(i)
         i["relevance"] = healthcare_relevance(i)
+        i["modality"] = ai_modality(i)
 
     # Evidence-tab filter options, from what's actually in this build
     _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]
@@ -3067,6 +3133,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     _strs = [s for s in _STR_ORDER if any(i.get("strength") == s for i in items)]
     _REL_ORDER = ["Direct clinical", "Healthcare operations", "Biomedical research", "Adjacent AI", "General AI"]
     _rels = [s for s in _REL_ORDER if any(i.get("relevance") == s for i in items)]
+    _MOD_ORDER = ["Imaging AI", "Generative AI / LLM", "Clinical decision support", "Digital therapeutic",
+                  "Predictive ML", "Remote monitoring", "Robotics", "Drug discovery AI"]
+    _mods = [s for s in _MOD_ORDER if any(i.get("modality") == s for i in items)]
     region_opts = ('<option value="all">All regions</option>'
                    + "".join(f'<option value="{html.escape(r)}">{html.escape(r)}</option>' for r in _regs))
     stype_opts = ('<option value="all">All source types</option>'
@@ -3075,6 +3144,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
                      + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _strs))
     relevance_opts = ('<option value="all">All relevance</option>'
                       + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _rels))
+    modality_opts = ('<option value="all">All modalities</option>'
+                     + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _mods))
     date_opts = ('<option value="all">Any date</option>'
                  '<option value="7">Last 7 days</option>'
                  '<option value="30">Last 30 days</option>'
@@ -3143,6 +3214,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
       <label class="sortl">Type <select id="fstype" class="sortsel">{stype_opts}</select></label>
       <label class="sortl">Evidence <select id="fstrength" class="sortsel">{strength_opts}</select></label>
       <label class="sortl">Relevance <select id="frel" class="sortsel">{relevance_opts}</select></label>
+      <label class="sortl">Modality <select id="fmod" class="sortsel">{modality_opts}</select></label>
       <label class="sortl">Date <select id="fdate" class="sortsel">{date_opts}</select></label>
       <label class="sortl">Sort
         <select id="sort" class="sortsel">
