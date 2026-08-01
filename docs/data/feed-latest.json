@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-01T05:15:28Z",
- "taxonomy_version": "1.8",
- "count": 147,
+ "generated_at": "2026-08-01T06:20:53Z",
+ "taxonomy_version": "1.9",
+ "count": 139,
  "fields": [
   "id",
   "title",
@@ -616,19 +616,6 @@
    "topics": ""
   },
   {
-   "id": "3585cad31231",
-   "title": "AI app in India provides multilingual support to cancer patients",
-   "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxQN2lFZXdYTkFoOHF3WlBpQjJuVl96Z1drejZneEF0ZktGVzhPNGFOazZsTkFsSmJWZ0tzWV9RWkxnUHRXWHhOaDF3OHZVX1JYY2lsSVFVNS1WUEliVkgtSEFFeEcxZVY3LTNyWnhjUGs0Q25RczcyMlBZeUdXWHBSRFFCWjlpVjJFN1JJTnFYaHVsMFFZeWVyMmpKeVpZZnFS?oc=5",
-   "source": "MobiHealthNews",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "region": "Asia-Pacific",
-   "country": "India",
-   "date": "2026-07-28",
-   "score": 2,
-   "topics": "oncology-ai"
-  },
-  {
    "id": "7aa28e29ff45",
    "title": "Claude Opus 5 🧠, inside OpenAI’s hack 👨‍💻, NVIDIA open weights 🔓",
    "url": "https://tldr.tech/ai/2026-07-27",
@@ -645,6 +632,19 @@
    "id": "03578ab414a5",
    "title": "Collaboration can advance AI-powered behavioral health",
    "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxPaU5xbFE3V1lMcFR2bnZsWnpsd0RuUmFTd1FoRkc1VkI2aTB4X3AzdUNkZlMwVTBDU1NqUDBXNjhUb0xBQkRfaDlHcHhULVNKUVlHbGNJSmpkUmpiVG5CeUJIWnN5UGQ5dkh3U1kxbVBVcFJvVzVseTAwVjZFZHhEYlhKYkdhZm5mNHJuR1hmc1dQTjFrbm5POTBxVjk?oc=5",
+   "source": "MobiHealthNews",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-27",
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "99d0065b8941",
+   "title": "AI finds opportunities to control care costs",
+   "url": "https://news.google.com/rss/articles/CBMihAFBVV95cUxPSkRlSWJxcHNyM2JzMHpBSktZQ3lUWlU3ZmJxakJQdmN4emZBeGxBM3pwVEgtd05FSmJEb3BUcWIzaDFKQUxsUmxUeHYwWnA4T0ExWTI5Y2tUWEQtQ3FpaXlrUkVDczlpaE8zV0Rwa1BDaGNDdjVzbkJsSENCWHhIQVBlTVE?oc=5",
    "source": "MobiHealthNews",
    "source_type": "Industry press",
    "stage": "industry",
@@ -764,12 +764,12 @@
    "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNWXp0UkYtaV9LTHl6bnh6bTdGeEVtekhJNTRiaXZxSUFLNm1sY2c4dlQ4NHVCYmpVX1IxSUJyRi1lVmI5TmNBREllTEl4SE1QRW9kSVhBVEJLc0JQNHVYSkVURWU1TXZqQndlU3pkS0dPMWFVbzZBdVgybk1odHpwT9IBlAFBVV95cUxNa2V2UENMUDRWRmNmNEl6czJ4RUthV0tzS0VLQnY5blRFcVYzbGNQOV9HNTR5NzdCYTloOWZRX3dlTGduM3BGWGZqWWlTTUgzeGc0UTJqRFNDR2tWcTZRcVIzSV9hLVJmQzhBSWRSWE9na1BqRWJIUEpvZlVIOG80M01SeHRUM0tzdjJjOVBnNDBQYVUx?oc=5",
    "source": "AI in HTA & market access",
    "source_type": "Other",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "Asia-Pacific",
    "country": "South Korea",
    "date": "2026-07-22",
-   "score": 3,
-   "topics": "hta-value-evidence"
+   "score": 1,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "61ff65705c9e",
@@ -842,12 +842,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42533411/",
    "source": "PubMed — digital health value & reimbursement",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "Asia-Pacific",
    "country": "South Korea",
    "date": "2026-08-01",
-   "score": 4,
-   "topics": "hta-value-evidence"
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "a9f9ed389f10",
@@ -876,19 +876,6 @@
    "topics": "mhra-updates;regulatory-activity"
   },
   {
-   "id": "46b03721107e",
-   "title": "A Study to Compare Standard Therapy to Treat Hodgkin Lymphoma to the Use of Two Drugs, Brentuximab Vedotin and Nivolumab",
-   "url": "https://clinicaltrials.gov/study/NCT05675410",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies;oncology-ai"
-  },
-  {
    "id": "a88229a400f3",
    "title": "Artificial Intelligence as a Decision Making Tool in Emergency Department",
    "url": "https://clinicaltrials.gov/study/NCT06902675",
@@ -900,32 +887,6 @@
    "date": "2026-07-31",
    "score": 7,
    "topics": "ai-clinical-studies;economic-endpoint-trials"
-  },
-  {
-   "id": "7cddf02540c4",
-   "title": "Youth-Onset Type 2 Diabetes and Heart Disease: The Young at Heart Prospective Cohort Study",
-   "url": "https://clinicaltrials.gov/study/NCT06730113",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies;cardiology-ai"
-  },
-  {
-   "id": "5a8f5668d79f",
-   "title": "Prevalence and Development of Liver Dysfunction in Hematopoietic Stem Cell Transplant",
-   "url": "https://clinicaltrials.gov/study/NCT05722210",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies"
   },
   {
    "id": "0b37a9c4ffa8",
@@ -941,19 +902,6 @@
    "topics": "ai-clinical-studies;oncology-ai"
   },
   {
-   "id": "17a9c73cc4ff",
-   "title": "In-Person, Online, and Hybrid Healthy-Aging Education for Pre-Frailty and Frailty in Older Adults",
-   "url": "https://clinicaltrials.gov/study/NCT07738393",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies"
-  },
-  {
    "id": "cad85693c166",
    "title": "Diagnostic Accuracy of a Deep Learning-Based Software for Automated Multiparametric Echocardiographic Measurements",
    "url": "https://clinicaltrials.gov/study/NCT07738419",
@@ -967,19 +915,6 @@
    "topics": "ai-clinical-studies;cardiology-ai"
   },
   {
-   "id": "f064483d261a",
-   "title": "Breast Cancer, Reasoning, and Activity Intervention",
-   "url": "https://clinicaltrials.gov/study/NCT04816006",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies;oncology-ai"
-  },
-  {
    "id": "acd52ad39610",
    "title": "Cognitive Processing of Natural Sequences in Humans and Artificial Intelligence (AI)",
    "url": "https://clinicaltrials.gov/study/NCT07740070",
@@ -991,19 +926,6 @@
    "date": "2026-07-31",
    "score": 3,
    "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "d8d97771f4d8",
-   "title": "Testing the Anti-cancer Drug, Glofitamab, in Patients With Mantle Cell Lymphoma (A Type of Blood Cancer) Whose Disease Returned After CAR-T Cell Therapy",
-   "url": "https://clinicaltrials.gov/study/NCT07003295",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies;oncology-ai"
   },
   {
    "id": "99a22cbff389",
@@ -1024,12 +946,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42536237/",
    "source": "PubMed — digital health value & reimbursement",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "Middle East & Africa",
    "country": "Israel",
    "date": "2026-07-31",
-   "score": 4,
-   "topics": "hta-value-evidence"
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "7231d4285aa5",
@@ -1037,12 +959,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42538494/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "",
    "country": "",
    "date": "2026-07-31",
-   "score": 4,
-   "topics": "hta-value-evidence"
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "b26a651683c8",
@@ -1050,12 +972,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42537858/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "",
    "country": "",
    "date": "2026-07-31",
-   "score": 4,
-   "topics": "hta-value-evidence"
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "a5ed5319b456",
@@ -1206,25 +1128,12 @@
    "url": "https://news.google.com/rss/articles/CBMijgJBVV95cUxNRkxTd3d1M0ctWi1NNG1wbzFxc0l3MFV5LTduMy1iMWwyZ2xHckd6TU1BeGJOOEFwbkU1cjF5aWE5Ui11cW1wVlZYNUVRNDRGclFCT3dUb25rUHZUYWFEX09JRllGdFQ2Mi03dW9DZHAtalJMbW1CbXV2X203aWJsRldPV08wNEt0czAtNnNHWHRHR0hoZ1pDX1hNeVdGYk1BU1BYTXcxRU8tNmRQNjJ2U2ZXeU03czlzM2hEYU5QSmpxVWR5UVZnZy1PVnE4ZEltd1EtS1ZoaURkSVlidXVodzlKYmo1cFB6eU1qU2RYa1VIUkR5YkpuSzR3QmtBYjFhaVJ4TmFnR1BGcWd4Unc?oc=5",
    "source": "Digital therapeutics & DiGA",
    "source_type": "Other",
-   "stage": "regulation",
+   "stage": "industry",
    "region": "Europe",
    "country": "Germany",
    "date": "2026-07-28",
-   "score": 3,
-   "topics": "regulatory-activity;diga-updates;digital-therapeutics"
-  },
-  {
-   "id": "b49f912b80e8",
-   "title": "Meta Signs EU AI Act Transparency Code Amid Deepfake Surge",
-   "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxNUE1pY3FnR1l2R3FheTBKUWlzVlh2ejBGbU5SNlZJT3diTTAwN1ZIOVpJbmo0alpVR3FhNy1sN2NURWtIQlBBZDBNaHktdUttYkVZYVhRWEU5MWpzaGI3S1E3T2VGQTh3UUllclpiU0laR0JPMGZsNG12TGVrdEpLemNaU3NYSU5xbEYwN1VqS0Q5X3NCUWc?oc=5",
-   "source": "AI policy & guidance",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "Europe",
-   "country": "European Union",
-   "date": "2026-07-28",
-   "score": 3,
-   "topics": "regulatory-activity"
+   "score": 1,
+   "topics": "diga-updates;digital-therapeutics"
   },
   {
    "id": "4b0bf8058f54",
@@ -1518,12 +1427,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42537558/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "",
    "country": "",
    "date": "2026-07-17",
-   "score": 2,
-   "topics": "hta-value-evidence"
+   "score": 0,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "7b7b549a6b89",
@@ -1544,12 +1453,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42535035/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "",
    "country": "",
    "date": "2026-07-16",
-   "score": 2,
-   "topics": "hta-value-evidence;radiology-imaging-ai"
+   "score": 0,
+   "topics": "ai-clinical-studies;radiology-imaging-ai"
   },
   {
    "id": "83d1f55abae1",
@@ -1557,25 +1466,12 @@
    "url": "https://pubmed.ncbi.nlm.nih.gov/42534661/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
-   "stage": "heor",
+   "stage": "clinical",
    "region": "",
    "country": "",
    "date": "2026-07-16",
-   "score": 2,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "3dc790ab4a28",
-   "title": "Digital Health Market Size to Worth USD 1171.24 Billion by 2035",
-   "url": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTFBrSzdkVzZ5QzAtYURqcjgxMEw4TnZDNTEzRnZHZE1jRmh5ZGR4UDBsN3F1cTZFWVJJZ1FkY01NYXR4QVhGUVFMOF9CSHM2T3lDb3RvTFBGbFZDdGwzbU5SUFpnVXhUOGc?oc=5",
-   "source": "MEA AI device & digital health regulation",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "",
-   "country": "",
-   "date": "2026-07-13",
-   "score": 2,
-   "topics": "regulatory-activity"
+   "score": 0,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "eb01e6c04edf",
@@ -1583,12 +1479,12 @@
    "url": "https://news.google.com/rss/articles/CBMitwFBVV95cUxQUmx4VWQwUFFjZ192YnVkc0ZubzN2NHlWV2V3Y01LdlNkUEtoTDZNNGUycVFTTjREWU4zcHduYzFxdXJyR09XcFF2b0dFWFJreUNnMzlLcGdSTzkxXy1nWEFyVjBjOGNoTE1VR1NiSk52Y0x3SGJtZDcteTdrZEhDSTV2OWZEVGVDZ3BPckNvcUpmejd1MzBNUzhYRjhzb1o1U0ZSbVpHdks2MFVGb0pDLW10MzQtNVk?oc=5",
    "source": "LATAM — HTA & coverage (CONITEC)",
    "source_type": "HTA / payer",
-   "stage": "access",
+   "stage": "industry",
    "region": "Latin America",
    "country": "Mexico",
    "date": "2026-07-13",
-   "score": 3,
-   "topics": "reimbursement-coverage"
+   "score": 0,
+   "topics": ""
   },
   {
    "id": "ab23329c09eb",
@@ -1602,6 +1498,19 @@
    "date": "2026-07-12",
    "score": 0,
    "topics": "ai-research"
+  },
+  {
+   "id": "073dceb70a50",
+   "title": "AI chatbots and youth suicide risk: current evidence, critical gaps, and a clinical research agenda",
+   "url": "https://www.nature.com/articles/s41746-026-03080-9",
+   "source": "npj Digital Medicine",
+   "source_type": "Other",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-08-01",
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "7c947add973a",
@@ -1706,19 +1615,6 @@
    "date": "2026-07-29",
    "score": 1,
    "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "b2123bbba928",
-   "title": "A Multi-Agent MLLM Framework for Imaging-Grounded Treatment Recommendation in Acute Ischemic Stroke",
-   "url": "https://www.nature.com/articles/s41746-026-03066-7",
-   "source": "npj Digital Medicine",
-   "source_type": "Other",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 1,
-   "topics": "ai-clinical-studies;radiology-imaging-ai"
   },
   {
    "id": "a4477b605061",
