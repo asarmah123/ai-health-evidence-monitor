@@ -92,7 +92,7 @@ Everything runs on a schedule and renders to a single static page, so there is n
 - **Classification** into stage, jurisdiction and body is rule-based and auditable.
 - **Ranking** follows explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency); it reflects priority, not confidence, and every item exposes its own "why ranked" breakdown.
 - **Dates are never estimated** — read from the source, or recorded as `unknown` and excluded from any date-based figure.
-- **No causal or predictive claims** are made beyond what the counts support; company press releases are excluded to keep the feed independent.
+- **No causal or predictive claims** are made beyond what the counts support; medtech and pharma vendor press releases are excluded to keep the feed independent.
 
 Full definitions are in **[TAXONOMY.md](TAXONOMY.md)**. A separate clearance-to-coverage dataset is under development — see **[docs/DATASETS.md](docs/DATASETS.md)**.
 

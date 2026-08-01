@@ -916,11 +916,19 @@ def log_history(items, terms, token=None, health=None, o=None):
         except json.JSONDecodeError:
             hist = []
 
+    # One-shot reset: discard prior rows so the trend series starts fresh from this build.
+    # Use after a classification change makes older builds incomparable (set RESET_HISTORY=1
+    # for a single run — e.g. the workflow's "reset_history" toggle — then unset).
+    if os.environ.get("RESET_HISTORY") == "1":
+        print(f"  RESET_HISTORY set — discarding {len(hist)} prior rows; series restarts at this build")
+        hist = []
+
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     blob = " ".join((i["title"] + " " + i.get("summary", "")).lower() for i in items)
     _bc = _body_role_counts(items)
     row = {
         "date": today,
+        "taxonomy_version": TAXONOMY_VERSION,   # stamp the rules used, so a reset/filter is data-driven
         "total": len(items),
         "layers": {l: sum(1 for i in items if i["layer"] == l) for l in LAYERS},
         # Leading word boundary (\bterm): counts the term and its natural suffixes
@@ -1672,8 +1680,8 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             "heor": "Health economics (HEOR)", "regulation": "Regulatory",
             "access": "Reimbursement", "industry": "Industry"}
     JLABEL = {"research": "Research", "clinical": "Clinical evidence",
-              "regulation": "Regulatory, safety & authorisation", "heor": "HEOR",
-              "access": "Market access, reimbursement & coverage", "industry": "Market activity"}
+              "regulation": "Regulatory", "heor": "HEOR",
+              "access": "Market access", "industry": "Market activity"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
         if len(base) < 2:
@@ -3504,7 +3512,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from curated public APIs, feeds and official publications and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available, and the current build can be downloaded as <a href="data/feed-latest.csv" download>CSV</a> or <a href="data/feed-latest.json" download>JSON</a>. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
   <div class="sec">Coverage &amp; cadence</div>
   <div class="panels">
-    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption depends on clinical evidence, regulatory clearance and payment pathways. We therefore prioritise primary sources — regulators, HTA agencies, trial registries and peer-reviewed literature — supplemented by established trade press where primary feeds are unavailable. Company press releases are excluded to keep the feed independent.</div></div>
+    <div class="panel"><div class="ph">Coverage philosophy</div><div class="psub">Healthcare AI adoption depends on clinical evidence, regulatory clearance and payment pathways. We therefore prioritise primary sources — regulators, HTA agencies, trial registries and peer-reviewed literature — supplemented by established trade press where primary feeds are unavailable. Medtech and pharma vendor press releases are excluded to keep the feed independent; frontier-AI lab blogs are monitored only as an upstream capability signal.</div></div>
     <div class="panel"><div class="ph">Cadence</div><div class="psub">Rebuilt once each morning. Most updates are a day or two old; device authorisations reflect the FDA’s ~30-day publishing lag.</div></div>
   </div>
   <div class="sec">Frequently asked</div>
@@ -3514,7 +3522,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <details class="faqi"><summary>How is each item classified?</summary>By transparent, deterministic rules based on source, terminology and lifecycle signals — no machine-learning model decides an item’s stage, region or body. Every ranking exposes its own “Why ranked” breakdown.</details>
     <details class="faqi"><summary>Why does an item show “date unknown”?</summary>Dates are read from the source. When a source exposes no usable date, the item is shown as “date unknown” rather than guessed, and it is excluded from any date-based figure.</details>
     <details class="faqi"><summary>Does it use AI to write or interpret the feed?</summary>No. No language model writes summaries, scores impact, or interprets any item. Classification, ranking, dating and every count come from transparent rules with no model, so the same inputs reproduce the same output.</details>
-    <details class="faqi"><summary>A source I expected is missing — why?</summary>Coverage is deliberately curated for regulatory, clinical and reimbursement relevance, not volume, and company press releases are excluded. Suggestions are welcome via the repository.</details>
+    <details class="faqi"><summary>A source I expected is missing — why?</summary>Coverage is deliberately curated for regulatory, clinical and reimbursement relevance, not volume, and medtech and pharma vendor press releases are excluded. Suggestions are welcome via the repository.</details>
   </div>
 
 </div>
