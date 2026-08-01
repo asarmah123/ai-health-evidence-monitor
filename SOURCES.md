@@ -11,4 +11,4 @@ Representative sources by layer. **This is not the full list** — the complete 
 | **Reimbursement** | CMS, NICE, DiGA, NTAP/CPT, EU Joint Clinical Assessment, G-BA/IQWiG, HAS, CADTH, AIFA/TLV/Zorginstituut, HIRA, PBAC/MSAC |
 | **Industry** | STAT, Endpoints, Fierce, MedTech Dive, MassDevice |
 
-Sources are chosen for regulatory, clinical, reimbursement and market relevance — not volume. Company press releases are excluded to keep the feed independent.
+Sources are chosen for regulatory, clinical, reimbursement and market relevance — not volume. Medtech and pharma vendor press releases are excluded to keep the feed independent.
