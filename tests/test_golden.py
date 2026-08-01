@@ -260,12 +260,13 @@ def test_ai_relevance_filter():
 
 def test_relevance_gate():
     """The global gate keeps inherently-AI sources even without a keyword (device names,
-    trial/journal titles), and drops non-AI items from broad, non-AI-scoped sources."""
+    journal titles), and drops non-AI items from broad, non-AI-scoped sources. Note:
+    'AI/ML intervention trials' is NO LONGER exempt — it must carry an AI keyword."""
     items = [
         {"source": "FDA — AI device authorisations", "layer": "regulation", "title": "OmniScan 3000", "summary": ""},
         {"source": "NEJM AI", "layer": "clinical", "title": "Detecting sepsis earlier", "summary": ""},
         {"source": "arXiv", "layer": "research", "title": "Scaling transformers", "summary": ""},
-        {"source": "AI/ML intervention trials", "layer": "clinical", "title": "Triage RCT for chest pain", "summary": ""},
+        {"source": "AI/ML intervention trials", "layer": "clinical", "title": "AI triage RCT for chest pain", "summary": ""},
         {"source": "PubMed — AI × HTA/HEOR", "layer": "heor", "title": "Predictors of atrial fibrillation recurrence after ablation", "summary": ""},
         {"source": "CMS — coverage & payment notices", "layer": "access",
          "title": "Medicare Program; Prospective Payment System for Skilled Nursing Facilities", "summary": ""},
@@ -274,7 +275,7 @@ def test_relevance_gate():
     ]
     kept = {i["title"] for i in build.relevance_gate(items)}
     assert {"OmniScan 3000", "Detecting sepsis earlier", "Scaling transformers",
-            "Triage RCT for chest pain", "Predictors of atrial fibrillation recurrence after ablation",
+            "AI triage RCT for chest pain", "Predictors of atrial fibrillation recurrence after ablation",
             "Cost-effectiveness of an AI triage tool"} <= kept
     assert "Medicare Program; Prospective Payment System for Skilled Nursing Facilities" not in kept
     assert "Cost-effectiveness of statins" not in kept
@@ -301,19 +302,62 @@ def test_health_gate_gnews():
 
 
 def test_reimbursement_precision():
-    """Access items reclassify to 'regulation' unless they carry a coverage/payer signal."""
+    """Access items: keep genuine coverage/payer; company news → industry; else → regulation;
+    private-insurer AI adoption is not a coverage decision."""
     items = [
         {"layer": "access", "title": "CMS proposes payment framework for software as a medical service", "summary": ""},
         {"layer": "access", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
         {"layer": "access", "title": "DIAGNOS gets Health Canada licence for AI retinal analysis", "summary": ""},
         {"layer": "access", "title": "Luminopia partners with Spin Master on amblyopia digital therapeutic", "summary": ""},
+        {"layer": "access", "title": "Mexico's GNP Seguros to leverage Palantir AI to strengthen insurance coverage", "summary": ""},
     ]
     build.refine_access_layer(items)
     by = {i["title"][:12]: i["layer"] for i in items}
     assert by["CMS proposes"] == "access"        # payment signal
     assert by["AI use in he"] == "access"         # HIQA payer/HTA body
-    assert by["DIAGNOS gets"] == "regulation"     # licence, no coverage signal
-    assert by["Luminopia pa"] == "regulation"     # company news, no coverage signal
+    assert by["DIAGNOS gets"] == "regulation"     # licence, no coverage/company signal
+    assert by["Luminopia pa"] == "industry"       # company partnership news
+    assert by["Mexico's GNP"] == "industry"       # private insurer, no public-payer signal
+
+
+def test_heor_precision():
+    """HEOR keeps value/economic/HTA/RWE evidence; non-economic AI reviews → clinical; HEOR bodies stay."""
+    items = [
+        {"layer": "heor", "source": "PubMed — AI × HTA/HEOR",
+         "title": "AI in determination of the postmortem interval: systematic review and meta-analysis", "summary": ""},
+        {"layer": "heor", "source": "AI in HTA & market access",
+         "title": "AI will likely grow the HTA industrial complex", "summary": ""},
+        {"layer": "heor", "source": "Value in Health",
+         "title": "Retraction notice to Integrating Generative AI Into Evidence Synthesis", "summary": ""},
+    ]
+    build.refine_heor_layer(items)
+    lay = {i["title"][:10]: i["layer"] for i in items}
+    assert lay["AI in dete"] == "clinical"   # no economic signal → reclassified
+    assert lay["AI will li"] == "heor"       # HTA signal → stays
+    assert lay["Retraction"] == "heor"       # HEOR-body source → always kept
+
+
+def test_ctgov_ai_gate_and_pr_junk():
+    """'AI/ML intervention trials' is now AI-gated (drops non-AI drug trials); 'Digital therapeutic
+    & device trials' stays exempt; market-research PR is dropped; plain Google-News URLs are health-gated."""
+    items = [
+        {"source": "AI/ML intervention trials", "layer": "clinical", "url": "https://clinicaltrials.gov/study/N1",
+         "title": "Testing the anti-cancer drug Glofitamab in mantle cell lymphoma", "summary": "Phase 2"},
+        {"source": "AI/ML intervention trials", "layer": "clinical", "url": "https://clinicaltrials.gov/study/N2",
+         "title": "Benchmarking large language models against tumour boards", "summary": "Observational"},
+        {"source": "Digital therapeutic & device trials", "layer": "clinical", "url": "https://clinicaltrials.gov/study/N3",
+         "title": "Providing an Optimized and Empowered Pregnancy (POPPY) randomized trial", "summary": "RCT"},
+        {"source": "MEA regulation", "layer": "regulation", "gnews": True, "url": "https://news.google.com/x",
+         "title": "Digital Health Market Size to Worth USD 1171 Billion by 2035", "summary": ""},
+        {"source": "AI policy & guidance", "layer": "regulation", "url": "https://news.google.com/y",
+         "title": "Meta signs EU AI Act transparency code amid deepfake surge", "summary": ""},
+    ]
+    kept = {i["title"][:12] for i in build.relevance_gate(items)}
+    assert "Benchmarking" in kept       # LLM trial passes AI gate
+    assert "Providing an" in kept       # DTx source exempt, no keyword needed
+    assert "Testing the " not in kept   # non-AI drug trial dropped
+    assert "Digital Heal" not in kept   # market-research PR dropped
+    assert "Meta signs E" not in kept   # plain Google-News URL, not healthcare
 
 
 def test_source_lookback():

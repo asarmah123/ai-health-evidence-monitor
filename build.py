@@ -58,7 +58,11 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 1.8: healthcare-relevance gate on Google-News items (drops non-health AI noise their loose
 #      queries pull — cybersecurity/sport/politics), and a reimbursement-precision reclassifier
 #      that keeps only genuine coverage/HTA items in the 'access' stream (rest → regulation).
-TAXONOMY_VERSION = "1.8"
+# 1.9: category-precision pass — (a) AI-keyword gate the ClinicalTrials 'AI/ML' query (drops non-AI
+#      drug/cohort trials); (b) health-gate all Google-News URLs, not just gnews-configured ones;
+#      (c) drop market-research PR padding; (d) access reclassifier routes company news → industry
+#      and excludes private-insurer AI; (e) HEOR reclassifier moves non-economic AI reviews → clinical.
+TAXONOMY_VERSION = "1.9"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -264,8 +268,8 @@ _HEALTH_RE = re.compile(
     r"health|medic|clinic|patient|hospital|\bcare\b|disease|diagnos|therap|treatment|\bdrug\b"
     r"|pharma|nurse|physician|\bdoctor\b|\bnhs\b|medicare|medicaid|\bfda\b|\bema\b|\bmhra\b|\bnice\b"
     r"|cadth|\bhta\b|reimburs|coverage|\bpayer\b|oncolog|cancer|tumou?r|cardio|cardiac|arrhythmia"
-    r"|fibrillation|neuro|radiolog|surg|psychiat|mental|vaccine|biotech|genom|sepsis|stroke|screening"
-    r"|imaging|diabet|retina|ophthalm|dermat|implant|\bdevice\b|biomarker|digital therapeutic"
+    r"|fibrillation|neuro|radiolog|surger|surgic|surgeon|psychiat|\bmental\b|vaccine|biotech|genom"
+    r"|sepsis|\bstroke\b|screening|imaging|diabet|retina|ophthalm|dermat|implant|\bdevice\b|biomarker|digital therapeutic"
     r"|digital health|\bsamd\b|amblyopia|hiqa|iqwig|conitec")
 
 
@@ -278,7 +282,10 @@ def _health_relevant(title, summary=""):
 # whose title carries no keyword (a device trade name, a clinical trial title, an NEJM AI paper).
 # Everything else must pass the keyword test, because its query/feed is NOT AI-scoped.
 _AI_NATIVE_SOURCES = {"arXiv", "NEJM AI",
-                      "AI/ML intervention trials", "Digital therapeutic & device trials",
+                      # 'Digital therapeutic & device trials' stays exempt: DTx trial titles often
+                      # omit AI keywords. 'AI/ML intervention trials' is NOT exempt — its ClinicalTrials
+                      # query returns non-AI drug/cohort trials, so it must pass the AI keyword gate.
+                      "Digital therapeutic & device trials",
                       # PubMed queries that REQUIRE AI/ML in the abstract — clinical titles are still AI
                       "PubMed — AI × HTA/HEOR", "JAMA Network — AI in medicine", "BMJ — AI in medicine"}
 
@@ -290,11 +297,17 @@ def _ai_native(i):
             or s.startswith("FDA — AI device"))           # openFDA authorisations
 
 
+# Market-research press-release padding ("… Market Size to Worth USD X Billion by 2035", CAGR
+# forecasts). Nominally health, but not evidence — dropped globally.
+_PR_JUNK_RE = re.compile(r"market size|\bcagr\b|forecast period|market research report"
+                         r"|market.{0,25}(worth|to reach|valued at) (usd|\$|us\$)")
+
+
 def relevance_gate(items):
     """Global relevance gate. Inherently-AI sources (frontier AI + AI-native health sources) pass
-    as-is. Everything else must be AI-relevant; and Google-News items must ALSO be health-relevant,
-    since their loose queries pull non-health AI noise (cybersecurity, sport, marketing, politics).
-    Deterministic; the single place relevance is enforced."""
+    as-is. Everything else must be AI-relevant; Google-News-backed items must ALSO be health-relevant
+    (their loose queries pull non-health AI noise — cybersecurity, sport, marketing, politics); and
+    market-research PR padding is dropped everywhere. Deterministic; the one place relevance lives."""
     out = []
     for i in items:
         if _ai_native(i):
@@ -303,8 +316,12 @@ def relevance_gate(items):
         t, s = i.get("title", ""), i.get("summary", "")
         if not _ai_relevant(t, s):
             continue
-        if i.get("gnews") and not _health_relevant(t, s):
-            continue   # Google-News AI item that isn't clearly about healthcare
+        # Google-News items — whether configured as gnews or as plain Google-News RSS URLs.
+        broad = i.get("gnews") or "news.google.com" in i.get("url", "")
+        if broad and not _health_relevant(t, s):
+            continue   # AI item that isn't clearly about healthcare
+        if _PR_JUNK_RE.search((t + " " + s).lower()):
+            continue   # market-research / press-release padding, not evidence
         out.append(i)
     return out
 
@@ -320,15 +337,52 @@ _COVERAGE_RE = re.compile(
     r"|cadth|\bg-ba\b|iqwig|\bhiqa\b|\bncpe\b|\bkce\b|conitec|\baifa\b|zorginstituut|\btlv\b|reimbursed")
 
 
+# Private-insurer AI adoption ("GNP Seguros leverages Palantir…") trips the bare word "coverage"
+# but is not a payer coverage decision — route it out unless a public-payer/coding signal is present.
+_INSURER_RE = re.compile(r"\bseguros\b|\binsurer\b|insurance (market|compan|firm|giant|group)|underwrit")
+_STRONG_PAYER_RE = re.compile(r"\bcms\b|medicare|medicaid|\bnice\b|cadth|\bhiqa\b|reimburs|\bcpt\b"
+                              r"|\bhcpcs\b|\bntap\b|formulary|\bhta\b|\bcoding\b|budget impact|cost.?effective")
+_INDUSTRY_SIGNAL_RE = re.compile(r"partner|launch|\braise[sd]?\b|\bround\b|acqui|merger|revenue|deploy"
+                                 r"|rollout|roll out|commercial|\bdeal\b|collaborat|\bpact\b|series [a-e]\b")
+
+
 def refine_access_layer(items):
-    """Keep only genuine reimbursement/coverage items in the 'access' stream; reclassify the rest
-    (device licences, governance statements, company news) to 'regulation'. Layer-only move, so
-    the stage counts still partition the total."""
+    """Keep only genuine reimbursement/coverage items in the 'access' stream; reclassify the rest.
+    Company news → industry, everything else (licences, governance) → regulation. Layer-only move,
+    so the stage counts still partition the total."""
     for i in items:
-        if i.get("layer") == "access":
+        if i.get("layer") != "access":
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        if _INSURER_RE.search(text) and not _STRONG_PAYER_RE.search(text):
+            i["layer"] = "industry"          # private-insurer AI adoption, not a coverage decision
+        elif _COVERAGE_RE.search(text):
+            continue                         # genuine reimbursement / payer / HTA item — stays
+        else:
+            i["layer"] = "industry" if _INDUSTRY_SIGNAL_RE.search(text) else "regulation"
+    return items
+
+
+# HEOR precision: the 'heor' stream is source-assigned, but broad AI-systematic-review queries land
+# methods/clinical papers here (forensic, reporting-quality, oncology) with no economic content.
+# Keep genuine value/economic/HTA/RWE evidence; reclassify the rest to 'clinical'. Inherently-HEOR
+# bodies/journals are always kept.
+_HEOR_BODY_SOURCES = {"Value in Health", "ISPOR — AI Strategic Initiative",
+                      "INAHTA (HTA network)", "OHDSI Blog", "FDA Sentinel (real-world evidence)"}
+_HEOR_RE = re.compile(r"cost|econom|budget|\bqaly\b|\bvalue\b|\bhta\b|reimburs|coverage|willingness.to.pay"
+                      r"|cost.?effectiv|cost.?util|resource use|utili[sz]ation|real.world|\brwe\b"
+                      r"|market access|health technology|pharmacoeconom|\bprice\b|payer|affordab"
+                      r"|disinvest|appraisal|decision.analy")
+
+
+def refine_heor_layer(items):
+    """Keep value/economic/HTA/RWE evidence in the HEOR stream; reclassify broad AI systematic
+    reviews and methods papers with no economic signal (from query-based sources) to 'clinical'."""
+    for i in items:
+        if i.get("layer") == "heor" and i.get("source", "") not in _HEOR_BODY_SOURCES:
             text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
-            if not _COVERAGE_RE.search(text):
-                i["layer"] = "regulation"
+            if not _HEOR_RE.search(text):
+                i["layer"] = "clinical"
     return items
 
 
@@ -2621,24 +2675,6 @@ def write_export(items):
     print(f"  export: docs/data/feed-latest.json + .csv ({len(rows)} items)")
 
 
-def write_access_sample(items):
-    """TEMPORARY audit artifact — the current 'Reimbursement & coverage' (access) items, so
-    false positives can be inspected on real data and a precision rule extracted. Writes
-    docs/data/access-sample.json. Remove once the reimbursement precision gate is in."""
-    from datetime import datetime, timezone
-    data_dir = DOCS / "data"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    rows = [{"source": i.get("source", ""), "title": i.get("title", ""),
-             "summary": i.get("summary", ""), "date": i.get("date", ""), "url": i.get("url", "")}
-            for i in items if i.get("layer") == "access"]
-    rows.sort(key=lambda r: (r["source"], r["title"]))
-    payload = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-               "access_count": len(rows), "items": rows}
-    (data_dir / "access-sample.json").write_text(
-        json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
-    print(f"  access-sample.json written ({len(rows)} reimbursement/coverage items)")
-
-
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
 FEED_XSL = '''<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -3382,6 +3418,7 @@ def main():
              for grp in ("rss", "gnews") for s in cfg.get(grp, [])}
     items = apply_source_caps(items, _caps)
     items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
+    items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
@@ -3426,8 +3463,7 @@ def main():
     write_rss(items)
     write_topic_feeds(items)
     write_manifest(items, health)
-    write_export(items)   # docs/data/feed-latest.{json,csv} — programmatic access to this build
-    write_access_sample(items)   # TEMP: reimbursement-precision audit — remove after rule is in
+    write_export(items)   # docs/data/feed-latest.{json,csv} — programmatic access to this build rule is in
 
     # output guard: the page and feed must be well-formed before this run is allowed to
     # publish. A non-zero exit here makes CI skip the commit, so the previous site stays.
