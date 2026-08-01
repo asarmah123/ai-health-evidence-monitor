@@ -89,7 +89,13 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.8: (a) Regulatory precision — generic policy/marketing/adoption news (no regulator source and no
 #      regulatory/governance/safety signal) routes to industry; (b) Industry business-event taxonomy
 #      gains Executive move / Company strategy / Industry analysis.
-TAXONOMY_VERSION = "2.8"
+# 2.9: 'Market access, reimbursement & coverage' — the stream now also keeps market-access mechanisms
+#      (procurement, payment models, adoption pathways), labelled 'Market access', alongside
+#      'Payment / coverage' decisions; HTA value assessment still routes to HEOR.
+# 2.10: healthcare-relevance precision — reduce 'Adjacent AI' over-tagging by recognising more
+#       operations (staff hours, EHR, care costs, health plan) and clinical (behavioural health,
+#       renal, hospital, clinician) signals, so healthcare-business items aren't mislabelled adjacent.
+TAXONOMY_VERSION = "2.10"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -393,10 +399,10 @@ def refine_access_layer(items):
         text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
         if _INSURER_RE.search(text) and not _STRONG_PAYER_RE.search(text):
             i["layer"] = "industry"          # private-insurer AI adoption, not a coverage decision
-        elif _PAY_RE.search(text):
-            continue                         # genuine payment / coverage decision — stays
+        elif _PAY_RE.search(text) or _MARKET_ACCESS_RE.search(text):
+            continue                         # payment/coverage decision OR market-access mechanism — stays
         elif _HTA_VALUE_RE.search(text):
-            i["layer"] = "heor"              # value / HTA readiness — the step before payment
+            i["layer"] = "heor"              # value / HTA assessment → HEOR
         else:
             i["layer"] = "industry" if _INDUSTRY_SIGNAL_RE.search(text) else "regulation"
     return items
@@ -1103,6 +1109,13 @@ _HTA_VALUE_RE = re.compile(r"benefit assessment|\bappraisal\b|health technology 
                            r"|value (assessment|framework|dossier|for money)|\bqaly\b|coverage recommendation"
                            r"|reimbursement review|early value assessment")
 _EV_BIA = re.compile(r"budget impact|budget.impact")
+# market-access mechanisms (procurement, payment models, adoption pathways) — these belong in the
+# reimbursement/market-access stream alongside coverage decisions, distinct from HTA value assessment.
+_MARKET_ACCESS_RE = re.compile(
+    r"market access|procure|payment model|reimbursement (pathway|model|framework)"
+    r"|coverage with evidence|access pathway|funding pathway|adoption pathway"
+    r"|value based (care|payment|contract|purchas)|managed entry|risk shar"
+    r"|medicines funding|patient access|purchasing (framework|agreement)")
 
 
 def classify_evidence(i):
@@ -1157,10 +1170,11 @@ def classify_evidence(i):
             return "Regulatory authorisation", "Policy signal"
         return "Regulatory guidance", "Policy signal"
     if layer == "access":
-        # the reimbursement stream is payment/coverage only (refine_access_layer routes the rest out)
+        # a coding/coverage/payment action is 'Payment / coverage'; procurement, payment models and
+        # adoption pathways are 'Market access' (HTA value assessment is routed to HEOR upstream)
         if _PAY_RE.search(t):
             return "Payment / coverage", "Policy signal"
-        return "HTA / market access", "Policy signal"
+        return "Market access", "Policy signal"
     if layer == "heor":
         if re.search(r"benefit assessment|\bappraisal\b|hta report|health technology assessment", t):
             return "HTA report", "Secondary evidence"
@@ -1184,14 +1198,16 @@ def classify_evidence(i):
 _REL_OPS = re.compile(r"\bscribe|ambient (voice|scribe|documentation)|documentation burden|revenue cycle"
                       r"|\brcm\b|prior author|\bbilling\b|\bcoding\b|scheduling|staffing|workflow|throughput"
                       r"|back office|call cent|customer service|\bclaims\b|administrative|operational"
-                      r"|note taking|\bcopilot\b|contact cent")
+                      r"|note taking|\bcopilot\b|contact cent|staff hours|\behr\b|electronic health record"
+                      r"|care cost|cost control|health plan|patient throughput")
 _REL_BIO = re.compile(r"drug discovery|drug design|genomic|\bgenome\b|\bprotein\b|molecul|\bcompound\b"
                       r"|target identification|biomarker discovery|scientific computing|preclinical"
                       r"|in silico|\bomics\b|sequencing|small molecule|\bassay\b|scientific discovery")
 _REL_CLIN = re.compile(r"clinical|patient|diagnos|treatment|therap|\bdisease\b|\btrial\b|oncolog|cardio"
                        r"|radiolog|imaging|screening|triage|decision support|prognos|surger|surgic|\bicu\b"
                        r"|sepsis|\bstroke\b|tumou?r|cancer|mental health|colonoscop|endoscop|patholog"
-                       r"|echocard|retina|dementia|depress|arrhythmia|diabet")
+                       r"|echocard|retina|dementia|depress|arrhythmia|diabet|behavio(u)?ral health"
+                       r"|\bkidney\b|renal|\bhospital\b|clinician")
 _REL_ADJ = re.compile(r"\bagentic\b|foundation model|general.purpose|frontier model|coding agent|gui agent"
                       r"|world model|open weights|reasoning model|\brobotics\b|scientific computing")
 
@@ -1656,8 +1672,8 @@ def overview_html(items, agg, o, history=None, take=""):
             "heor": "Health economics (HEOR)", "regulation": "Regulatory",
             "access": "Reimbursement", "industry": "Industry"}
     JLABEL = {"research": "Research", "clinical": "Clinical evidence",
-              "regulation": "Regulatory & authorisation", "heor": "HEOR",
-              "access": "Reimbursement & coverage", "industry": "Market activity"}
+              "regulation": "Regulatory, safety & authorisation", "heor": "HEOR",
+              "access": "Market access, reimbursement & coverage", "industry": "Market activity"}
     def pdelta(k):
         base = [h["layers"][k] for h in prior[-7:] if k in h.get("layers", {})]
         if len(base) < 2:
@@ -2575,9 +2591,9 @@ abbr[title]{text-decoration:underline dotted;text-decoration-color:#c9b3b3;text-
 JS = """
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let tier='all', layer='all', hideRead=false, q='', sort='importance';
-let region='all', stype='all', dwin='all', topic='all', strength='all', relevance='all', modality='all';
+let region='all', stype='all', dwin='all', topic='all', strength='all', relevance='all', modality='all', mat='all';
 function withinDays(d,n){ if(!d) return false; const t=Date.parse(d); if(isNaN(t)) return false; return (Date.now()-t) <= (n+1)*864e5; }
-function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||relevance!=='all'||modality!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
+function updateClear(){ const b=document.getElementById('fclear'); if(b) b.style.display=(region!=='all'||stype!=='all'||strength!=='all'||relevance!=='all'||modality!=='all'||mat!=='all'||dwin!=='all'||topic!=='all')?'':'none'; }
 const FKEY='aiheor_follow_v1';
 function followed(){ try{return JSON.parse(localStorage.getItem(FKEY)||'[]')}catch(e){return[]} }
 function toggleFollow(slug){ let a=followed(); a=a.includes(slug)?a.filter(x=>x!==slug):a.concat([slug]); try{localStorage.setItem(FKEY,JSON.stringify(a))}catch(e){} renderFollowState(); }
@@ -2647,6 +2663,7 @@ function render(){
                   .filter(i=>strength==='all'||i.strength===strength)
                   .filter(i=>relevance==='all'||i.relevance===relevance)
                   .filter(i=>modality==='all'||i.modality===modality)
+                  .filter(i=>mat==='all'||i.maturity_lab===mat)
                   .filter(i=>dwin==='all'||withinDays(i.date,+dwin))
                   .filter(i=>!(hideRead&&read.has(i.id)))
                   .filter(i=>!q||((i.title+' '+i.source+' '+(i.summary||'')).toLowerCase().includes(q)));
@@ -2684,6 +2701,7 @@ function render(){
   if(strength!=='all')fp.push(esc(strength));
   if(relevance!=='all')fp.push(esc(relevance));
   if(modality!=='all')fp.push(esc(modality));
+  if(mat!=='all')fp.push(esc(mat));
   if(dwin!=='all')fp.push('last '+dwin+' days');
   if(q)fp.push('“'+esc(q)+'”');
   $('#count').innerHTML = fp.length
@@ -2720,9 +2738,10 @@ const fStype=$('#fstype'); if(fStype) fStype.onchange=()=>{stype=fStype.value;ap
 const fStrength=$('#fstrength'); if(fStrength) fStrength.onchange=()=>{strength=fStrength.value;applyFilter();};
 const fRel=$('#frel'); if(fRel) fRel.onchange=()=>{relevance=fRel.value;applyFilter();};
 const fMod=$('#fmod'); if(fMod) fMod.onchange=()=>{modality=fMod.value;applyFilter();};
+const fMat=$('#fmat'); if(fMat) fMat.onchange=()=>{mat=fMat.value;applyFilter();};
 const fDate=$('#fdate'); if(fDate) fDate.onchange=()=>{dwin=fDate.value;applyFilter();};
-const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';relevance='all';modality='all';dwin='all';
-  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fRel)fRel.value='all'; if(fMod)fMod.value='all'; if(fDate)fDate.value='all';
+const fClear=$('#fclear'); if(fClear) fClear.onclick=()=>{region='all';stype='all';strength='all';relevance='all';modality='all';mat='all';dwin='all';
+  if(fRegion)fRegion.value='all'; if(fStype)fStype.value='all'; if(fStrength)fStrength.value='all'; if(fRel)fRel.value='all'; if(fMod)fMod.value='all'; if(fMat)fMat.value='all'; if(fDate)fDate.value='all';
   updateClear(); render();};
 const qi=$('#q');
 if(qi) qi.oninput=()=>{q=qi.value.trim().toLowerCase();
@@ -2749,8 +2768,8 @@ renderFollowState();
 """
 
 LAYER_LABEL = {"research": "AI research & models", "clinical": "Clinical evidence & trials",
-               "heor": "HEOR & HTA", "regulation": "Regulatory & authorisation",
-               "access": "Reimbursement & coverage", "industry": "Industry & funding"}
+               "heor": "HEOR, HTA & value assessment", "regulation": "Regulatory, safety & authorisation",
+               "access": "Market access, reimbursement & coverage", "industry": "Industry, investment & partnerships"}
 
 # how the six layers cluster on the Feed tab
 LAYER_GROUPS = [
@@ -2766,16 +2785,20 @@ LAYER_NAV = {
     "clinical": ("Clinical evidence & trials",
         "Does it work in patients? Peer-reviewed studies, preprints and registered "
         "trials evaluating AI in patients."),
-    "heor": ("HEOR & HTA",
-        "How is value assessed? Cost-effectiveness, value assessment and health "
-        "technology assessment of AI."),
-    "regulation": ("Regulatory & authorisation",
-        "Can it be authorised for market use? Regulatory guidance and AI-enabled device authorisations."),
-    "access": ("Reimbursement & coverage",
-        "Will healthcare systems pay for it? Coverage decisions, coding and the pathways "
-        "that turn an authorisation into revenue."),
-    "industry": ("Industry & funding",
-        "The business of health AI — company announcements, partnerships, funding and product launches."),
+    "heor": ("HEOR, HTA & value assessment",
+        "How is AI value demonstrated? Health technology assessment, health economics, "
+        "cost-effectiveness, reimbursement evidence and frameworks for evaluating AI-enabled "
+        "healthcare technologies."),
+    "regulation": ("Regulatory, safety & authorisation",
+        "Can AI be safely deployed and authorised for healthcare use? Regulatory guidance, AI governance "
+        "requirements, safety expectations and AI-enabled medical device authorisations."),
+    "access": ("Market access, reimbursement & coverage",
+        "How does AI reach healthcare systems? Coverage decisions, reimbursement pathways, payment "
+        "models, procurement and adoption mechanisms that translate evidence and authorisation into "
+        "clinical use."),
+    "industry": ("Industry, investment & partnerships",
+        "The business of healthcare AI — company strategy, investments, partnerships, acquisitions, "
+        "product launches and commercial adoption signals."),
 }
 
 
@@ -3272,6 +3295,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     _MOD_ORDER = ["Imaging AI", "Generative AI / LLM", "Clinical decision support", "Digital therapeutic",
                   "Predictive ML", "Remote monitoring", "Robotics", "Drug discovery AI"]
     _mods = [s for s in _MOD_ORDER if any(i.get("modality") == s for i in items)]
+    _MAT_ORDER = ["Discovery", "Retrospective", "Prospective", "Randomised", "Real-world", "Synthesis",
+                  "Economic model", "HTA", "Value", "Value evidence", "Methodology"]
+    _mats = [s for s in _MAT_ORDER if any(i.get("maturity_lab") == s for i in items)]
     region_opts = ('<option value="all">All regions</option>'
                    + "".join(f'<option value="{html.escape(r)}">{html.escape(r)}</option>' for r in _regs))
     stype_opts = ('<option value="all">All source types</option>'
@@ -3282,6 +3308,8 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
                       + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _rels))
     modality_opts = ('<option value="all">All modalities</option>'
                      + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _mods))
+    maturity_opts = ('<option value="all">All maturity</option>'
+                     + "".join(f'<option value="{html.escape(s)}">{html.escape(s)}</option>' for s in _mats))
     date_opts = ('<option value="all">Any date</option>'
                  '<option value="7">Last 7 days</option>'
                  '<option value="30">Last 30 days</option>'
@@ -3351,6 +3379,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
       <label class="sortl">Evidence <select id="fstrength" class="sortsel">{strength_opts}</select></label>
       <label class="sortl">Relevance <select id="frel" class="sortsel">{relevance_opts}</select></label>
       <label class="sortl">Modality <select id="fmod" class="sortsel">{modality_opts}</select></label>
+      <label class="sortl">Maturity <select id="fmat" class="sortsel">{maturity_opts}</select></label>
       <label class="sortl">Date <select id="fdate" class="sortsel">{date_opts}</select></label>
       <label class="sortl">Sort
         <select id="sort" class="sortsel">
