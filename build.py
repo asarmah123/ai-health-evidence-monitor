@@ -1663,7 +1663,7 @@ _KIND = {"research": "Research", "clinical": "Clinical", "regulation": "Regulato
          "heor": "Health economics", "access": "Reimbursement", "industry": "Industry"}
 
 
-def overview_html(items, agg, o, history=None, take=""):
+def overview_html(items, cov_pub, o, history=None, take=""):
     # ---- pipeline pulse: one cell per category, mirrors the Feed tabs
     prior = (history or [])[:-1]
     SHORT = {"research": "Research", "clinical": "Clinical", "heor": "HEOR",
@@ -1816,16 +1816,7 @@ def overview_html(items, agg, o, history=None, take=""):
                         o.get("pathways", []), "None mentioned today.", color="#b0842b")
 
     # compact coverage summary (full detail lives on the Coverage tab)
-    cov_mini = ""
-    if agg:
-        cells = "".join(
-            f'<div class="cmini"><div class="cm-l">{m["label"]}</div>'
-            f'<div class="cm-v">{m["median"] if m["median"] is not None else "—"}'
-            f'<span>{"d" if m["median"] is not None else ""}</span></div></div>'
-            for _, m in agg["markets"].items())
-        cov_mini = (f'<div class="sec">Clearance → coverage <a class="seeall" '
-                    f'data-goto="coverage">full tracker →</a></div>'
-                    f'<div class="cov-grid">{cells}</div>')
+    cov_mini = coverage_mini_html(cov_pub)
 
     # ---- "At a glance" hero: deterministic executive summary (no LLM needed) ----
     prior_h = (history or [])[:-1]
@@ -2022,6 +2013,9 @@ EV_ENDPOINT_LABEL = {"clinical_outcome": "Clinical outcome", "diagnostic_accurac
 MARKETS = [("us", "United States"), ("de", "Germany"), ("fr", "France"), ("uk", "United Kingdom")]
 
 
+# LEGACY — unused since the Coverage tab was rewired to render coverage_public.json (the verified
+# pipeline teaser). load_coverage / coverage_aggregates / coverage_html / _evidence_panel computed
+# the panel from the raw device schema; kept for reference, safe to delete in a later cleanup.
 def load_coverage():
     """Fetch coverage.yaml from the private repo. No token → no panel, no error."""
     token = os.environ.get("COVERAGE_TOKEN")
@@ -2036,6 +2030,80 @@ def load_coverage():
     except yaml.YAMLError as e:
         print(f"! coverage.yaml is malformed ({e.__class__.__name__})", file=sys.stderr)
         return None
+
+
+def load_coverage_public():
+    """Fetch coverage_public.json — the verified pipeline's site-safe teaser — from the private
+    repo. This is the Phase-4 hand-off: coverage-pipeline/analytics.py computes it (only draft:false
+    devices, N>=5 median gate, aggregates only); build.py just renders it. No token → no panel;
+    missing/malformed → the 'in preparation' placeholder."""
+    token = os.environ.get("COVERAGE_TOKEN")
+    if not token:
+        print("  no COVERAGE_TOKEN — coverage panel omitted", file=sys.stderr)
+        return None
+    text, _ = private_get("coverage_public.json", token)
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except (ValueError, TypeError) as e:
+        print(f"! coverage_public.json is malformed ({e.__class__.__name__})", file=sys.stderr)
+        return None
+
+
+def _cov_prep_note():
+    return ('<div class="dnote">The clearance-to-coverage tracker is in preparation and will '
+            'appear here once verified data is published.</div>')
+
+
+def coverage_public_html(pub):
+    """Render the Coverage tab from the verified teaser (coverage_public.json). Reuses existing
+    .cov* styles; every figure here is already draft-gated and N-gated by the pipeline."""
+    if not pub or not pub.get("devices_verified"):
+        return _cov_prep_note()
+    med = pub.get("headline_median_days")
+    n = pub.get("devices_verified", 0)
+    covered = pub.get("covered_total", 0)
+    pending = pub.get("authorised_no_coverage", 0)
+    labels = pub.get("maturity_labels", []) or []
+    gen = pub.get("generated", "")
+    disclaimer = pub.get("disclaimer", "")
+    head_num = f'{med}<span>d</span>' if med is not None else '—'
+    head_sub = ("median authorisation → first obtainable coverage" if med is not None
+                else html.escape(pub.get("headline_note", "small N — see methodology")))
+    stat_cells = (f'<div class="cov-cell"><div class="cov-num">{head_num}</div>'
+                  f'<div class="cov-sub">{head_sub}</div></div>'
+                  f'<div class="cov-cell"><div class="cov-num">{n}</div><div class="cov-sub">verified devices</div></div>'
+                  f'<div class="cov-cell"><div class="cov-num">{covered}</div><div class="cov-sub">covered</div></div>'
+                  f'<div class="cov-cell"><div class="cov-num">{pending}</div><div class="cov-sub">authorised, no coverage yet</div></div>')
+    stage_cells = "".join(
+        f'<div class="cov-cell"><div class="cov-mkt">{html.escape(str(m.get("specialty", "")).title())}</div>'
+        f'<div class="cov-sub">{html.escape(str(m.get("furthest_stage", "")))}</div></div>'
+        for m in labels)
+    gen_txt = f" · generated {html.escape(gen)}" if gen else ""
+    return (f'<div class="cov">'
+            f'<div class="cov-head">Median days from market authorisation to first obtainable reimbursement</div>'
+            f'<div class="cov-grid">{stat_cells}</div>'
+            f'<div class="cov-head">Furthest stage reached, by specialty</div>'
+            f'<div class="cov-grid">{stage_cells}</div>'
+            f'<div class="cov-foot">Verified, primary-sourced dataset{gen_txt}.</div>'
+            f'<div class="cov-note">{html.escape(disclaimer)}</div></div>')
+
+
+def coverage_mini_html(pub):
+    """Compact Home-page teaser from the verified coverage teaser (empty string if no data)."""
+    if not pub or not pub.get("devices_verified"):
+        return ""
+    med = pub.get("headline_median_days")
+    n = pub.get("devices_verified", 0)
+    covered = pub.get("covered_total", 0)
+    med_cell = f'{med}<span>d</span>' if med is not None else '—'
+    return (f'<div class="sec">Clearance → coverage <a class="seeall" data-goto="coverage">full tracker →</a></div>'
+            f'<div class="cov-grid">'
+            f'<div class="cmini"><div class="cm-l">Verified</div><div class="cm-v">{n}</div></div>'
+            f'<div class="cmini"><div class="cm-l">Covered</div><div class="cm-v">{covered}</div></div>'
+            f'<div class="cmini"><div class="cm-l">Auth → cover</div><div class="cm-v">{med_cell}</div></div>'
+            f'</div>')
 
 
 def _days(t0, t1):
@@ -3834,14 +3902,14 @@ def main():
         cache[i["id"]] = {"seen": cache.get(i["id"], {}).get("seen", now.isoformat())}
     save_cache(cache, token, cache_sha)
 
-    cov_data = load_coverage()
-    draft = bool(cov_data and cov_data.get("draft"))
-    agg = None if draft else coverage_aggregates(cov_data)
-    sample = bool(cov_data and cov_data.get("sample"))
-    if draft:
-        print("  coverage: draft — panel hidden until verified")
-    elif agg:
-        print(f"  coverage: {agg['n_devices']} devices tracked{' (SAMPLE)' if sample else ''}")
+    # Coverage tab: render the verified pipeline's teaser (coverage_public.json), already
+    # draft-gated and N-gated by coverage-pipeline/analytics.py. build.py only renders it.
+    cov_pub = load_coverage_public()
+    have_cov = bool(cov_pub and cov_pub.get("devices_verified"))
+    if have_cov:
+        print(f"  coverage: {cov_pub['devices_verified']} verified devices (coverage_public.json)")
+    else:
+        print("  coverage: no verified teaser — tracker shown as 'in preparation'")
 
     health = diagnostics(items, cfg, dead)
 
@@ -3854,10 +3922,10 @@ def main():
     row, history = log_history(items, cfg.get("trend_terms", []), token, health, o)
     print(f"  history: {row['total']} items logged for {row['date']} ({len(history)} builds on record)")
 
-    home_html, analysis_extra = overview_html(items, agg, o, history, take)
+    home_html, analysis_extra = overview_html(items, cov_pub, o, history, take)
     render(items, cfg["hubs"], dead, now.strftime("%d %b %Y %H:%M UTC"),
-           home_html, coverage_html(agg, sample), trends_html(items, history),
-           health=health, o=o, history=history, show_coverage=bool(agg),
+           home_html, coverage_public_html(cov_pub), trends_html(items, history),
+           health=health, o=o, history=history, show_coverage=have_cov,
            analysis_extra=analysis_extra)
     write_rss(items)
     write_topic_feeds(items)
