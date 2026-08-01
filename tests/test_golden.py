@@ -280,6 +280,42 @@ def test_relevance_gate():
     assert "Cost-effectiveness of statins" not in kept
 
 
+def test_health_gate_gnews():
+    """Google-News items must be healthcare-relevant; native/journal items are NOT health-gated
+    (so condition-only titles aren't lost). AI-native sources always pass."""
+    items = [
+        {"source": "Additional European HTA", "layer": "access", "gnews": True,
+         "title": "Noma Labs Discovers Vulnerability in Open Source AI Agent Platform Ruflo", "summary": ""},
+        {"source": "LATAM — HTA & coverage (CONITEC)", "layer": "access", "gnews": True,
+         "title": "Avocados From Mexico Debuts Avo.AI Answer Engine", "summary": ""},
+        {"source": "MHRA (UK)", "layer": "regulation", "gnews": True,
+         "title": "MHRA calls for regulation of AI in healthcare", "summary": ""},
+        {"source": "Nature Medicine", "layer": "clinical",   # native RSS, condition-only title, not gnews
+         "title": "Deep-learning model detects atrial fibrillation", "summary": ""},
+    ]
+    kept = {i["title"] for i in build.relevance_gate(items)}
+    assert "MHRA calls for regulation of AI in healthcare" in kept        # gnews + health
+    assert "Deep-learning model detects atrial fibrillation" in kept      # native, not health-gated
+    assert "Noma Labs Discovers Vulnerability in Open Source AI Agent Platform Ruflo" not in kept
+    assert "Avocados From Mexico Debuts Avo.AI Answer Engine" not in kept
+
+
+def test_reimbursement_precision():
+    """Access items reclassify to 'regulation' unless they carry a coverage/payer signal."""
+    items = [
+        {"layer": "access", "title": "CMS proposes payment framework for software as a medical service", "summary": ""},
+        {"layer": "access", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
+        {"layer": "access", "title": "DIAGNOS gets Health Canada licence for AI retinal analysis", "summary": ""},
+        {"layer": "access", "title": "Luminopia partners with Spin Master on amblyopia digital therapeutic", "summary": ""},
+    ]
+    build.refine_access_layer(items)
+    by = {i["title"][:12]: i["layer"] for i in items}
+    assert by["CMS proposes"] == "access"        # payment signal
+    assert by["AI use in he"] == "access"         # HIQA payer/HTA body
+    assert by["DIAGNOS gets"] == "regulation"     # licence, no coverage signal
+    assert by["Luminopia pa"] == "regulation"     # company news, no coverage signal
+
+
 def test_source_lookback():
     """Lookback derives from cadence — monthly journals get a wider window — unless overridden."""
     assert build._source_days({"tier": "daily"}, 10) == 10

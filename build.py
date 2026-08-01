@@ -55,7 +55,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 1.7: per-source (tier-based) lookback windows — monthly journals get ~45 days, weekly ~21 —
 #      and the per-feed cap moved AFTER the relevance gate, so relevant items aren't starved by
 #      newer noise. Captures more low-cadence journal papers; a one-time step in volume/history.
-TAXONOMY_VERSION = "1.7"
+# 1.8: healthcare-relevance gate on Google-News items (drops non-health AI noise their loose
+#      queries pull — cybersecurity/sport/politics), and a reimbursement-precision reclassifier
+#      that keeps only genuine coverage/HTA items in the 'access' stream (rest → regulation).
+TAXONOMY_VERSION = "1.8"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -253,6 +256,24 @@ def _ai_relevant(title, summary=""):
     return _AI_RE.search(text) is not None
 
 
+# Healthcare-relevance gate for Google-News items. Their queries match ambiguous tokens
+# (country names, body acronyms like "NoMA"/"DiGA") and pull non-health AI noise — cybersecurity,
+# sport, politics, marketing. Native feeds/journals/APIs are inherently health, so this is applied
+# ONLY to gnews items (see relevance_gate). Broad vocab: bodies + conditions + modalities.
+_HEALTH_RE = re.compile(
+    r"health|medic|clinic|patient|hospital|\bcare\b|disease|diagnos|therap|treatment|\bdrug\b"
+    r"|pharma|nurse|physician|\bdoctor\b|\bnhs\b|medicare|medicaid|\bfda\b|\bema\b|\bmhra\b|\bnice\b"
+    r"|cadth|\bhta\b|reimburs|coverage|\bpayer\b|oncolog|cancer|tumou?r|cardio|cardiac|arrhythmia"
+    r"|fibrillation|neuro|radiolog|surg|psychiat|mental|vaccine|biotech|genom|sepsis|stroke|screening"
+    r"|imaging|diabet|retina|ophthalm|dermat|implant|\bdevice\b|biomarker|digital therapeutic"
+    r"|digital health|\bsamd\b|amblyopia|hiqa|iqwig|conitec")
+
+
+def _health_relevant(title, summary=""):
+    text = (title + " " + (summary or "")).lower().replace("-", " ")
+    return _HEALTH_RE.search(text) is not None
+
+
 # Sources trusted as inherently AI — keyword-filtering these would wrongly drop real AI items
 # whose title carries no keyword (a device trade name, a clinical trial title, an NEJM AI paper).
 # Everything else must pass the keyword test, because its query/feed is NOT AI-scoped.
@@ -270,11 +291,45 @@ def _ai_native(i):
 
 
 def relevance_gate(items):
-    """Global AI/digital-health gate. Keeps items from inherently-AI sources as-is; everything
-    else (native RSS, whole-journal PubMed, general CMS Federal Register notices, site-scoped
-    news) must match the AI keyword test. Deterministic; the single place relevance is enforced."""
-    return [i for i in items
-            if _ai_native(i) or _ai_relevant(i.get("title", ""), i.get("summary", ""))]
+    """Global relevance gate. Inherently-AI sources (frontier AI + AI-native health sources) pass
+    as-is. Everything else must be AI-relevant; and Google-News items must ALSO be health-relevant,
+    since their loose queries pull non-health AI noise (cybersecurity, sport, marketing, politics).
+    Deterministic; the single place relevance is enforced."""
+    out = []
+    for i in items:
+        if _ai_native(i):
+            out.append(i)
+            continue
+        t, s = i.get("title", ""), i.get("summary", "")
+        if not _ai_relevant(t, s):
+            continue
+        if i.get("gnews") and not _health_relevant(t, s):
+            continue   # Google-News AI item that isn't clearly about healthcare
+        out.append(i)
+    return out
+
+
+# Reimbursement precision: an item routed to 'access' (Reimbursement & coverage) by its source
+# stays there only with a genuine payment/coverage/HTA signal or a payer/HTA-body mention;
+# otherwise it's a licensing/governance/company item and is reclassified so the payment stream
+# stays clean. (Payer/HTA bodies count; regulators like FDA/EMA/MHRA/Health Canada do not.)
+_COVERAGE_RE = re.compile(
+    r"reimburs|coverage|\bcovered\b|\bcoding\b|\bcpt\b|\bhcpcs\b|\bntap\b|payment|\bpayer\b|formulary"
+    r"|\bdiga\b|health technology assessment|\bhta\b|cost.?effective|budget impact|value assessment"
+    r"|\bncd\b|\blcd\b|appraisal|early value assessment|not covered|medicare|medicaid|\bcms\b|\bnice\b"
+    r"|cadth|\bg-ba\b|iqwig|\bhiqa\b|\bncpe\b|\bkce\b|conitec|\baifa\b|zorginstituut|\btlv\b|reimbursed")
+
+
+def refine_access_layer(items):
+    """Keep only genuine reimbursement/coverage items in the 'access' stream; reclassify the rest
+    (device licences, governance statements, company news) to 'regulation'. Layer-only move, so
+    the stage counts still partition the total."""
+    for i in items:
+        if i.get("layer") == "access":
+            text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+            if not _COVERAGE_RE.search(text):
+                i["layer"] = "regulation"
+    return items
 
 
 def apply_source_caps(items, caps):
@@ -526,6 +581,7 @@ def fetch_gnews(sources, now, default_days):
                 "id": uid(e.link), "title": title, "url": e.link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when.strftime("%Y-%m-%d") if when else "", "summary": "",
+                "gnews": True,   # health-gated in relevance_gate (loose query → non-health noise)
             })
     return items, dead
 
@@ -3325,6 +3381,7 @@ def main():
     _caps = {s["name"]: int(s.get("max_per_feed", st["max_per_feed"]))
              for grp in ("rss", "gnews") for s in cfg.get(grp, [])}
     items = apply_source_caps(items, _caps)
+    items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
