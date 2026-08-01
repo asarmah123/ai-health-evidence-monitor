@@ -157,14 +157,14 @@ def test_export_schema():
     import tempfile, json, csv, io
     from pathlib import Path
     cols = ["id", "title", "url", "source", "source_type", "stage",
-            "evidence_type", "evidence_strength",
+            "evidence_type", "evidence_strength", "healthcare_relevance",
             "region", "country", "date", "score", "topics"]
     items = [
         {"id": "e1", "title": "FDA cleared AI", "url": "https://accessdata.fda.gov/K1",
          "source": "FDA — AI device authorisations", "layer": "regulation", "date": "2026-07-20",
          "topics": ["fda-ai-authorisations", "oncology-ai"], "score": 10,
          "region": "North America", "country": "United States", "stype": "Regulator",
-         "etype": "Regulatory guidance", "strength": "Policy signal"},
+         "etype": "Regulatory guidance", "strength": "Policy signal", "relevance": "Direct clinical"},
         {"id": "e2", "title": "NICE recommendation", "url": "https://www.nice.org.uk/n1",
          "source": "NICE — News", "layer": "access", "date": "",  # date unknown
          "topics": ["nice-evaluations"], "score": 6, "region": "Europe",
@@ -381,6 +381,33 @@ def test_ctgov_ai_gate_and_pr_junk():
     assert "Testing the " not in kept   # non-AI drug trial dropped
     assert "Digital Heal" not in kept   # market-research PR dropped
     assert "Meta signs E" not in kept   # plain Google-News URL, not healthcare
+
+
+def test_research_layer_precision():
+    """Research keeps preprint/journal contributions; frontier newsletters / product launches
+    (source_type 'Other') that passed the health gate are routed to industry."""
+    items = [
+        {"source": "arXiv", "layer": "research", "url": "https://arxiv.org/abs/1", "title": "A model for X", "summary": ""},
+        {"source": "medRxiv — Health Informatics", "layer": "research", "url": "https://www.medrxiv.org/x", "title": "Y", "summary": ""},
+        {"source": "OpenAI News", "layer": "research", "url": "https://openai.com/index/health-in-chatgpt", "title": "Launching Health in ChatGPT", "summary": ""},
+        {"source": "TLDR AI", "layer": "research", "url": "https://tldr.tech/ai/z", "title": "ChatGPT Health, new model", "summary": ""},
+    ]
+    build.refine_research_layer(items)
+    lay = {i["source"]: i["layer"] for i in items}
+    assert lay["arXiv"] == "research"                       # preprint kept
+    assert lay["medRxiv — Health Informatics"] == "research"
+    assert lay["OpenAI News"] == "industry"                 # product launch → industry
+    assert lay["TLDR AI"] == "industry"                     # newsletter → industry
+
+
+def test_healthcare_relevance():
+    """Direct clinical vs operations vs biomedical vs adjacent."""
+    rel = lambda t, layer="clinical": build.healthcare_relevance({"title": t, "layer": layer, "summary": ""})
+    assert rel("Deep-learning model detects atrial fibrillation on ECG") == "Direct clinical"
+    assert rel("AI scribes cut documentation burden for clinicians") == "Healthcare operations"
+    assert rel("Waystar AI-powered revenue cycle management", "industry") == "Healthcare operations"
+    assert rel("Generative AI accelerates drug discovery and protein design", "research") == "Biomedical research"
+    assert rel("Launching a general-purpose agentic AI foundation model", "industry") == "Adjacent AI"
 
 
 def test_evidence_classification():
