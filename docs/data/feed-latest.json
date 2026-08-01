@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-01T11:16:24Z",
+ "generated_at": "2026-08-01T14:25:08Z",
  "taxonomy_version": "2.10",
- "count": 106,
+ "count": 104,
  "fields": [
   "id",
   "title",
@@ -489,24 +489,6 @@
    "date": "2026-07-23",
    "score": 1,
    "topics": ""
-  },
-  {
-   "id": "197616293d57",
-   "title": "CMS Proposes Payment Frameworks for “Software as a Medical Service”",
-   "url": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxOR0hHeE1PMUJMTnpOc0hWcEduXzRoUFptVDIzdmJPZXhpTnMzNmlwa0RybDdqRmVlbVh5ZHhUTlNTWWNWSTNta3NXWEdBVGNLb0xQM1RUQ1RVNVgwa3VsWXQ4S0ZRYVpJQ3J6YnVkT3IyclVVVmZuYlFqMTUtREtNajRQd2EzZUk4MXRJ?oc=5",
-   "source": "AI device reimbursement & coding",
-   "source_type": "Other",
-   "stage": "access",
-   "evidence_type": "Payment / coverage",
-   "evidence_strength": "Policy signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 4,
-   "topics": "reimbursement-coverage"
   },
   {
    "id": "1e15110af9d7",
@@ -1535,6 +1517,24 @@
    "topics": "ai-clinical-studies"
   },
   {
+   "id": "6d2bf5d82139",
+   "title": "Author Correction: Digital biomarkers for brain health: passive and continuous assessment from wearable sensors",
+   "url": "https://www.nature.com/articles/s41746-026-03031-4",
+   "source": "npj Digital Medicine",
+   "source_type": "Other",
+   "stage": "clinical",
+   "evidence_type": "Commentary",
+   "evidence_strength": "Commentary",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "Remote monitoring",
+   "region": "",
+   "country": "",
+   "date": "2026-08-01",
+   "score": 2,
+   "topics": "ai-clinical-studies"
+  },
+  {
    "id": "17f889aa8451",
    "title": "Reply to: Clinician engagement modifies effectiveness of AI enabled ECG screening",
    "url": "https://www.nature.com/articles/s41746-026-03096-1",
@@ -1661,24 +1661,6 @@
    "topics": "ai-clinical-studies"
   },
   {
-   "id": "8ab5578209fa",
-   "title": "Causal machine learning for exploring radiation dose effects on mandibular osteoradionecrosis",
-   "url": "https://www.nature.com/articles/s41746-026-03072-9",
-   "source": "npj Digital Medicine",
-   "source_type": "Other",
-   "stage": "clinical",
-   "evidence_type": "Journal study",
-   "evidence_strength": "Primary evidence",
-   "evidence_maturity": 1,
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Predictive ML",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 1,
-   "topics": "ai-clinical-studies"
-  },
-  {
    "id": "a4477b605061",
    "title": "Identifying subsets of patients with retroperitoneal sarcoma who benefit from radiotherapy: an Interpretable AI reanalysis of the STRASS randomised trial.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42509079/",
@@ -1785,24 +1767,6 @@
    "date": "2026-07-22",
    "score": 0,
    "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "14361a9e6eae",
-   "title": "ListS_SFOPH-AI use for skin cancer",
-   "url": "https://www.inahta.org/download/lists_sfoph-ai-use-for-skin-cancer/",
-   "source": "INAHTA (HTA network)",
-   "source_type": "Other",
-   "stage": "heor",
-   "evidence_type": "HEOR / value",
-   "evidence_strength": "Secondary evidence",
-   "evidence_maturity": 2,
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "",
-   "region": "",
-   "country": "",
-   "date": "2026-07-17",
-   "score": 2,
-   "topics": "hta-value-evidence;oncology-ai"
   },
   {
    "id": "311fc170237f",
