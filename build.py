@@ -77,7 +77,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.4: precision patch — industry commercial-event type is judged on the title only (teaser summaries
 #      no longer misfire 'Funding'/'Deployment'); over-broad triggers tightened; clinical-stage items
 #      default to Direct clinical before the 'adjacent AI' net (no demotion on a stray 'agentic').
-TAXONOMY_VERSION = "2.4"
+# 2.5: (Phase 2) evidence-maturity 0–4 lifecycle level for evidence items — Discovery / Retrospective
+#      / Prospective / Randomised·synthesis / Real-world — from evidence type + design keywords.
+TAXONOMY_VERSION = "2.5"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1160,6 +1162,42 @@ def ai_modality(i):
         if rx.search(t):
             return lab
     return ""
+
+
+# --- evidence-maturity (Phase 2) ---------------------------------------------
+# A 0–4 lifecycle level for evidence-bearing items (research / clinical / HEOR): how far the
+# evidence has matured, from model discovery to real-world use. Deterministic — from the evidence
+# type plus a prospective/retrospective keyword check. Blank for policy/market items, where the
+# concept doesn't apply. Descriptive ordering aid, never a quality judgement of the work.
+_MATURITY_ETYPE = {
+    "Real-world evidence": (4, "Real-world evidence"),
+    "RCT": (3, "Randomised"),
+    "Meta-analysis": (3, "Evidence synthesis"),
+    "Systematic review": (2, "Evidence synthesis"),
+    "Trial registry": (2, "Prospective (ongoing)"),
+    "Study protocol": (2, "Prospective (planned)"),
+    "Economic evaluation": (2, "Modelled"),
+    "Preprint": (0, "Discovery"),
+}
+_MATURITY_LEVELS = {0: "Discovery", 1: "Retrospective validation", 2: "Prospective evaluation",
+                    3: "Randomised / synthesis", 4: "Real-world evidence"}
+
+
+def evidence_maturity(i):
+    """Return (level 0–4, label) for evidence items; (None, '') for policy/market items."""
+    if i.get("layer", "") not in ("research", "clinical", "heor"):
+        return None, ""
+    et = i.get("etype") or classify_evidence(i)[0]
+    if et == "Commentary":
+        return None, ""
+    if et in _MATURITY_ETYPE:
+        return _MATURITY_ETYPE[et]
+    t = (i.get("title", "") + " " + i.get("summary", "")).lower()
+    if "prospective" in t:
+        return 2, "Prospective"
+    if et == "HEOR / value":
+        return 2, "Value evidence"
+    return 1, "Retrospective / validation"   # default for journal studies
 
 
 def country_of(i):
@@ -2343,6 +2381,7 @@ h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .ev-com{background:#f1f1f2;color:#666;border-color:#e0e0e2}
 .rel{font-size:10.5px;font-weight:500;letter-spacing:.02em;color:#7a6a55;background:#f6f2ea;padding:2px 7px;border-radius:4px}
 .mod{font-size:10.5px;font-weight:500;letter-spacing:.02em;color:#4a4a63;background:#eeeef4;padding:2px 7px;border-radius:4px}
+.mat{font-size:10px;font-weight:700;letter-spacing:.03em;color:#5b6472;background:#eef1f4;border:1px solid #dde3ea;padding:1px 6px;border-radius:10px}
 .whyrank{display:inline-block;margin-left:14px}
 .whyrank>summary{cursor:pointer;font-size:12px;color:var(--mute);list-style:none}
 .whyrank>summary::-webkit-details-marker{display:none}
@@ -2537,6 +2576,7 @@ function render(){
     <div class="card ${read.has(i.id)?'read':''}" style="border-left:3px solid ${SC[i.layer]||'#dcdcdc'}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
+        ${(i.maturity!=null)?`<span class="mat" title="${esc(i.maturity_lab||'')} evidence (maturity ${i.maturity}/4)">L${i.maturity}</span>`:''}
         <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}
         ${i.modality?`<span class="mod">${esc(i.modality)}</span>`:''}
@@ -2847,7 +2887,7 @@ def write_export(items):
     data_dir = DOCS / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     cols = ["id", "title", "url", "source", "source_type", "stage",
-            "evidence_type", "evidence_strength", "healthcare_relevance", "ai_modality",
+            "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
             "region", "country", "date", "score", "topics"]
 
     def row_of(i):
@@ -2863,6 +2903,7 @@ def write_export(items):
             "stage": i.get("layer", ""),
             "evidence_type": _et,
             "evidence_strength": _str,
+            "evidence_maturity": ("" if i.get("maturity") is None else i.get("maturity")),
             "healthcare_relevance": i.get("relevance") or healthcare_relevance(i),
             "ai_modality": i.get("modality", ai_modality(i)),
             "region": i.get("region", ""),
@@ -3130,6 +3171,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["etype"], i["strength"] = classify_evidence(i)
         i["relevance"] = healthcare_relevance(i)
         i["modality"] = ai_modality(i)
+        i["maturity"], i["maturity_lab"] = evidence_maturity(i)
 
     # Evidence-tab filter options, from what's actually in this build
     _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]

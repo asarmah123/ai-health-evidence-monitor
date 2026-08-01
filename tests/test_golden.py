@@ -157,7 +157,7 @@ def test_export_schema():
     import tempfile, json, csv, io
     from pathlib import Path
     cols = ["id", "title", "url", "source", "source_type", "stage",
-            "evidence_type", "evidence_strength", "healthcare_relevance", "ai_modality",
+            "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
             "region", "country", "date", "score", "topics"]
     items = [
         {"id": "e1", "title": "FDA cleared AI", "url": "https://accessdata.fda.gov/K1",
@@ -399,6 +399,20 @@ def test_research_layer_precision():
     assert lay["medRxiv — Health Informatics"] == "research"
     assert lay["OpenAI News"] == "industry"                 # product launch → industry
     assert lay["TLDR AI"] == "industry"                     # newsletter → industry
+
+
+def test_evidence_maturity():
+    """0–4 lifecycle level for evidence items; None for policy/market."""
+    mt = lambda et, layer, title="": build.evidence_maturity({"etype": et, "layer": layer, "title": title, "summary": ""})
+    assert mt("Preprint", "research")[0] == 0
+    assert mt("Journal study", "clinical", "A retrospective analysis of X")[0] == 1
+    assert mt("Trial registry", "clinical")[0] == 2
+    assert mt("Journal study", "clinical", "A prospective evaluation")[0] == 2
+    assert mt("RCT", "clinical")[0] == 3
+    assert mt("Real-world evidence", "clinical")[0] == 4
+    assert mt("Regulatory guidance", "regulation")[0] is None    # policy → N/A
+    assert mt("Partnership", "industry")[0] is None               # market → N/A
+    assert mt("Commentary", "clinical")[0] is None                # not evidence
 
 
 def test_ai_modality():
