@@ -157,12 +157,14 @@ def test_export_schema():
     import tempfile, json, csv, io
     from pathlib import Path
     cols = ["id", "title", "url", "source", "source_type", "stage",
+            "evidence_type", "evidence_strength",
             "region", "country", "date", "score", "topics"]
     items = [
         {"id": "e1", "title": "FDA cleared AI", "url": "https://accessdata.fda.gov/K1",
          "source": "FDA — AI device authorisations", "layer": "regulation", "date": "2026-07-20",
          "topics": ["fda-ai-authorisations", "oncology-ai"], "score": 10,
-         "region": "North America", "country": "United States", "stype": "Regulator"},
+         "region": "North America", "country": "United States", "stype": "Regulator",
+         "etype": "Regulatory guidance", "strength": "Policy signal"},
         {"id": "e2", "title": "NICE recommendation", "url": "https://www.nice.org.uk/n1",
          "source": "NICE — News", "layer": "access", "date": "",  # date unknown
          "topics": ["nice-evaluations"], "score": 6, "region": "Europe",
@@ -178,6 +180,8 @@ def test_export_schema():
         assert payload["count"] == 2 and payload["taxonomy_version"] == build.TAXONOMY_VERSION
         assert payload["items"][1]["date"] == ""          # unknown date preserved, not guessed
         assert payload["items"][0]["topics"] == "fda-ai-authorisations;oncology-ai"
+        assert payload["items"][0]["evidence_type"] == "Regulatory guidance"
+        assert payload["items"][1]["evidence_strength"] == "Policy signal"   # derived when absent
         rows = list(csv.DictReader(
             (tmp / "data" / "feed-latest.csv").read_text(encoding="utf-8-sig").splitlines()))
         assert list(rows[0].keys()) == cols and len(rows) == 2
@@ -377,6 +381,25 @@ def test_ctgov_ai_gate_and_pr_junk():
     assert "Testing the " not in kept   # non-AI drug trial dropped
     assert "Digital Heal" not in kept   # market-research PR dropped
     assert "Meta signs E" not in kept   # plain Google-News URL, not healthcare
+
+
+def test_evidence_classification():
+    """Deterministic evidence-type + strength: study designs, policy, market, commentary."""
+    def ev(title, layer, source="", stype=None, summary=""):
+        i = {"title": title, "layer": layer, "source": source, "summary": summary}
+        if stype:
+            i["stype"] = stype
+        return build.classify_evidence(i)
+    assert ev("A randomized controlled trial of an AI triage tool", "clinical", stype="Journal / evidence") == ("RCT", "Primary evidence")
+    assert ev("AI in postmortem interval: systematic review and meta-analysis", "clinical", stype="Journal / evidence") == ("Meta-analysis", "Secondary evidence")
+    assert ev("Responsible AI in medical imaging: a systematic review", "clinical", stype="Journal / evidence") == ("Systematic review", "Secondary evidence")
+    assert ev("Cost-effectiveness of an AI triage tool", "heor", stype="Journal / evidence") == ("Economic evaluation", "Primary evidence")
+    assert ev("AI scribes are not medical devices, MHRA says", "regulation", stype="Regulator") == ("Regulatory guidance", "Policy signal")
+    assert ev("CMS proposes payment framework for software", "access") == ("HTA / coverage", "Policy signal")
+    assert ev("WellSpan Health, Hippocratic AI ink multi-year partnership", "industry", stype="Industry press") == ("Funding / deal", "Market signal")
+    assert ev("Retraction notice to Integrating Generative AI", "heor", source="Value in Health", stype="Journal / evidence") == ("Commentary", "Commentary")
+    assert ev("AI-Assisted Optical Diagnosis (CADx)", "clinical", stype="Trial registry") == ("Trial registry", "Primary evidence")
+    assert ev("A foundation model for colonoscopy", "research", stype="Preprint / research") == ("Preprint", "Primary evidence")
 
 
 def test_source_lookback():
