@@ -79,7 +79,17 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #      default to Direct clinical before the 'adjacent AI' net (no demotion on a stray 'agentic').
 # 2.5: (Phase 2) evidence-maturity 0–4 lifecycle level for evidence items — Discovery / Retrospective
 #      / Prospective / Randomised·synthesis / Real-world — from evidence type + design keywords.
-TAXONOMY_VERSION = "2.5"
+# 2.6: (Phase 2) reimbursement two-signal split — the 'access' stream now labels each item as
+#      'HTA / market access' (readiness: appraisals, safety expectations, HTA-body statements) or
+#      'Payment / coverage' (the actual coding/coverage/payment decision). HTA precedes payment.
+# 2.7: inclusion-rule tightening — (a) Reimbursement is payment/coverage ONLY: HTA/value → HEOR,
+#      governance (e.g. HIQA) → Regulatory; (b) HEOR drops corrections/retractions (→ literature) and
+#      newsletters/digests (→ industry) and gains subtypes (HTA report / Budget impact / Value framework
+#      / Methodology); (c) evidence-maturity shown as a descriptive label instead of L0–L4.
+# 2.8: (a) Regulatory precision — generic policy/marketing/adoption news (no regulator source and no
+#      regulatory/governance/safety signal) routes to industry; (b) Industry business-event taxonomy
+#      gains Executive move / Company strategy / Industry analysis.
+TAXONOMY_VERSION = "2.8"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -383,8 +393,10 @@ def refine_access_layer(items):
         text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
         if _INSURER_RE.search(text) and not _STRONG_PAYER_RE.search(text):
             i["layer"] = "industry"          # private-insurer AI adoption, not a coverage decision
-        elif _COVERAGE_RE.search(text):
-            continue                         # genuine reimbursement / payer / HTA item — stays
+        elif _PAY_RE.search(text):
+            continue                         # genuine payment / coverage decision — stays
+        elif _HTA_VALUE_RE.search(text):
+            i["layer"] = "heor"              # value / HTA readiness — the step before payment
         else:
             i["layer"] = "industry" if _INDUSTRY_SIGNAL_RE.search(text) else "regulation"
     return items
@@ -406,10 +418,19 @@ def refine_heor_layer(items):
     """Keep value/economic/HTA/RWE evidence in the HEOR stream; reclassify broad AI systematic
     reviews and methods papers with no economic signal (from query-based sources) to 'clinical'."""
     for i in items:
-        if i.get("layer") == "heor" and i.get("source", "") not in _HEOR_BODY_SOURCES:
-            text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
-            if not _HEOR_RE.search(text):
-                i["layer"] = "clinical"
+        if i.get("layer") != "heor":
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        # corrections / retractions belong with the literature, not the value stream
+        if _EV_COMMENT.search(text):
+            i["layer"] = "clinical"
+            continue
+        # newsletters / digests / bulletins are organisation updates, not HTA evidence
+        if re.search(r"\bdigest\b|weekly roundup|newsletter|bulletin", text):
+            i["layer"] = "industry"
+            continue
+        if i.get("source", "") not in _HEOR_BODY_SOURCES and not _HEOR_RE.search(text):
+            i["layer"] = "clinical"
     return items
 
 
@@ -420,6 +441,31 @@ def refine_research_layer(items):
     Keyed off source type so it's robust: arXiv/medRxiv/journals stay, newsletters/blogs move."""
     for i in items:
         if i.get("layer") == "research" and source_type(i) not in ("Preprint / research", "Journal / evidence"):
+            i["layer"] = "industry"
+    return items
+
+
+# The regulatory stream should reflect regulatory ACTIONS, not merely originate near regulation.
+# Keep items from a regulator, or carrying a regulatory / authorisation / governance / safety signal;
+# route generic policy, marketing and adoption news to industry.
+_REG_SIGNAL_RE = re.compile(
+    r"\bfda\b|\bmhra\b|\bema\b|\btga\b|\bpmda\b|health canada|regulat|guidance|consultation|clearance|cleared"
+    r"|authoris|authoriz|\bapproval\b|\bapproved\b|classification|510\(k\)|de novo|\bce mark\b|\bmdr\b|licen[sc]e"
+    r"|\bai act\b|\bnist\b|governance|framework|\bstandard|\blaw\b|legislation|compliance|premarket"
+    r"|medical device|notified body|marketing author|post.?market|\bhta\b"
+    r"|\bsafe\b|safety|oversight|ethic|human (judgement|judgment|oversight)|responsible ai|assurance|trustworth")
+
+
+def refine_regulation_layer(items):
+    """Keep genuine regulatory actions/guidance in the regulatory stream; route generic policy,
+    marketing and adoption news (that merely comes from a regulation query) to industry."""
+    for i in items:
+        if i.get("layer") != "regulation":
+            continue
+        if source_type(i) == "Regulator":
+            continue   # from a named regulator (FDA/MHRA/EMA/Health Canada…) → keep
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        if not _REG_SIGNAL_RE.search(text):
             i["layer"] = "industry"
     return items
 
@@ -1038,6 +1084,25 @@ _EV_FUND = re.compile(r"raises?|funding round|series [a-e]\b|\bfunding\b|\binves
 _EV_PARTN = re.compile(r"partnership|\bpartners\b|\bpact\b|collaborat|alliance|licensing|\bink(s|ed)?\b|joins? forces")
 _EV_LAUNCH = re.compile(r"launch|unveil|introduc|debut|\breleases?\b|rolls? out|white label")
 _EV_DEPLOY = re.compile(r"\bdeploy|go(es)? live|now live|enterprise (contract|agreement|rollout)")
+_EV_EXEC = re.compile(r"\bceo\b|\bcfo\b|\bcoo\b|\bcto\b|\bcmo\b|chief \w+ officer|\bchief\b|appoints?"
+                      r"|\bhires?\b|names? (new|its)|joins? as|steps? down|\bretire|departs?|new (ceo|chief|head)")
+_EV_STRAT = re.compile(r"\bstrategy\b|strategic (plan|shift|pivot)|restructur|\bpivots?\b|expands? into"
+                       r"|enters? the .* market|\broadmap\b|repositions?")
+_EV_ANALYSIS = re.compile(r"\banalysis\b|\boutlook\b|\btrends?\b|state of|the future of|explainer|deep dive"
+                          r"|\bexplains\b|\bq&a\b")
+# reimbursement two-signal split: HTA / market-access (the readiness step) → Payment / coverage
+# (the actual decision). A payment signal is a coding/coverage/payment action; everything else in
+# the reimbursement stream (appraisals, safety expectations, HTA-body statements) is market access.
+_PAY_RE = re.compile(r"reimburs|\bcovered\b|coverage (decision|determination|pathway)|\bcoding\b|\bcpt\b"
+                     r"|\bhcpcs\b|\bntap\b|\bdrg\b|payment|\btariff\b|formulary|\bdiga\b|medicare|medicaid"
+                     r"|\bncd\b|\blcd\b|copay|fee schedule|positive recommendation"
+                     r"|recommends? (funding|reimbursement|coverage)|will (cover|pay|reimburse)")
+# value / HTA readiness (the step before payment) — routes non-payment access items to the HEOR stage
+_HTA_VALUE_RE = re.compile(r"benefit assessment|\bappraisal\b|health technology assessment|\bhta\b"
+                           r"|cost.?effective|cost.?util|budget impact|economic evaluation"
+                           r"|value (assessment|framework|dossier|for money)|\bqaly\b|coverage recommendation"
+                           r"|reimbursement review|early value assessment")
+_EV_BIA = re.compile(r"budget impact|budget.impact")
 
 
 def classify_evidence(i):
@@ -1055,17 +1120,25 @@ def classify_evidence(i):
             return "Acquisition", "Market signal"
         if _EV_FUND.search(ti):
             return "Funding round", "Market signal"
+        if _EV_EXEC.search(ti):
+            return "Executive move", "Market signal"
         if _EV_PARTN.search(ti):
             return "Partnership", "Market signal"
         if _EV_LAUNCH.search(ti):
             return "Product launch", "Market signal"
         if _EV_DEPLOY.search(ti):
             return "Deployment", "Market signal"
+        if _EV_STRAT.search(ti):
+            return "Company strategy", "Market signal"
+        if _EV_ANALYSIS.search(ti):
+            return "Industry analysis", "Market signal"
         # else fall through to the backbone → "Industry news"
     if _EV_META.search(t):
         return "Meta-analysis", "Secondary evidence"
     if _EV_SYS.search(t):
         return "Systematic review", "Secondary evidence"
+    if _EV_BIA.search(t):
+        return "Budget impact", "Secondary evidence"
     if _EV_ECON.search(t):
         return "Economic evaluation", "Primary evidence"
     if _EV_RWE.search(t):
@@ -1083,9 +1156,18 @@ def classify_evidence(i):
         if _EV_AUTH.search(t):
             return "Regulatory authorisation", "Policy signal"
         return "Regulatory guidance", "Policy signal"
-    if st == "HTA / payer" or layer == "access":
-        return "HTA / coverage", "Policy signal"
+    if layer == "access":
+        # the reimbursement stream is payment/coverage only (refine_access_layer routes the rest out)
+        if _PAY_RE.search(t):
+            return "Payment / coverage", "Policy signal"
+        return "HTA / market access", "Policy signal"
     if layer == "heor":
+        if re.search(r"benefit assessment|\bappraisal\b|hta report|health technology assessment", t):
+            return "HTA report", "Secondary evidence"
+        if re.search(r"value framework|value assessment|value dossier|value for money", t):
+            return "Value framework", "Secondary evidence"
+        if re.search(r"methodolog|reporting (completeness|standard|guideline)|\btripod\b|\bchecklist\b", t):
+            return "Methodology", "Secondary evidence"
         return "HEOR / value", "Secondary evidence"
     if st == "Preprint / research" or layer == "research":
         return "Preprint", "Primary evidence"
@@ -1169,14 +1251,20 @@ def ai_modality(i):
 # evidence has matured, from model discovery to real-world use. Deterministic — from the evidence
 # type plus a prospective/retrospective keyword check. Blank for policy/market items, where the
 # concept doesn't apply. Descriptive ordering aid, never a quality judgement of the work.
+# label is a SHORT descriptive term shown on the card (the numeric level lives in the export)
 _MATURITY_ETYPE = {
-    "Real-world evidence": (4, "Real-world evidence"),
+    "Real-world evidence": (4, "Real-world"),
     "RCT": (3, "Randomised"),
-    "Meta-analysis": (3, "Evidence synthesis"),
-    "Systematic review": (2, "Evidence synthesis"),
-    "Trial registry": (2, "Prospective (ongoing)"),
-    "Study protocol": (2, "Prospective (planned)"),
-    "Economic evaluation": (2, "Modelled"),
+    "Meta-analysis": (3, "Synthesis"),
+    "Systematic review": (2, "Synthesis"),
+    "Trial registry": (2, "Prospective"),
+    "Study protocol": (2, "Prospective"),
+    "Economic evaluation": (2, "Economic model"),
+    "Budget impact": (2, "Economic model"),
+    "HTA report": (2, "HTA"),
+    "Value framework": (2, "Value"),
+    "Methodology": (1, "Methodology"),
+    "HEOR / value": (2, "Value evidence"),
     "Preprint": (0, "Discovery"),
 }
 _MATURITY_LEVELS = {0: "Discovery", 1: "Retrospective validation", 2: "Prospective evaluation",
@@ -1184,7 +1272,7 @@ _MATURITY_LEVELS = {0: "Discovery", 1: "Retrospective validation", 2: "Prospecti
 
 
 def evidence_maturity(i):
-    """Return (level 0–4, label) for evidence items; (None, '') for policy/market items."""
+    """Return (level 0–4, short label) for evidence items; (None, '') for policy/market items."""
     if i.get("layer", "") not in ("research", "clinical", "heor"):
         return None, ""
     et = i.get("etype") or classify_evidence(i)[0]
@@ -1195,9 +1283,7 @@ def evidence_maturity(i):
     t = (i.get("title", "") + " " + i.get("summary", "")).lower()
     if "prospective" in t:
         return 2, "Prospective"
-    if et == "HEOR / value":
-        return 2, "Value evidence"
-    return 1, "Retrospective / validation"   # default for journal studies
+    return 1, "Retrospective"   # default for journal studies
 
 
 def country_of(i):
@@ -2576,7 +2662,7 @@ function render(){
     <div class="card ${read.has(i.id)?'read':''}" style="border-left:3px solid ${SC[i.layer]||'#dcdcdc'}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
-        ${(i.maturity!=null)?`<span class="mat" title="${esc(i.maturity_lab||'')} evidence (maturity ${i.maturity}/4)">L${i.maturity}</span>`:''}
+        ${(i.maturity!=null)?`<span class="mat" title="Evidence maturity ${i.maturity} of 4">${esc(i.maturity_lab||'')}</span>`:''}
         <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}
         ${i.modality?`<span class="mod">${esc(i.modality)}</span>`:''}
@@ -3702,6 +3788,7 @@ def main():
     items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
     items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
     items = refine_research_layer(items) # research precision: newsletters/product news → industry
+    items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
