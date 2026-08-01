@@ -265,7 +265,7 @@ def test_relevance_gate():
     items = [
         {"source": "FDA — AI device authorisations", "layer": "regulation", "title": "OmniScan 3000", "summary": ""},
         {"source": "NEJM AI", "layer": "clinical", "title": "Detecting sepsis earlier", "summary": ""},
-        {"source": "arXiv", "layer": "research", "title": "Scaling transformers", "summary": ""},
+        {"source": "arXiv", "layer": "research", "title": "Foundation model for sepsis detection", "summary": ""},
         {"source": "AI/ML intervention trials", "layer": "clinical", "title": "AI triage RCT for chest pain", "summary": ""},
         {"source": "PubMed — AI × HTA/HEOR", "layer": "heor", "title": "Predictors of atrial fibrillation recurrence after ablation", "summary": ""},
         {"source": "CMS — coverage & payment notices", "layer": "access",
@@ -274,11 +274,30 @@ def test_relevance_gate():
         {"source": "Value in Health", "layer": "heor", "title": "Cost-effectiveness of an AI triage tool", "summary": ""},
     ]
     kept = {i["title"] for i in build.relevance_gate(items)}
-    assert {"OmniScan 3000", "Detecting sepsis earlier", "Scaling transformers",
+    assert {"OmniScan 3000", "Detecting sepsis earlier", "Foundation model for sepsis detection",
             "AI triage RCT for chest pain", "Predictors of atrial fibrillation recurrence after ablation",
             "Cost-effectiveness of an AI triage tool"} <= kept
     assert "Medicare Program; Prospective Payment System for Skilled Nursing Facilities" not in kept
     assert "Cost-effectiveness of statins" not in kept
+
+
+def test_research_health_only():
+    """Research is health-gated: AI-in-health preprints/newsletters stay, general-AI capability drops."""
+    items = [
+        {"source": "arXiv", "layer": "research", "url": "https://arxiv.org/abs/1",
+         "title": "A report-grounded foundation model for colonoscopy", "summary": ""},
+        {"source": "arXiv", "layer": "research", "url": "https://arxiv.org/abs/2",
+         "title": "Qwen-UI-Agent: next-generation foundation GUI agents", "summary": ""},
+        {"source": "TLDR AI", "layer": "research", "url": "https://tldr.tech/ai/x",
+         "title": "GPT-5.6 price cuts, Gemini Robotics 2", "summary": ""},
+        {"source": "TLDR AI", "layer": "research", "url": "https://tldr.tech/ai/y",
+         "title": "ChatGPT Health launches, new clinical model", "summary": ""},
+    ]
+    kept = {i["title"][:12] for i in build.relevance_gate(items)}
+    assert "A report-gro" in kept        # colonoscopy → health
+    assert "ChatGPT Heal" in kept         # health-flagged newsletter issue
+    assert "Qwen-UI-Agen" not in kept     # general-AI preprint dropped
+    assert "GPT-5.6 pric" not in kept     # general frontier newsletter dropped
 
 
 def test_health_gate_gnews():
