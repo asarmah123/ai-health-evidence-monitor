@@ -330,6 +330,7 @@ def test_reimbursement_precision():
     governance → regulation; company news → industry; private-insurer AI → industry."""
     items = [
         {"layer": "access", "title": "CMS proposes payment framework for software as a medical service", "summary": ""},
+        {"layer": "access", "title": "NHS procurement framework for AI diagnostics", "summary": ""},
         {"layer": "access", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
         {"layer": "access", "title": "G-BA benefit assessment of an AI digital therapeutic", "summary": ""},
         {"layer": "access", "title": "DIAGNOS gets Health Canada licence for AI retinal analysis", "summary": ""},
@@ -339,8 +340,9 @@ def test_reimbursement_precision():
     build.refine_access_layer(items)
     by = {i["title"][:12]: i["layer"] for i in items}
     assert by["CMS proposes"] == "access"        # payment signal → stays
+    assert by["NHS procurem"] == "access"         # market-access mechanism → stays
     assert by["AI use in he"] == "regulation"     # HIQA safety/governance, no payment signal → out
-    assert by["G-BA benefit"] == "heor"           # value / HTA readiness → HEOR
+    assert by["G-BA benefit"] == "heor"           # value / HTA assessment → HEOR
     assert by["DIAGNOS gets"] == "regulation"     # licence, no payment/value signal
     assert by["Luminopia pa"] == "industry"       # company partnership news
     assert by["Mexico's GNP"] == "industry"       # private insurer, no public-payer signal
@@ -457,6 +459,9 @@ def test_healthcare_relevance():
     assert rel("Deep-learning model detects atrial fibrillation on ECG") == "Direct clinical"
     assert rel("AI scribes cut documentation burden for clinicians") == "Healthcare operations"
     assert rel("Waystar AI-powered revenue cycle management", "industry") == "Healthcare operations"
+    assert rel("NUHS saves 850 staff hours weekly from new AI", "industry") == "Healthcare operations"
+    assert rel("Two visions for ambient AI and the future of the EHR", "industry") == "Healthcare operations"
+    assert rel("Collaboration can advance AI-powered behavioural health", "industry") == "Direct clinical"
     assert rel("Generative AI accelerates drug discovery and protein design", "research") == "Biomedical research"
     assert rel("Launching a general-purpose agentic AI foundation model", "industry") == "Adjacent AI"
 
@@ -476,7 +481,7 @@ def test_evidence_classification():
     assert ev("FDA classification of the diabetes digital therapeutic device", "regulation", stype="Regulator") == ("Regulatory authorisation", "Policy signal")
     assert ev("EU AI Act radiology: beyond compliance to patient safety", "regulation") == ("AI governance", "Policy signal")
     assert ev("CMS proposes payment framework for software", "access") == ("Payment / coverage", "Policy signal")
-    assert ev("AI use in health system must be deemed safe - HIQA", "access") == ("HTA / market access", "Policy signal")
+    assert ev("NHS procurement framework for AI diagnostics", "access") == ("Market access", "Policy signal")
     assert ev("NICE recommends reimbursement for the AI tool", "access") == ("Payment / coverage", "Policy signal")
     assert ev("Budget impact analysis of an AI triage tool", "heor") == ("Budget impact", "Secondary evidence")
     assert ev("G-BA benefit assessment of the AI device", "heor") == ("HTA report", "Secondary evidence")
