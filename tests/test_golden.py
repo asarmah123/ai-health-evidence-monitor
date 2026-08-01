@@ -280,6 +280,26 @@ def test_relevance_gate():
     assert "Cost-effectiveness of statins" not in kept
 
 
+def test_source_lookback():
+    """Lookback derives from cadence — monthly journals get a wider window — unless overridden."""
+    assert build._source_days({"tier": "daily"}, 10) == 10
+    assert build._source_days({"tier": "weekly"}, 10) == 21
+    assert build._source_days({"tier": "monthly"}, 10) == 45
+    assert build._source_days({"tier": "monthly", "lookback": 60}, 10) == 60   # explicit wins
+    assert build._source_days({"tier": "daily"}, 30) == 30                     # default respected
+
+
+def test_source_caps_after_gate():
+    """Per-source cap keeps the newest N for capped (whole-feed) sources; others pass untouched."""
+    items = [{"source": "Nature Medicine", "title": f"p{i}", "date": f"2026-07-{10 + i:02d}"} for i in range(9)]
+    items += [{"source": "AI/ML intervention trials", "title": f"t{i}", "date": "2026-07-20"} for i in range(9)]
+    out = build.apply_source_caps(items, {"Nature Medicine": 6})   # ctgov source not capped
+    nm = {i["title"] for i in out if i["source"] == "Nature Medicine"}
+    ct = [i for i in out if i["source"] == "AI/ML intervention trials"]
+    assert nm == {"p8", "p7", "p6", "p5", "p4", "p3"}   # newest 6 kept
+    assert len(ct) == 9                                  # uncapped source untouched
+
+
 def test_overtime_section():
     """Phase-2 Over-time analytics: guarded below the minimum build count; above it,
     renders both charts (Market activity + Evidence journey) with all six stage colours

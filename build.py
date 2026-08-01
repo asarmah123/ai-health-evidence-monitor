@@ -52,7 +52,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #      (service+device), digital twin/phenotyping/behavioural; exempt the AI×HTA PubMed query.
 # 1.6: also exempt the JAMA/BMJ 'AI in medicine' PubMed queries (AI-scoped, so clinical-titled
 #      AI papers were slipping through).
-TAXONOMY_VERSION = "1.6"
+# 1.7: per-source (tier-based) lookback windows — monthly journals get ~45 days, weekly ~21 —
+#      and the per-feed cap moved AFTER the relevance gate, so relevant items aren't starved by
+#      newer noise. Captures more low-cadence journal papers; a one-time step in volume/history.
+TAXONOMY_VERSION = "1.7"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -274,7 +277,37 @@ def relevance_gate(items):
             if _ai_native(i) or _ai_relevant(i.get("title", ""), i.get("summary", ""))]
 
 
-def fetch_rss(sources, cutoff, cap):
+def apply_source_caps(items, caps):
+    """Cap each whole-feed source (RSS / Google-News) to N items — but AFTER the relevance
+    gate, so the N slots go to AI-relevant items instead of being consumed by newer noise
+    that then gets filtered out. Newest items are kept; sources without a cap pass through."""
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for i in items:
+        grouped[i["source"]].append(i)
+    out = []
+    for src, lst in grouped.items():
+        n = caps.get(src)
+        if n is None:
+            out.extend(lst)
+        else:
+            lst.sort(key=lambda i: i.get("date") or "", reverse=True)   # newest first; undated last
+            out.extend(lst[:n])
+    return out
+
+
+def _source_days(s, default):
+    """Lookback window (days) for a source. An explicit `lookback:` wins; otherwise it's
+    derived from cadence — low-cadence journals need a wider window than daily feeds, or their
+    articles fall out of range before they matter (a monthly journal on a 10-day window loses
+    most of its issue)."""
+    if s.get("lookback") is not None:
+        return int(s["lookback"])
+    return {"daily": default, "weekly": max(default, 21), "monthly": max(default, 45)}.get(
+        s.get("tier", "weekly"), default)
+
+
+def fetch_rss(sources, now, default_days):
     items, dead = [], []
     for s in sources:
         try:
@@ -292,10 +325,10 @@ def fetch_rss(sources, cutoff, cap):
             continue
         _REACHABLE_SOURCES.add(s["name"])   # reachable with content; relevance filtering is global
 
-        kept = 0
+        # keep everything in the source's window — the per-source cap is applied AFTER the
+        # relevance gate, so the slots go to AI-relevant items, not noise that fills them first.
+        cutoff = now - timedelta(days=_source_days(s, default_days))
         for e in parsed.entries:
-            if kept >= cap:
-                break
             when = when_from(e)
             if when is not None and when < cutoff:
                 continue
@@ -309,7 +342,6 @@ def fetch_rss(sources, cutoff, cap):
                 "date": when.strftime("%Y-%m-%d") if when else "",
                 "summary": clean(e.get("summary", "")),
             })
-            kept += 1
     return items, dead
 
 
@@ -428,15 +460,17 @@ def fetch_scrape(sources):
     return items, dead
 
 
-def fetch_pubmed(sources, lookback):
-    """Pull journal records from PubMed's E-utilities API."""
+def fetch_pubmed(sources, default_days):
+    """Pull journal records from PubMed's E-utilities API. Monthly journals get a wider
+    reldate window (via _source_days) so an issue's papers aren't lost on a 10-day window."""
     base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     items, dead = [], []
     for s in sources:
         try:
             r = requests.get(f"{base}/esearch.fcgi", timeout=25, headers=UA, params={
                 "db": "pubmed", "term": s["query"], "retmax": s.get("max", 8),
-                "sort": "date", "datetype": "pdat", "reldate": lookback, "retmode": "json",
+                "sort": "date", "datetype": "pdat",
+                "reldate": _source_days(s, default_days), "retmode": "json",
             })
             r.raise_for_status()
             pmids = r.json()["esearchresult"]["idlist"]
@@ -469,7 +503,7 @@ def fetch_pubmed(sources, lookback):
     return items, dead
 
 
-def fetch_gnews(sources, cutoff, cap):
+def fetch_gnews(sources, now, default_days):
     """Read selected publishers and standing topic queries via Google News."""
     items, dead = [], []
     for s in sources:
@@ -481,10 +515,8 @@ def fetch_gnews(sources, cutoff, cap):
             dead.append(f"{s['name']} (via Google News): {type(e).__name__}: {str(e)[:100]}")
             continue
 
-        kept = 0
-        for e in parsed.entries:
-            if kept >= cap:
-                break
+        cutoff = now - timedelta(days=_source_days(s, default_days))
+        for e in parsed.entries:            # cap applied post-gate (see apply_source_caps)
             when = when_from(e)
             if when is not None and when < cutoff:
                 continue
@@ -495,7 +527,6 @@ def fetch_gnews(sources, cutoff, cap):
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when.strftime("%Y-%m-%d") if when else "", "summary": "",
             })
-            kept += 1
     return items, dead
 
 
@@ -2534,6 +2565,24 @@ def write_export(items):
     print(f"  export: docs/data/feed-latest.json + .csv ({len(rows)} items)")
 
 
+def write_access_sample(items):
+    """TEMPORARY audit artifact — the current 'Reimbursement & coverage' (access) items, so
+    false positives can be inspected on real data and a precision rule extracted. Writes
+    docs/data/access-sample.json. Remove once the reimbursement precision gate is in."""
+    from datetime import datetime, timezone
+    data_dir = DOCS / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    rows = [{"source": i.get("source", ""), "title": i.get("title", ""),
+             "summary": i.get("summary", ""), "date": i.get("date", ""), "url": i.get("url", "")}
+            for i in items if i.get("layer") == "access"]
+    rows.sort(key=lambda r: (r["source"], r["title"]))
+    payload = {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+               "access_count": len(rows), "items": rows}
+    (data_dir / "access-sample.json").write_text(
+        json.dumps(payload, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"  access-sample.json written ({len(rows)} reimbursement/coverage items)")
+
+
 # XSLT so the RSS renders as a friendly page in a browser, while staying a valid feed for readers.
 FEED_XSL = '''<?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
@@ -3225,10 +3274,11 @@ def main():
         print("config: local feeds.yaml")
     cfg = yaml.safe_load(cfg_text)
     st = cfg["settings"]
-    cutoff = datetime.now(timezone.utc) - timedelta(days=st["lookback_days"])
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=st["lookback_days"])   # default window; arXiv uses it directly
 
     print("fetching RSS…")
-    items, dead = fetch_rss(cfg["rss"], cutoff, st["max_per_feed"])
+    items, dead = fetch_rss(cfg["rss"], now, st["lookback_days"])
     print(f"  {len(items)} items")
 
     print("fetching arXiv…")
@@ -3237,7 +3287,7 @@ def main():
     print(f"  {len(ax)} papers")
 
     print("fetching via Google News…")
-    gn, d5 = fetch_gnews(cfg.get("gnews", []), cutoff, st["max_per_feed"])
+    gn, d5 = fetch_gnews(cfg.get("gnews", []), now, st["lookback_days"])
     items += gn; dead += d5
     print(f"  {len(gn)} items")
 
@@ -3271,7 +3321,11 @@ def main():
     # are inherently AI (openFDA, arXiv, frontier newsletters, AI trial queries, NEJM AI) pass as-is.
     _pre = len(items)
     items = relevance_gate(items)
-    print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health")
+    # cap whole-feed sources (rss/gnews) AFTER filtering, so the slots hold relevant items
+    _caps = {s["name"]: int(s.get("max_per_feed", st["max_per_feed"]))
+             for grp in ("rss", "gnews") for s in cfg.get(grp, [])}
+    items = apply_source_caps(items, _caps)
+    print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
     uniq = {i["id"]: i for i in items}
@@ -3316,6 +3370,7 @@ def main():
     write_topic_feeds(items)
     write_manifest(items, health)
     write_export(items)   # docs/data/feed-latest.{json,csv} — programmatic access to this build
+    write_access_sample(items)   # TEMP: reimbursement-precision audit — remove after rule is in
 
     # output guard: the page and feed must be well-formed before this run is allowed to
     # publish. A non-zero exit here makes CI skip the commit, so the previous site stays.
