@@ -326,26 +326,46 @@ def test_health_gate_gnews():
 
 
 def test_reimbursement_precision():
-    """Access items: keep genuine coverage/payer; company news → industry; else → regulation;
-    private-insurer AI adoption is not a coverage decision."""
+    """The reimbursement stream is payment/coverage only: payment stays; HTA/value → HEOR;
+    governance → regulation; company news → industry; private-insurer AI → industry."""
     items = [
         {"layer": "access", "title": "CMS proposes payment framework for software as a medical service", "summary": ""},
         {"layer": "access", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
+        {"layer": "access", "title": "G-BA benefit assessment of an AI digital therapeutic", "summary": ""},
         {"layer": "access", "title": "DIAGNOS gets Health Canada licence for AI retinal analysis", "summary": ""},
         {"layer": "access", "title": "Luminopia partners with Spin Master on amblyopia digital therapeutic", "summary": ""},
         {"layer": "access", "title": "Mexico's GNP Seguros to leverage Palantir AI to strengthen insurance coverage", "summary": ""},
     ]
     build.refine_access_layer(items)
     by = {i["title"][:12]: i["layer"] for i in items}
-    assert by["CMS proposes"] == "access"        # payment signal
-    assert by["AI use in he"] == "access"         # HIQA payer/HTA body
-    assert by["DIAGNOS gets"] == "regulation"     # licence, no coverage/company signal
+    assert by["CMS proposes"] == "access"        # payment signal → stays
+    assert by["AI use in he"] == "regulation"     # HIQA safety/governance, no payment signal → out
+    assert by["G-BA benefit"] == "heor"           # value / HTA readiness → HEOR
+    assert by["DIAGNOS gets"] == "regulation"     # licence, no payment/value signal
     assert by["Luminopia pa"] == "industry"       # company partnership news
     assert by["Mexico's GNP"] == "industry"       # private insurer, no public-payer signal
 
 
+def test_regulation_precision():
+    """Regulatory keeps regulator sources + genuine regulatory/governance/safety signals; generic
+    policy/marketing news is routed to industry."""
+    items = [
+        {"layer": "regulation", "source": "MHRA (UK)", "url": "", "title": "MHRA guidance on AI scribes", "summary": ""},
+        {"layer": "regulation", "source": "AI policy & guidance", "url": "", "title": "EU AI Act radiology compliance", "summary": ""},
+        {"layer": "regulation", "source": "Additional European HTA", "url": "", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
+        {"layer": "regulation", "source": "MEA AI device & digital health regulation", "url": "", "title": "Role of AI Healthcare Solutions in Saudi's Care Domain", "summary": ""},
+    ]
+    build.refine_regulation_layer(items)
+    lay = {i["title"][:10]: i["layer"] for i in items}
+    assert lay["MHRA guida"] == "regulation"   # regulator source
+    assert lay["EU AI Act "] == "regulation"    # AI Act / compliance signal
+    assert lay["AI use in "] == "regulation"    # governance / safety signal
+    assert lay["Role of AI"] == "industry"      # marketing / adoption puff → out
+
+
 def test_heor_precision():
-    """HEOR keeps value/economic/HTA/RWE evidence; non-economic AI reviews → clinical; HEOR bodies stay."""
+    """HEOR keeps value/economic/HTA/RWE evidence; corrections/retractions → literature (clinical);
+    newsletters/digests → industry; non-economic AI reviews → clinical; genuine HTA-body evidence stays."""
     items = [
         {"layer": "heor", "source": "PubMed — AI × HTA/HEOR",
          "title": "AI in determination of the postmortem interval: systematic review and meta-analysis", "summary": ""},
@@ -353,12 +373,16 @@ def test_heor_precision():
          "title": "AI will likely grow the HTA industrial complex", "summary": ""},
         {"layer": "heor", "source": "Value in Health",
          "title": "Retraction notice to Integrating Generative AI Into Evidence Synthesis", "summary": ""},
+        {"layer": "heor", "source": "OHDSI Blog", "title": "Weekly OHDSI Digest - July 2026", "summary": ""},
+        {"layer": "heor", "source": "INAHTA (HTA network)", "title": "HTA appraisal: AI use for skin cancer", "summary": ""},
     ]
     build.refine_heor_layer(items)
     lay = {i["title"][:10]: i["layer"] for i in items}
     assert lay["AI in dete"] == "clinical"   # no economic signal → reclassified
     assert lay["AI will li"] == "heor"       # HTA signal → stays
-    assert lay["Retraction"] == "heor"       # HEOR-body source → always kept
+    assert lay["Retraction"] == "clinical"   # correction/retraction → out of the value stream
+    assert lay["Weekly OHD"] == "industry"   # newsletter/digest → out
+    assert lay["HTA apprai"] == "heor"       # genuine HTA-body evidence stays
 
 
 def test_ctgov_ai_gate_and_pr_junk():
@@ -451,9 +475,15 @@ def test_evidence_classification():
     assert ev("AI scribes are not medical devices, MHRA says", "regulation", stype="Regulator") == ("Regulatory guidance", "Policy signal")
     assert ev("FDA classification of the diabetes digital therapeutic device", "regulation", stype="Regulator") == ("Regulatory authorisation", "Policy signal")
     assert ev("EU AI Act radiology: beyond compliance to patient safety", "regulation") == ("AI governance", "Policy signal")
-    assert ev("CMS proposes payment framework for software", "access") == ("HTA / coverage", "Policy signal")
+    assert ev("CMS proposes payment framework for software", "access") == ("Payment / coverage", "Policy signal")
+    assert ev("AI use in health system must be deemed safe - HIQA", "access") == ("HTA / market access", "Policy signal")
+    assert ev("NICE recommends reimbursement for the AI tool", "access") == ("Payment / coverage", "Policy signal")
+    assert ev("Budget impact analysis of an AI triage tool", "heor") == ("Budget impact", "Secondary evidence")
+    assert ev("G-BA benefit assessment of the AI device", "heor") == ("HTA report", "Secondary evidence")
     assert ev("WellSpan Health, Hippocratic AI ink multi-year partnership", "industry", stype="Industry press") == ("Partnership", "Market signal")
     assert ev("Startup raises $40M Series B for AI imaging", "industry", stype="Industry press") == ("Funding round", "Market signal")
+    assert ev("Recursion selects its first AI chief", "industry", stype="Industry press") == ("Executive move", "Market signal")
+    assert ev("Nabla explains its clinical AI outlook", "industry", stype="Industry press") == ("Industry analysis", "Market signal")
     assert ev("Retraction notice to Integrating Generative AI", "heor", source="Value in Health", stype="Journal / evidence") == ("Commentary", "Commentary")
     assert ev("AI-Assisted Optical Diagnosis (CADx)", "clinical", stype="Trial registry") == ("Trial registry", "Primary evidence")
     assert ev("A foundation model for colonoscopy", "research", stype="Preprint / research") == ("Preprint", "Primary evidence")
