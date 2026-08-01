@@ -1,19 +1,19 @@
 {
-  "build_id": "30651875301",
-  "generated_at": "2026-07-31T17:38:16Z",
-  "taxonomy_version": "1.6",
-  "git_commit": "b040a774921429689d2ea9ef0ed4781d8f2be7ba",
-  "items_published": 129,
-  "sources_contributing": 37,
+  "build_id": "30683971841",
+  "generated_at": "2026-08-01T04:28:27Z",
+  "taxonomy_version": "1.7",
+  "git_commit": "9d73ecdfbfd3247531bb965ea2919aec69bd54ac",
+  "items_published": 165,
+  "sources_contributing": 48,
   "sources_expected": 74,
   "silent_sources": 0,
   "errored_sources": 0,
-  "undated_items": 5,
+  "undated_items": 7,
   "qa": {
-    "input": 129,
-    "published": 129,
+    "input": 165,
+    "published": 165,
     "dropped": 0,
-    "future_dates_blanked": 1
+    "future_dates_blanked": 0
   },
   "qa_passed": true
 }

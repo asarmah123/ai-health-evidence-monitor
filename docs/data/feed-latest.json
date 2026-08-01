@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-07-31T17:38:16Z",
- "taxonomy_version": "1.6",
- "count": 129,
+ "generated_at": "2026-08-01T04:28:27Z",
+ "taxonomy_version": "1.7",
+ "count": 165,
  "fields": [
   "id",
   "title",
@@ -60,6 +60,19 @@
    "id": "487981959078",
    "title": "Univé builds an AI-ready workforce",
    "url": "https://openai.com/index/unive",
+   "source": "OpenAI News",
+   "source_type": "Other",
+   "stage": "research",
+   "region": "",
+   "country": "",
+   "date": "2026-07-31",
+   "score": 3,
+   "topics": "ai-research"
+  },
+  {
+   "id": "c5ad624a6ffb",
+   "title": "Disrupting a Criminal Scam Operation",
+   "url": "https://openai.com/index/disrupting-malicious-uses-of-ai-criminal-scam-operation",
    "source": "OpenAI News",
    "source_type": "Other",
    "stage": "research",
@@ -146,6 +159,19 @@
    "date": "2026-07-30",
    "score": 3,
    "topics": "ai-research"
+  },
+  {
+   "id": "4148c869ee86",
+   "title": "Relation promises 'transformationally different success rates' in expanded AI pact with GSK",
+   "url": "https://endpoints.news/relation-promises-transformationally-different-success-rates-in-expanded-gsk-pact/",
+   "source": "Endpoints News",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
   },
   {
    "id": "7716dc140c83",
@@ -291,6 +317,19 @@
    "topics": "ai-research"
   },
   {
+   "id": "d480d7554e0a",
+   "title": "Frontis-MA1: Training an AI4AI Model towards Recursive Self-Improvement in Machine Learning Engineering",
+   "url": "https://arxiv.org/abs/2607.28568v1",
+   "source": "arXiv",
+   "source_type": "Preprint / research",
+   "stage": "research",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": "ai-research"
+  },
+  {
    "id": "6a42de687bd2",
    "title": "ORCA-bench: How Ready Are Language Model Agents for Oncall?",
    "url": "https://arxiv.org/abs/2607.28545v1",
@@ -369,6 +408,58 @@
    "topics": "ai-research"
   },
   {
+   "id": "fa349705a156",
+   "title": "OpenAI to give up to 100,000 researchers free frontier AI access",
+   "url": "https://news.google.com/rss/articles/CBMilAFBVV95cUxQWWdwNW4xNFJybm45Wndwa205c25tWVJLRDYzUElobVVvZHM4RXZpSEViZ25jMUQyUjJmYTdfZWhyenVRTUJsdlY1NElvMWRSNThteVh0SEN0VjI2a1ZzQ0JYZnhHUkk2bTFvaVlCdy1jVGJSTkd4SVY0R1Y3RXJRQ01taWxULWk4NkRjWVp1bXBpUkVE?oc=5",
+   "source": "MobiHealthNews",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
+  },
+  {
+   "id": "40e670c58610",
+   "title": "UN-backed AI report highlights healthcare benefits, warns of risks",
+   "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOQ0JidU9SNXBtYUtSN3JLemxuX3htMS11cEhBbEFsRFd4Qk9QckhpdVlZV0tBSlFjcGlzcGppQ1VzRlZrYm13bTVIWDQ2Z0RhaU5MdGhONzhSTHgxY0MyczNFZlMwRHhoM3BMZ0RacGlteGRiaWlFdUVoZGdkbmZGV2lZU3JLQmVUR0tlSmNlTVBpa25GdC1JMWxYU3F2Nk0?oc=5",
+   "source": "MobiHealthNews",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
+  },
+  {
+   "id": "a2249f8e0daa",
+   "title": "NUHS to save 850 staff hours weekly from new pharma AI",
+   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxPYWZTUm9iYUlQWDBwWXFVbE5CZW9LNW5aQ3BtU1JocWhuTHBBTFB5VUdLVEdSbXI4b3JxVFB1SE53NnV0MlpJb0FJTWV3YnlYejZUVXBLNk1IQVJaOU5xX2Nja1BIMW1iQU1nNHo4dUtyUThTTHlsQU16RTNHVnRabTFmNnZFbjR1cnVLQTRka053dVE?oc=5",
+   "source": "Healthcare IT News",
+   "source_type": "Other",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
+  },
+  {
+   "id": "1fc373eef8b9",
+   "title": "How one kidney care company built a solid AI foundation",
+   "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxNWnAxTXYxMjdRdTM0RGt6bC1zbG9Cc2tTc1NGajRQekdYM3ZVWUhpeHNtdzhyQ3RYWGVIS1RrUjEzYXQ4bGtsd0FMNHFKaFA1MmNjZURocVJLNURLTkFuNkM0ZTF0RGNpR1dndTlfTVNEaENYNlkzdVVhdEM5ZE9PMldaNThRanF3aWxLX0dFVy1lbHczUEE?oc=5",
+   "source": "Healthcare IT News",
+   "source_type": "Other",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 3,
+   "topics": ""
+  },
+  {
    "id": "05f66faf2d79",
    "title": "AI slowdown pact ⏸️, Personal superintelligence access 🌍, Grok Build Mode 🛠️",
    "url": "https://tldr.tech/ai/2026-07-29",
@@ -378,7 +469,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -391,7 +482,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -404,7 +495,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -417,7 +508,20 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 3,
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "22b5c520b3a6",
+   "title": "The FDA was all in on AI. Will that change?",
+   "url": "https://www.medtechdive.com/news/AI-guidance-in-question-FDA/826420/",
+   "source": "MedTech Dive",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 2,
    "topics": ""
   },
   {
@@ -430,7 +534,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 5,
+   "score": 4,
    "topics": "hta-value-evidence"
   },
   {
@@ -443,7 +547,72 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 3,
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "5478323783cb",
+   "title": "BCG: Health systems missing AI's biggest patient access opportunity",
+   "url": "https://news.google.com/rss/articles/CBMiowFBVV95cUxNNWhpeXVBT2lKU3NQVS1KaHhUMVhYRlBQUGM1czVoZGtUUmc2TW9FNUlBQkhjLXA3dUxidXlUZzQ4bjlacnRCa3REd3FTWW41MjFKTFFSR0t4ZkFmZFhuaHJqNE1hSFVCNVN2aFd4LTRUYkl4R3YzVU1DZFRGRXZWRWVBeldEMlJCaDVDZzB6UFdDZmZyX1hmeEF0QVBXYm43Nk1N?oc=5",
+   "source": "MobiHealthNews",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "c9f5ca5986e8",
+   "title": "Vendor Notebook: New AI releases span a spectrum of healthcare touchpoints",
+   "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPcUNYb3FGRVE1dTlBWlhncHNQU0JnNXJ2cy1ROTNpVkRhNS04NjJDU3BiaDlTb0JOcnNDZVAxLXg2a1gxb19DNUU1anoyT0FHZTBPRnQ5VGJiSjh2UkpUWU1RcWhUU3ZESzk1MHNZRFBqa0F3UzVSZGoyYmYtVzJpMzVtcF9JZUIxX05rRFR6VzVra29mN1ZFYmNYdHg3N1dNMllmRjFmNjc4UQ?oc=5",
+   "source": "Healthcare IT News",
+   "source_type": "Other",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "607c89e6b975",
+   "title": "New research framework aims to assess and track clinical AI models",
+   "url": "https://news.google.com/rss/articles/CBMiowFBVV95cUxOeFRmTHQ5N25DUko3eDJfMUIxd1N3VGhfcGZqb1ZHb254cXpid1d5SXFZVFVzaTFabDF1dlB4RVIwejk3cnBIY3oxRTZKMlhPaTZ2cGdSNUlHM2NSVmVZUmdxVkl1UGJ3cEV2RnN4RnJNTnVCcmFuV19sMWh5M0ZVVkdQX3ZNSUNPWlNwNWtZd054c3RUb1M0em9HOEZlOEhMNmd3?oc=5",
+   "source": "Healthcare IT News",
+   "source_type": "Other",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "dc48f546e444",
+   "title": "New insights into disease could be unlocked with genomic foundation models",
+   "url": "https://news.google.com/rss/articles/CBMipgFBVV95cUxNN1FZWnlOV1V4Mjc2RHlUM1dHdldJcnBjNFhOU0pmSUJoSTc2TzNfZ1BoMTZxcGpHLTBtN0E5S01KZVhSdHFtdU5VMXdRdGpud0trZDZMdy1sX3JwU09TbkFNMmNqbFdxVTE4SXA2blNFZ1dKTERUNVA2X0RESmhWbFlocV9BeG9SX0l0Ql9jN1dHM21MaXdTcXplaFIwTF83YzBBUkNn?oc=5",
+   "source": "Healthcare IT News",
+   "source_type": "Other",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "c83fe61c2153",
+   "title": "Two visions for ambient AI and the future of the EHR",
+   "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxNcTRUQVFSNWJXYno0bDJxZkllNzVQRmltOGZXU3k4WnJvbE9WcGtqMWc3ZGw0bC1DQkR3cjlpcm1wNXkzM1dETnAzY1AwMnNDemduSEtJQnk4UUx1RWZjQ0xwU2tCR1FyRDJXNFdWRm5uWGdBczZOWTROX05Td05UUg?oc=5",
+   "source": "Healthcare IT News",
+   "source_type": "Other",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-29",
+   "score": 2,
    "topics": ""
   },
   {
@@ -473,11 +642,11 @@
    "topics": "ai-research"
   },
   {
-   "id": "7e23fa117a80",
-   "title": "With AI advancing so rapidly, organizations must lean in on security and integrity",
-   "url": "https://news.google.com/rss/articles/CBMirAFBVV95cUxNc3ZIQlhINm1mejJRZWI1djl6bWljWXl0QVAyWWZmaWJxMDJCYTVYWURLVW81cWJPbVE0MGlqeHBpcGZtaHJmTnozZ01PSExlTExiMVBPQkZZZy1RekdUVmlOejh2bzVMQkpZck9YRlMwV3A3ZXdGbWVFWXZHVTdRVUk1Z001TWdBQmpMTVpIMzFwRWRISFFQdmppU3VJN2l4WWpTeENYbzdkRGZp?oc=5",
-   "source": "Healthcare IT News",
-   "source_type": "Other",
+   "id": "689d5a8e9775",
+   "title": "Nonprofit advocates to protect children from AI",
+   "url": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxQOVluX0RCdXJCX3F2QnJvcDdtUjN0N1dPSkhycjlyXzFsVENESmdvWDBXc3lNNGk4azhubUNuSGNhSmVyMlZoS1c0cXlhakw2NVZBZnJsNlFkS1dvempMZlJxVjNlamZaZWtBUUJSQnpRaDE5Qm9rVFFrSjF6QjhNTndMZFlxTjF2?oc=5",
+   "source": "MobiHealthNews",
+   "source_type": "Industry press",
    "stage": "industry",
    "region": "",
    "country": "",
@@ -499,32 +668,6 @@
    "topics": "ai-research"
   },
   {
-   "id": "03578ab414a5",
-   "title": "Collaboration can advance AI-powered behavioral health",
-   "url": "https://news.google.com/rss/articles/CBMinAFBVV95cUxPaU5xbFE3V1lMcFR2bnZsWnpsd0RuUmFTd1FoRkc1VkI2aTB4X3AzdUNkZlMwVTBDU1NqUDBXNjhUb0xBQkRfaDlHcHhULVNKUVlHbGNJSmpkUmpiVG5CeUJIWnN5UGQ5dkh3U1kxbVBVcFJvVzVseTAwVjZFZHhEYlhKYkdhZm5mNHJuR1hmc1dQTjFrbm5POTBxVjk?oc=5",
-   "source": "MobiHealthNews",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "2026-07-27",
-   "score": 2,
-   "topics": ""
-  },
-  {
-   "id": "dcd8706a5133",
-   "title": "HHS taps AI to accelerate research for chronic disease",
-   "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxNRU56SmtnNXBjZEs5RDF0SE1Nb0haekpucnNCaVptVjJrWjRUR1d5ejB0d3hjR0ZpRzVwZ1RXdFN5cXNGTlZ2Ql9rdHcwSmtqTGxBcndSMmhvRWtmamRXeHNPdHI2RVcyQ0VCcXNfM0Y1UGtPNnBoVEo1UGhpSDVRUlBHVjBxVlBOd3VXVC1R?oc=5",
-   "source": "Healthcare IT News",
-   "source_type": "Other",
-   "stage": "industry",
-   "region": "",
-   "country": "",
-   "date": "2026-07-27",
-   "score": 2,
-   "topics": ""
-  },
-  {
    "id": "ee813caf37a6",
    "title": "ChatGPT Health 🩺, Fugu-Ultra 1.1 🐡, Runway Media Router 🎬",
    "url": "https://tldr.tech/ai/2026-07-24",
@@ -534,7 +677,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-24",
-   "score": 2,
+   "score": 1,
    "topics": "ai-research"
   },
   {
@@ -564,6 +707,19 @@
    "topics": "reimbursement-coverage"
   },
   {
+   "id": "1e15110af9d7",
+   "title": "Intuitive showcases AI for surgical robotics, telesurgery capabilities",
+   "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE5WMmpDTEVzSklmdG5uMTlJcDFKU2s1UC05Y1Vfb2p2bnZ2NDJNel9pcDFVVGNlNU1aS2NIN05CbDQyT244MkVob1VyaVNvWFVpOWJTTldNbzFQakYyMDViVVlDLVJIS3NzZWNRZm5Kb2YyOFA4ajFyVVdZNTJaUVE?oc=5",
+   "source": "MassDevice",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-23",
+   "score": 1,
+   "topics": ""
+  },
+  {
    "id": "15eb5b1c419a",
    "title": "Accelerating the frontiers of scientific discovery: Google’s $40M commitment to the Genesis Mission",
    "url": "https://deepmind.google/blog/accelerating-the-frontiers-of-scientific-discovery-googles-40m-commitment-to-the-genesis-mission/",
@@ -575,6 +731,32 @@
    "date": "2026-07-22",
    "score": 1,
    "topics": "ai-research"
+  },
+  {
+   "id": "28991fb5e6bf",
+   "title": "STAT+: What is a ‘world model’? Nabla’s Alex LeBrun explains",
+   "url": "https://www.statnews.com/2026/07/22/what-is-a-world-model-nabla-alex-lebrun-explains-ai-prognosis/?utm_campaign=rss",
+   "source": "STAT — Health Tech",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-22",
+   "score": 1,
+   "topics": ""
+  },
+  {
+   "id": "af86b4c6a35a",
+   "title": "Opinion: STAT+: Hospitals’ AI may be drifting. Who’s watching?",
+   "url": "https://www.statnews.com/2026/07/22/hospital-ai-systems-ceo-leadership-accountability-governance/?utm_campaign=rss",
+   "source": "STAT — Health Tech",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "2026-07-22",
+   "score": 1,
+   "topics": ""
   },
   {
    "id": "0e3756450a03",
@@ -590,17 +772,17 @@
    "topics": "hta-value-evidence"
   },
   {
-   "id": "c5ad624a6ffb",
-   "title": "Disrupting a Criminal Scam Operation",
-   "url": "https://openai.com/index/disrupting-malicious-uses-of-ai-criminal-scam-operation",
-   "source": "OpenAI News",
-   "source_type": "Other",
-   "stage": "research",
+   "id": "61ff65705c9e",
+   "title": "Weekly Rundown: Counsel Health rolls out white label AI care platform; Community Health Network launches MyChart AI assistant",
+   "url": "https://www.fiercehealthcare.com/health-tech/weekly-rundown-counsel-health-rolls-out-counsel-studio-community-health-network",
+   "source": "Fierce Healthcare",
+   "source_type": "Industry press",
+   "stage": "industry",
    "region": "",
    "country": "",
    "date": "",
    "score": 1,
-   "topics": "ai-research"
+   "topics": ""
   },
   {
    "id": "9d1df0ae846d",
@@ -629,6 +811,110 @@
    "topics": ""
   },
   {
+   "id": "5cdea0136433",
+   "title": "Waystar boosts 2026 outlook as AI-powered RCM solutions gain traction with providers",
+   "url": "https://www.fiercehealthcare.com/finance/waystar-boosts-2026-outlook-after-solid-q2-performance",
+   "source": "Fierce Healthcare",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "",
+   "score": 1,
+   "topics": ""
+  },
+  {
+   "id": "bdf9ad4653d5",
+   "title": "Stellarus launches AI-powered health plan customer service representative copilot",
+   "url": "https://www.fiercehealthcare.com/ai-and-machine-learning/stellarus-launches-ai-powered-health-plan-customer-service-representative",
+   "source": "Fierce Healthcare",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "region": "",
+   "country": "",
+   "date": "",
+   "score": 1,
+   "topics": ""
+  },
+  {
+   "id": "e2e5f683314c",
+   "title": "EU AI Act Enforcement Expands on 2 August 2026: Are Your AI Systems Compliant?",
+   "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxNbGQ5NEJsRmpiN0k1YzRycTd5Wk1BbVE2c1JOSS1IOGRxMmJEc1g0OVFrVEhobU9idjVyVGkwM1djUFZJMVkwUnhGVzlVa3lORlZFSmlJTDdLT3l3NnJEMC15a29Qci0xWVByNExyMnNLMThEaGtnX0RsVlZqRnp1Z1M4SVNCODBWRlZ0elRfNUJTTkJKT3dKR3ljczc2QQ?oc=5",
+   "source": "AI policy & guidance",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Europe",
+   "country": "European Union",
+   "date": "2026-08-01",
+   "score": 4,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "51a56342c57d",
+   "title": "Deepfake labels, model inspections and massive fines: The EU’s AI Act explained",
+   "url": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxQdGVJZmZfOTBnMkpqZlNmejdFMFFpZ0JtSEFzNzFhd3pRalo2Tko2NkgtSDN2Snc1R25mOFRXZTdMc25vVGgycDlUMHNwTEszWWYtOGF4eHhHQlVZYTdIT2J1R3lIUEY4ZmdUb2ZQVFpRdmdPNGlFYTNPYWtCbUJ0YVVtUkpIbEdSZF9NdEtsOEJLRXRNWlFRMVZiQW1ESmRFWjE2WU53RXhrb0dqRXJic002NmNkNDlWS2Rkb3V5clNianhsUmt5MmQzbXdGTnM2VThjMtIB2gFBVV95cUxOREN2R1dNQmFlUmpkWFBfUUQ5NFFVZUN3M1dXaWNpYlRoVExfTUgtTjJJOWZIZ1BkYjRGWFZCaGt5VXRYd0FtM2JtMjNFWDN0TEh1TTdOVi0yWXRQOFNPeWN0Y0M0S0JJMGtWU2M4UVhTRVBRYW5NVHhLTmFvbjMxNFFjY19hZnl3VC14NmFMWl9BTGhlZWFDUFg4YUJ4d1RPcTF0djZEelFBUm9wMGF0MXRjZGVybDVKS3l6eG12MHp6TnZldkU3aXRfZFhYZDV5UUMtSkV0empsdw?oc=5",
+   "source": "AI policy & guidance",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "",
+   "country": "",
+   "date": "2026-08-01",
+   "score": 4,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "2ce444871094",
+   "title": "Development and Usability Testing of an Information Needs-Based Chatbot for Individuals With Pathogenic Variants in BRCA Genes in Korea: A Methodological Study.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42533411/",
+   "source": "PubMed — digital health value & reimbursement",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "Asia-Pacific",
+   "country": "South Korea",
+   "date": "2026-08-01",
+   "score": 4,
+   "topics": "hta-value-evidence"
+  },
+  {
+   "id": "a9f9ed389f10",
+   "title": "Agentic-TimesFM-AKI: A Dual LLM-Time Series Framework for Predicting Drug-Induced Acute Kidney Injury with Privacy-Preserving Synthetic Data",
+   "url": "https://www.medrxiv.org/content/10.64898/2026.07.30.26359271v1?rss=1",
+   "source": "medRxiv — Health Informatics",
+   "source_type": "Preprint / research",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-31",
+   "score": 2,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "90a1a21dd6b1",
+   "title": "AI scribes used to take notes are not medical devices, MHRA says",
+   "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPTy1HRmxjTHUzRVQwNzVQYmtWSldma21EazRrdnBpNkFFVnFSd01GeFhQZjg5ZnRCS2pVM1VkNFpEUzBHb0tSTnBJYUNEWkVNQ2oxX0J0UUtMX2pNV0l1MWFOYVVmNGRTd2p1N0dQNjBmYmYtUF85Z2J4a2pUZjVFS2tsazU2VHlMN21iaDBJV2pxbzFZNnhYSlh0OA?oc=5",
+   "source": "MHRA (UK)",
+   "source_type": "Regulator",
+   "stage": "regulation",
+   "region": "Europe",
+   "country": "United Kingdom",
+   "date": "2026-07-31",
+   "score": 7,
+   "topics": "mhra-updates;regulatory-activity"
+  },
+  {
+   "id": "06b64726563b",
+   "title": "The EU AI Act requires AI transparency. What does it mean for CX?",
+   "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxPdWpOTy1ZbklJZnFsa0FZeTVHNEc1bU4yTTA2Y0NEYTdKM096b09Ld0Q4UDZHT2NqclVuQXZaUTZJZHd4ZlRQWnFnOFZrUlk2dTFkcU8tNlVWMmNZRjFGbV9SSGcteTFxUHNHdFFWYlZGOGE0UC1MMXplNjhGZV9HM25KSHdlcVpGcEJZX2JXX09xRkdiQTRyOW9Mbk8wMzFnRnlwVEFySDBwVlVMMjV2eWo1UXUtUQ?oc=5",
+   "source": "AI policy & guidance",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Europe",
+   "country": "European Union",
+   "date": "2026-07-31",
+   "score": 4,
+   "topics": "regulatory-activity"
+  },
+  {
    "id": "60b2f1139935",
    "title": "An upcoming deadline turns HR’s AI shortcuts into legal risk",
    "url": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQbHA3bXk5RFFMaDNCV19rUlhSVGJQblVVWjE1SktPN2ZSVENrTlN2Um5BcjhiMXpiWS1RYkVaaEtrZTl5RjlFV2FiVlFkVDN0TGpCMGpraFVfWjZGbVlUOVNnd0Jia1pGVDh3UG1Uc0pSZjRKYTdoUHczQWNNSExqUVRoQnU1ZXNtN0VnNA?oc=5",
@@ -642,34 +928,8 @@
    "topics": "regulatory-activity"
   },
   {
-   "id": "fb076979f8c7",
-   "title": "Missing an AI Label? Understanding Your Options Under the EU AI Act",
-   "url": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxNNFZ0S3gyM0pZTUhSSzFEMHpSWC11QlI3VjhkdG81U19sMnNNYktnNld6M1hibW5YbDdsNmZqOTlpV0tLQTUzbmdYc1daVG8zRnJhbFBGX1ljSVNWaFI4RXZJSzFqVDBmSU90VVBqcXU5LVRTRU5jamxGNmRGZFRoXzA1MlpTRnZX?oc=5",
-   "source": "AI policy & guidance",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "Europe",
-   "country": "European Union",
-   "date": "2026-07-31",
-   "score": 4,
-   "topics": "regulatory-activity"
-  },
-  {
-   "id": "e6aa25475168",
-   "title": "The EU AI Act gets serious on August 2: What’s changing?",
-   "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQdFJQcGhKQU5SWkpPY2RhYm1CUG00ajVBWUpzaDNoZFBtemlJWWVWdFpuS2xnYlBXRmlDbkZqOFZ6OGg3WVBMWjFxTDJ2SVlZbnRSR1B6MFpDX0JLOHpySTBtUFA2TGEyRFpPcUFjeEtjWVJVVmtCTmwtSXFtZGw3NTJXUFgyUDQxbl9aQ0xyRHZCU201Rlg0OXgtaU5tRUhvNWVpRlRlUWdxSm5YYWdZ?oc=5",
-   "source": "AI policy & guidance",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "Europe",
-   "country": "European Union",
-   "date": "2026-07-31",
-   "score": 4,
-   "topics": "regulatory-activity"
-  },
-  {
    "id": "d049ebebf82b",
-   "title": "OpenAI aligns safety practices with EU AI Act’s GPAI Code",
+   "title": "OpenAI aligns safety practices with EU AI Act’s GPAI Code - artificialintelligence-news.com",
    "url": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxQT09RNmYtREVKelhOdzdpenRwM1FUUGplOXQ0MGR6Ym5ua0xnTkRYOFlJV0ZmTi1JQUNzYndpb21VMUduci1JUVBIUkw2QWlZcl9RVU9raUNHbWotMzkyVnR6OUJxQ2dBandsczU1dlhDR08yQ2ZvSU1DNUdsWmJ4aU5wd3JhWjBwdWp2MFJFNE93a0pPdFdXSXdfS2x1eHdOWUJ6ZHdjbVQ?oc=5",
    "source": "AI policy & guidance",
    "source_type": "Other",
@@ -705,19 +965,6 @@
    "date": "2026-07-31",
    "score": 7,
    "topics": "ai-clinical-studies;economic-endpoint-trials"
-  },
-  {
-   "id": "7d872d35de11",
-   "title": "AI-assisted Rare Disease Diagnosis",
-   "url": "https://clinicaltrials.gov/study/NCT07650799",
-   "source": "AI/ML intervention trials",
-   "source_type": "Trial registry",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-31",
-   "score": 3,
-   "topics": "ai-clinical-studies"
   },
   {
    "id": "7cddf02540c4",
@@ -863,6 +1110,19 @@
    "topics": "reimbursement-coverage"
   },
   {
+   "id": "32c6b62c7475",
+   "title": "The Week in Talent: AI Fluency, Pensions, Disability Costs",
+   "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxNNm5YOXdkZGc0UlJLM2xHOGFvM0xQMnRQZ2VMdFJURUJLeFdmV1ZKZVBsWFJ5c1UyQVRua2ZvbVRUakg0a3N6UWVIVnhqTXlWZDhSX1U0SXdYZmlSLURxdVRYOGowdlpTOEFSYVg1ZTJvMENvdktvV2RldFBjaHJtZTZmN05jSzY4Q05yZzRiVDgzdw?oc=5",
+   "source": "LATAM — HTA & coverage (CONITEC)",
+   "source_type": "HTA / payer",
+   "stage": "access",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 5,
+   "topics": "reimbursement-coverage"
+  },
+  {
    "id": "e044116b656b",
    "title": "Data, AI Are Disrupting Mexico’s Corporate Insurance Market",
    "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxNVE93UXQ1aXZMeDZwZmZTWV9BX3A4b0s0NEZFcTBhQlpwelpsWlRFWE04bWFkaDR0X2QzRU12RGQ5aU5CU3RCUEV3WXBsbWNpX2cyUnRkNE1MdFRnSzFZMTFoREdhWTBqTmtMTGFDMW5VNi1WTlJqcDNqR2ZYc1B6WnhFTDBRTldhQ1E2X0p1YjN0dE5WNHhLR3h1bTFsZw?oc=5",
@@ -887,19 +1147,6 @@
    "date": "2026-07-30",
    "score": 5,
    "topics": "reimbursement-coverage"
-  },
-  {
-   "id": "f110802fb2ee",
-   "title": "EU AI Act — Commission Confirms Transparency Code of Practice as Adequate and Publishes Final Version of Its Guidelines on Transparency Obligations",
-   "url": "https://news.google.com/rss/articles/CBMisAJBVV95cUxOSUoxVFBoSVNaQmNGakZJMEx5OTU2YnFtWFFvbFNQQU9iOTNEQ2Q4VzNPU1psTFRHUWptX1ROODVFUU1HVnFWMTFLRHNNMTItMDNfUmozNHFJUTB0R2t2bFFOR1dNUDB4eFpDY3RpbUhlczhwd2E2RzFjOXlPV3dtUlJSN29qU21BSUdDUV9VTnBQcXR2SjFJYVhBbVRBRTRRZldYSDJYWFU0UV9JcUZpY2FTUnVUNkxzdVdmYi1Hd25iUGJYVDN3cDdjYWw5MVc0NWl2WEllMm11TndHSFpqTW1YSnAxS1FoY0R6RkhPV0tTdXJlcGE1dkM1Ynlwb0hhUkp2TDY0MjBybTdqV0t1M2RxUEp2MmZYRHV2NVA4aVlQNU1TSWd5Q1lQeW5LYTBh?oc=5",
-   "source": "AI policy & guidance",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "Europe",
-   "country": "European Union",
-   "date": "2026-07-30",
-   "score": 4,
-   "topics": "regulatory-activity"
   },
   {
    "id": "d4c58d754a8e",
@@ -928,6 +1175,19 @@
    "topics": "ai-clinical-studies"
   },
   {
+   "id": "c3504b346527",
+   "title": "A Systematic Review and Quality Appraisal of AI-Augmented Intervention Studies for Autistic Individuals.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42533285/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-30",
+   "score": 4,
+   "topics": "hta-value-evidence"
+  },
+  {
    "id": "e2fe309c610e",
    "title": "Why did NICE not Recommend AI for CXR Reading in the UK?",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42532688/",
@@ -954,19 +1214,6 @@
    "topics": "hta-value-evidence;oncology-ai"
   },
   {
-   "id": "8538dcca1adf",
-   "title": "Predictors of atrial fibrillation recurrence after catheter ablation: a systematic review.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42530789/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-30",
-   "score": 4,
-   "topics": "hta-value-evidence"
-  },
-  {
    "id": "07215be2fb3f",
    "title": "The Coupled Stochastic Dynamical System: A Generative Model for Simulating and Forecasting Youth Mental Health Trajectories",
    "url": "https://www.medrxiv.org/content/10.64898/2026.07.26.26358943v1?rss=1",
@@ -976,33 +1223,20 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies;mental-health-ai"
   },
   {
-   "id": "0d938d0fbd4b",
-   "title": "Fine-Grained Emotional Characterization of Dementia Caregivers in Online Support Communities Using Large Language Models",
-   "url": "https://www.medrxiv.org/content/10.64898/2026.07.26.26358983v1?rss=1",
-   "source": "medRxiv — Health Informatics",
-   "source_type": "Preprint / research",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 2,
-   "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "7e0b8c6ec4b9",
-   "title": "New MHRA guidance on regulation of Ambient Voice Technology (AI Scribes) (via Passle)",
-   "url": "https://news.google.com/rss/articles/CBMivgFBVV95cUxPZnlYRG84TWoyN0FYNHc4eW0ybXRScFVVbGhZQWREV2VsdDZGV0N4cGRGaHA1Wm53ZThibXR4ZGxvRHdad2tQdGh3TjZiMFE4eGQzcXVXMzR3VEcyaWFWSU5RRXoyN1pjUEFWMEZZTkNvUXgzWXE5bG04OXFXX2xXcnlFd1dFb0l6UUJNbDJTR0pIclRObjZLaFNWdFZ2SnFySUVGUEZkcWpOZmFKS09TRkZuN3Q1SlRQMGlyVWxn?oc=5",
+   "id": "876833367a86",
+   "title": "MHRA clarifies regulatory status of ambient voice technologies used in the NHS",
+   "url": "https://news.google.com/rss/articles/CBMiswFBVV95cUxPc2duLWktcTMwNlhaMmoxTVJwMjZ6REFlR2dvTXE0UHl0WkpNb29XZTVpZUtXLXBiOGR4czlwWF9GcEh0VnRfZURsVmFGRTVrVUtMSHN4TVB6VHlzMkgtZ0J1dDlJSjhVVjcyZURBaUU2LUx4S3IxdUViTXBrYkdhMUhMYXRISzFLSDVDYlpYbkxCekRwdUtBU245aUIwUDlSNUp3UGY5Nm5SbENITXp6SVBtcw?oc=5",
    "source": "MHRA (UK)",
    "source_type": "Regulator",
    "stage": "regulation",
    "region": "Europe",
    "country": "United Kingdom",
    "date": "2026-07-29",
-   "score": 7,
+   "score": 6,
    "topics": "mhra-updates;regulatory-activity"
   },
   {
@@ -1015,7 +1249,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 5,
+   "score": 4,
    "topics": "reimbursement-coverage"
   },
   {
@@ -1028,7 +1262,7 @@
    "region": "Europe",
    "country": "Ireland",
    "date": "2026-07-29",
-   "score": 5,
+   "score": 4,
    "topics": "reimbursement-coverage"
   },
   {
@@ -1041,7 +1275,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 5,
+   "score": 4,
    "topics": "reimbursement-coverage"
   },
   {
@@ -1054,7 +1288,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 5,
+   "score": 4,
    "topics": "reimbursement-coverage"
   },
   {
@@ -1067,52 +1301,26 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 3,
+   "score": 2,
    "topics": "ai-clinical-studies;digital-therapeutics"
-  },
-  {
-   "id": "1ffb4152afe5",
-   "title": "Use of heart rate variability in prediction of clinical deterioration in critically ill hospitalised adults: a systematic review protocol.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42526930/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 4,
-   "topics": "hta-value-evidence;cardiology-ai"
-  },
-  {
-   "id": "14803fc98b30",
-   "title": "The use of artificial intelligence to predict postoperative outcomes following percutaneous nephrolithotomy: A systematic review of prognostic modeling studies.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42525584/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 4,
-   "topics": "hta-value-evidence"
-  },
-  {
-   "id": "9696e7c4edce",
-   "title": "Anatomy-specific Performance of CT Angiography-based AI for Anterior Circulation Occlusion: Systematic Review and Meta-Analysis.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42524711/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-29",
-   "score": 4,
-   "topics": "hta-value-evidence"
   },
   {
    "id": "ce9b5801c7fa",
    "title": "Rapid diagnosis of fever etiology using wearable temperature monitoring and machine learning",
    "url": "https://www.medrxiv.org/content/10.64898/2026.07.27.26359010v1?rss=1",
+   "source": "medRxiv — Health Informatics",
+   "source_type": "Preprint / research",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-28",
+   "score": 1,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "9bdb0c40b4e2",
+   "title": "Digital Health Adoption, eHealth Literacy, and Trust in AI Among Generation Z University Students in Sri Lanka: An Empirical Study",
+   "url": "https://www.medrxiv.org/content/10.64898/2026.07.22.26358733v1?rss=1",
    "source": "medRxiv — Health Informatics",
    "source_type": "Preprint / research",
    "stage": "clinical",
@@ -1136,17 +1344,17 @@
    "topics": "diga-updates;reimbursement-coverage;digital-therapeutics"
   },
   {
-   "id": "65c2f56a795e",
-   "title": "EU AI Act Amendments Defer and Clarify Obligations",
-   "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPNDlFZTdnZjlDbFBEZlRmZVEyT3hwbnkzYURKYU9iWXVJVmhYU1JvNTdBVDFLdXpDbUQ0NUV5NE9pLVZtTlJZNHUzYXZaM2hCSnA1ODY3RVl2dnpNc2F2N0F1Y2gyb3VqT0tHSXlZTEVZcVBHUWVsX3BHRHFhMURrNllmdi1hTW91OHRDLUMyOFhHdjRScXF6eGx3?oc=5",
-   "source": "AI policy & guidance",
-   "source_type": "Other",
-   "stage": "regulation",
-   "region": "Europe",
-   "country": "European Union",
+   "id": "fcb947f84989",
+   "title": "Brazil's Bolsonaro is barred from this year's election. Can his AI avatar campaign instead?",
+   "url": "https://news.google.com/rss/articles/CBMizgFBVV95cUxOeWhhQmtwSDM0Rl9tNW5HeHpCaXdHY0ptNWl0TlJZSFA4UnZpQkRWSEsyWUhhendSZ204Nk5WdUpad1NQa2ZyNDRlX1UtUnNRQkU3WDdGSUNGczRaYl9fZ1NQNkNTeVNxVmNjV0ZFMmFhOW5RZ09DLTZaWGVuZUYxRGdfanRYRmROcm9Qd0lwUVJBaHo3ZEFkaUM3dkVQa19BQTA1T2tqZFNsRTMyRTh6dHVyX3V3eXFCQWxQM3lzVGpPMFlxOXJGSF92OGV3QQ?oc=5",
+   "source": "LATAM — HTA & coverage (CONITEC)",
+   "source_type": "HTA / payer",
+   "stage": "access",
+   "region": "Latin America",
+   "country": "Brazil",
    "date": "2026-07-28",
-   "score": 3,
-   "topics": "regulatory-activity"
+   "score": 4,
+   "topics": "reimbursement-coverage"
   },
   {
    "id": "4b0bf8058f54",
@@ -1175,6 +1383,19 @@
    "topics": "hta-value-evidence"
   },
   {
+   "id": "4b0861975af1",
+   "title": "Diagnosing Rejection Collapse via Uncertainty Decomposition",
+   "url": "https://www.medrxiv.org/content/10.64898/2026.07.24.26358775v1?rss=1",
+   "source": "medRxiv — Health Informatics",
+   "source_type": "Preprint / research",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-27",
+   "score": 1,
+   "topics": "ai-clinical-studies"
+  },
+  {
    "id": "6c0bc8dc9b3d",
    "title": "Import AI 466: The bitter lesson for robotics, AIs complete week-long programming tasks; and OpenAI's accidental AI hacker",
    "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE5rWVRPVnBxa1lodWFwNGcxS0x5WS1JQ1A4ZEJQeFhfMzZDMk1GZlI0eEtDWVltM0FTdy1UY09Dd2RCZDBfUFhNSU1NbmRTWUM1UHNYSllzYjZSMkpyUldRU3hhdTdSWWVvYlBsZjhfcmFaNXBUY0E?oc=5",
@@ -1201,9 +1422,22 @@
    "topics": "regulatory-activity;mental-health-ai"
   },
   {
-   "id": "79b98c824c11",
-   "title": "DIAGNOS Secures Health Canada Licence for CARA AI-Driven Retinal Imaging System",
-   "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxQSWdOZ2pKLXFzUTR5aldfeUROVEt4S1BnZUhPU1VYR1ZqSDZvWXE4bnFldmR0S3lyelVCbVFWQlpEamVZSDNXSFRxeno5U2ExemtQMGFhdnk4Z0N3cUxJQTJ0V3ZIUHhnNlpqVzQ3djV0RzV5X0NaT01hUEk1X2tqSGFnV19DTFJyM2pFODBzU2lEUHpsdFkwRUhQeF8yZFI0XzQzU3ZOSXY0TFJ4RFgtYlBvcWFLczdEZ2g4RFo0dTQ1b2RN?oc=5",
+   "id": "15ec8d8d5ded",
+   "title": "Recon: WHO releases first interim list of medical device authorities; AstraZeneca using AI to hedge late-stage risks",
+   "url": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxPY0lEMGRHSFY3aU5fM2Z3ZHZHSDUxbnNUbFNmdzdnTnN3OGNRY1Y1NmJQU3hmanQ2TGZmbXA4Z2dJQUpPRnZXUF9OaDlRdTA3MEhuYi02T1J1WTdYb3NQLXV3VE02T0x2TE9LazFra1pvaDlQYzE0alRkTW4wVnJuQll6ZW5oalVJV05GblFQY1c2ekV2T2hNeTBrUnRUWFBnbXhOT3NxN0lHRTVWYkt0d3BuLW5tSWk4YnFqc3pXdHFCS0NWTDFQMl9FTW1uTjRWYWVSOUF1UC1IOXZIbUZFWHkwaw?oc=5",
+   "source": "RAPS Regulatory Focus",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Asia-Pacific",
+   "country": "South Korea",
+   "date": "2026-07-27",
+   "score": 3,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "a14e37a61657",
+   "title": "DIAGNOS gets Health Canada license for AI-powered CARA retinal analysis system",
+   "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxPbW1xOVAwVGVsNU81S2RMcWU4VUFzZVBnVDdaWmpqV0lncktub0lZb1BQOHlBcnJkSEJoLW1Qek83UjdGaTNMeUhzYXJRc00tUDhUYWx2UjQ1TUxOT1lqUGZwX2NtWlB6eDJJRXQtSm1mUldETkpIcXhBem5DbVdvaFVxalpXTHlKa01uNWhsSk85VUxGOG5kTGNsZkZ5UHpvNzRNdWlQNC1jNzA?oc=5",
    "source": "Canada — CADTH & Health Canada",
    "source_type": "Regulator",
    "stage": "access",
@@ -1211,7 +1445,7 @@
    "country": "Canada",
    "date": "2026-07-27",
    "score": 7,
-   "topics": "reimbursement-coverage;radiology-imaging-ai"
+   "topics": "reimbursement-coverage"
   },
   {
    "id": "79b75d7360e5",
@@ -1305,19 +1539,6 @@
    "topics": "diga-updates;reimbursement-coverage;digital-therapeutics"
   },
   {
-   "id": "283e47456138",
-   "title": "Cost-effectiveness of stratified physiotherapy integrated with digital health versus usual physiotherapy for neck and/or shoulder pain: results of a cluster randomised clinical trial.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42501929/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-25",
-   "score": 3,
-   "topics": "hta-value-evidence"
-  },
-  {
    "id": "a3f6e11091f7",
    "title": "Korea - Digital Health Laws and Regulations 2026",
    "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE9tdXkxMEFUcmxveGFzYnJ0RkxEaVViRWdaMURTZ3ZJTUp3SWlpU3Q2eXYxRjUwRmhTZ2U4RmtES2JYbmJmYlNiWHNCRTV2NjdHekdOemFoSmdYNEIweU0zOHg4RlNMaXlFS3JhMm9WRFEtSXZNdmd4MThiM3U0d1E?oc=5",
@@ -1327,7 +1548,7 @@
    "region": "Asia-Pacific",
    "country": "South Korea",
    "date": "2026-07-24",
-   "score": 3,
+   "score": 2,
    "topics": "regulatory-activity"
   },
   {
@@ -1340,7 +1561,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-24",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies;digital-therapeutics"
   },
   {
@@ -1353,7 +1574,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-24",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies;digital-therapeutics"
   },
   {
@@ -1422,19 +1643,6 @@
    "topics": "ai-clinical-studies;digital-therapeutics"
   },
   {
-   "id": "2bd243478415",
-   "title": "Digital phenotyping of CGM engagement reveals distinct glycemic outcomes.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42490562/",
-   "source": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "heor",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 2,
-   "topics": "hta-value-evidence"
-  },
-  {
    "id": "d39a1ef9680f",
    "title": "Open models recap: more on Kimi K3, Qwen 3.8, Xi's WAIC speech, distillation, the open-closed gap, and what's next",
    "url": "https://www.interconnects.ai/p/open-models-recap-more-on-kimi-k3",
@@ -1461,16 +1669,146 @@
    "topics": "ai-research"
   },
   {
-   "id": "10f44909d644",
-   "title": "Artificial Intelligence-Supported Virtual Nursing at Home: A Systematic Review.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42528052/",
+   "id": "635ed97b9e33",
+   "title": "Role of AI Healthcare Solutions in Saudi’s Care Domain",
+   "url": "https://news.google.com/rss/articles/CBMijgFBVV95cUxPcVhsVDhQYld6b0FyY194X3U1R2xqVVpnMXdzem9vMEtnRFRJNWxfT2JyczR6UUhJdmdQRV9xcWFyZ0lRZTFvTGZtMlRmX1B4NTFKYkJ4aExNYWUzMTZ1MFdRZFJuNGpqRmoyWEpmTVlzQnJIVFU2STNZd1NMNVNZMVRObFFib1Zlc3h5ZVNn?oc=5",
+   "source": "MEA AI device & digital health regulation",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "Middle East & Africa",
+   "country": "Saudi Arabia",
+   "date": "2026-07-21",
+   "score": 2,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "6cc137885161",
+   "title": "Patrick Hsu: How Is AI Catalyzing Life Science?",
+   "url": "https://news.google.com/rss/articles/CBMidEFVX3lxTE04MlZ6QU1VandCNWZVSlhHVzktX2VKazlTdGFzem9pTFAtSUFBcnZNVGN5WnFmN1ZiOUNzdkRHOXRWTk1WNW1HcUlFYjV0bkpfZnhlcEVjQUhnZThoMV9KUXc5Y1d3SHg1NVpLTE5HNXhsalFh?oc=5",
+   "source": "Ground Truths (Eric Topol)",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-20",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "f8ce02574747",
+   "title": "DC | Song Promo - Bum Baa Diga Diga",
+   "url": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxPRnJUSEtQcGtXTmkycGJjWmI3Z3gxNFFTOC1CUnlMVkdkOTRaaXZQQ1FOazc3bmgwTHhsY1lDbVVlek16NkRhaF95ZlFJaEp1VWJfMmNRNWFlZ2ZqckUyVGV3aWFTVGxKamo2cGMzSk9PalNqS1dub2lnNlFQTXZTX1EySXpMMHAyY19UaXVzaUdnYUZIcXQ1N1BOdnZzS28tSm1LM3FOWWxyTDBEOVVNcFdBSVpQU0VTV0FEMGlYczByQdIBxwFBVV95cUxPWG5aczh0OWdENEUwMkd3OVN0aUU2d1FOdThycnFXUXZKcm5NSjN1RmVGT2Q1ZVQxUDllcC11c3pVQUxVTXFEVmpnVGZRU1FoaXhQU09hVWpaRmpKLThzMHhnUHZlR3ZsMTBrU1pFOTU5czlWbUNlaS0zMEVrUWMzMWhjMVZCamItMklLbzlmWmVybDZYRkxGY2xfNzdpcHlyaDhaS0JodklnbEtHREQ5b1o5NHZWdUFndnV2alZyWld6QmJLNldF?oc=5",
+   "source": "Digital therapeutics & DiGA",
+   "source_type": "Other",
+   "stage": "access",
+   "region": "Europe",
+   "country": "Germany",
+   "date": "2026-07-20",
+   "score": 3,
+   "topics": "diga-updates;reimbursement-coverage;digital-therapeutics"
+  },
+  {
+   "id": "5419b3359a4b",
+   "title": "Potential to performance: How regulatory organizations are adopting AI",
+   "url": "https://news.google.com/rss/articles/CBMisgFBVV95cUxOQTZ1ZlItQWRKdWlESDZDMEdNSE5JdGd4Sk81RFZQYXFuTjJtNEVXQXVlelZRbUFqMkR2RkZEQUNmbEJqQm5fZEduVDlsakY1bXBuM2kwR1YwZkh5djBfdW4xNElrVHU4bjhIeE1pVE1xRHFCVFdYTW83RzdZMjFDdUQyVXNGZHptNlByLUFpdHBSZENqdGpUMnpUUDliUHgzODNxNDUwNUFJRUkxMm9ZT1pR?oc=5",
+   "source": "RAPS Regulatory Focus",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "",
+   "country": "",
+   "date": "2026-07-18",
+   "score": 2,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "47291580b047",
+   "title": "England vs France AI Predictions: World Cup Third-Place Picks and Projected Stats Today",
+   "url": "https://news.google.com/rss/articles/CBMihAFBVV95cUxQaWVCcThPaDJXeFc1Nlh6M2h0eFRQanhxQWtqbG5yOHFzN2Q0OEs3clJsTDM0aEg3Q2E3a0lWQkpoSTJsdDBLLVkyVE9HTndEX1pjSkhtdzd3bTFhTzNMMnZDWjU3WWMwdVJPWmxPN0RPaEJ3QzRLRlMyb295LWRUZWlNNUk?oc=5",
+   "source": "France — HAS / CNEDiMTS",
+   "source_type": "HTA / payer",
+   "stage": "access",
+   "region": "",
+   "country": "",
+   "date": "2026-07-18",
+   "score": 6,
+   "topics": "reimbursement-coverage"
+  },
+  {
+   "id": "3d22237c36ec",
+   "title": "A Meta-synthesis of nursing students' experiences with generative artificial intelligence-assisted learning.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42535158/",
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
    "stage": "heor",
    "region": "",
    "country": "",
-   "date": "2026-07-21",
+   "date": "2026-07-16",
    "score": 2,
+   "topics": "hta-value-evidence"
+  },
+  {
+   "id": "7b7b549a6b89",
+   "title": "Correction: AI-enabled regional tele-ECG cloud platform and improving access to cardiovascular diagnosis: real-world evidence from southern China.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42535043/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "Asia-Pacific",
+   "country": "China",
+   "date": "2026-07-16",
+   "score": 2,
+   "topics": "hta-value-evidence;cardiology-ai"
+  },
+  {
+   "id": "83d1f55abae1",
+   "title": "Strategies and challenges of toxicity reduction in nasopharyngeal carcinoma in the era of precision radiotherapy: from paradigm shift to integrated decision-making.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42534661/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-16",
+   "score": 2,
+   "topics": "hta-value-evidence"
+  },
+  {
+   "id": "3dc790ab4a28",
+   "title": "Digital Health Market Size to Worth USD 1171.24 Billion by 2035",
+   "url": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTFBrSzdkVzZ5QzAtYURqcjgxMEw4TnZDNTEzRnZHZE1jRmh5ZGR4UDBsN3F1cTZFWVJJZ1FkY01NYXR4QVhGUVFMOF9CSHM2T3lDb3RvTFBGbFZDdGwzbU5SUFpnVXhUOGc?oc=5",
+   "source": "MEA AI device & digital health regulation",
+   "source_type": "Other",
+   "stage": "regulation",
+   "region": "",
+   "country": "",
+   "date": "2026-07-13",
+   "score": 2,
+   "topics": "regulatory-activity"
+  },
+  {
+   "id": "ab23329c09eb",
+   "title": "6 months to live for open models",
+   "url": "https://www.interconnects.ai/p/6-months-to-live-for-open-models",
+   "source": "Interconnects",
+   "source_type": "Other",
+   "stage": "research",
+   "region": "",
+   "country": "",
+   "date": "2026-07-12",
+   "score": 0,
+   "topics": "ai-research"
+  },
+  {
+   "id": "4fe66fea8e7b",
+   "title": "Retraction notice to Integrating Generative AI Into Evidence Synthesis: Opportunities, Safeguards, and Methodological Refinements: [JVAL Volume 29, June 2026, 4609].",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42532611/",
+   "source": "Value in Health",
+   "source_type": "Journal / evidence",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-08-01",
+   "score": 4,
    "topics": "hta-value-evidence"
   },
   {
@@ -1522,7 +1860,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies"
   },
   {
@@ -1535,7 +1873,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies"
   },
   {
@@ -1548,7 +1886,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies;radiology-imaging-ai"
   },
   {
@@ -1561,26 +1899,13 @@
    "region": "",
    "country": "",
    "date": "2026-07-29",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies"
   },
   {
    "id": "a4477b605061",
    "title": "Identifying subsets of patients with retroperitoneal sarcoma who benefit from radiotherapy: an Interpretable AI reanalysis of the STRASS randomised trial.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42509079/",
-   "source": "Lancet Digital Health",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "region": "",
-   "country": "",
-   "date": "2026-07-27",
-   "score": 1,
-   "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "2f884c561feb",
-   "title": "Going beyond algorithmic fairness in health care.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42509076/",
    "source": "Lancet Digital Health",
    "source_type": "Journal / evidence",
    "stage": "clinical",
@@ -1600,7 +1925,7 @@
    "region": "North America",
    "country": "United States",
    "date": "2026-07-24",
-   "score": 6,
+   "score": 5,
    "topics": "regulatory-activity"
   },
   {
@@ -1613,7 +1938,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-24",
-   "score": 1,
+   "score": 0,
    "topics": "ai-clinical-studies"
   },
   {
@@ -1667,6 +1992,149 @@
    "date": "2026-07-22",
    "score": 0,
    "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "28c7ee44d88b",
+   "title": "Controlling Reasoning Effort in LLMs",
+   "url": "https://magazine.sebastianraschka.com/p/controlling-reasoning-effort-in-llms",
+   "source": "Ahead of AI",
+   "source_type": "Other",
+   "stage": "research",
+   "region": "",
+   "country": "",
+   "date": "2026-07-18",
+   "score": 0,
+   "topics": "ai-research"
+  },
+  {
+   "id": "14361a9e6eae",
+   "title": "ListS_SFOPH-AI use for skin cancer",
+   "url": "https://www.inahta.org/download/lists_sfoph-ai-use-for-skin-cancer/",
+   "source": "INAHTA (HTA network)",
+   "source_type": "Other",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-17",
+   "score": 2,
+   "topics": "hta-value-evidence;oncology-ai"
+  },
+  {
+   "id": "cbdecb4f7ac1",
+   "title": "Towards a framework for implementing artificial intelligence in clinical medicine.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42457246/",
+   "source": "BMJ — AI in medicine",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-15",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "311fc170237f",
+   "title": "Weekly OHDSI Digest – July 13, 2026",
+   "url": "https://www.ohdsi.org/weekly-ohdsi-digest-july-13-2026/",
+   "source": "OHDSI Blog",
+   "source_type": "Other",
+   "stage": "heor",
+   "region": "",
+   "country": "",
+   "date": "2026-07-13",
+   "score": 2,
+   "topics": "hta-value-evidence"
+  },
+  {
+   "id": "f0733feac4c6",
+   "title": "Development of a target product profile for artificial intelligence in diabetic eye screening in England: a modified Delphi consensus study.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42420060/",
+   "source": "Lancet Digital Health",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-08",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "ecc93aeba881",
+   "title": "Explainable machine learning revealing the impact of mental and physical health on arthritis.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42419862/",
+   "source": "BMJ — AI in medicine",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "Europe",
+   "country": "European Union",
+   "date": "2026-07-08",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "15836c5f35a9",
+   "title": "Extending responsible artificial intelligence to palliative care: the irreversibility problem with algorithmic accountability.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42399144/",
+   "source": "Lancet Digital Health",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-03",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "3ae1e8ab7522",
+   "title": "LLM-Assisted Reanalysis of Unsolved Rare Disease Genomes Increases Diagnostic Yield.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42529462/",
+   "source": "NEJM AI",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-01",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "578bf9ffb376",
+   "title": "Privacy-Preserving Surgical Video Analysis with Swarm Learning - Results from a Multinational Appendectomy Cohort.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42524460/",
+   "source": "NEJM AI",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-01",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "2f884c561feb",
+   "title": "Going beyond algorithmic fairness in health care.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42509076/",
+   "source": "Lancet Digital Health",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "region": "",
+   "country": "",
+   "date": "2026-07-01",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "39217bafd159",
+   "title": "Using Local Coding Agents",
+   "url": "https://magazine.sebastianraschka.com/p/using-local-coding-agents",
+   "source": "Ahead of AI",
+   "source_type": "Other",
+   "stage": "research",
+   "region": "",
+   "country": "",
+   "date": "2026-06-27",
+   "score": 0,
+   "topics": "ai-research"
   },
   {
    "id": "51d68ab779f3",
