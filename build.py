@@ -74,7 +74,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.3: AI-modality field (Imaging / LLM / CDS / Digital therapeutic / Predictive / Robotics / Monitoring
 #      / Drug discovery); finer evidence types for regulation (Authorisation vs AI governance vs
 #      Guidance) and industry (Acquisition / Funding round / Partnership / Product launch / Deployment).
-TAXONOMY_VERSION = "2.3"
+# 2.4: precision patch — industry commercial-event type is judged on the title only (teaser summaries
+#      no longer misfire 'Funding'/'Deployment'); over-broad triggers tightened; clinical-stage items
+#      default to Direct clinical before the 'adjacent AI' net (no demotion on a stray 'agentic').
+TAXONOMY_VERSION = "2.4"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1027,11 +1030,12 @@ _EV_GOV = re.compile(r"\bai act\b|\bnist\b|governance|ethics framework|transpare
 _EV_AUTH = re.compile(r"clearance|cleared|510\(k\)|de novo|authoris|authoriz|\bapproval\b|\bapproved\b"
                       r"|ce mark|\bmdr\b|licen[sc]e|classification|premarket|marketing author")
 # industry: commercial-event subtype
-_EV_ACQ = re.compile(r"acqui|merger|buyout|takeover")
-_EV_FUND = re.compile(r"raises?|funding round|series [a-e]\b|\bfunding\b|\binvest|\bipo\b|venture|\bseed\b")
+_EV_ACQ = re.compile(r"acqui|\bmerger\b|buyout|takeover")
+_EV_FUND = re.compile(r"raises?|funding round|series [a-e]\b|\bfunding\b|\binvestment\b|\binvestor|\binvests\b"
+                      r"|\bipo\b|venture round|seed round")
 _EV_PARTN = re.compile(r"partnership|\bpartners\b|\bpact\b|collaborat|alliance|licensing|\bink(s|ed)?\b|joins? forces")
 _EV_LAUNCH = re.compile(r"launch|unveil|introduc|debut|\breleases?\b|rolls? out|white label")
-_EV_DEPLOY = re.compile(r"deploy|go live|implementation|contract|selects?|\btaps\b|adopt")
+_EV_DEPLOY = re.compile(r"\bdeploy|go(es)? live|now live|enterprise (contract|agreement|rollout)")
 
 
 def classify_evidence(i):
@@ -1040,18 +1044,20 @@ def classify_evidence(i):
     st = i.get("stype") or source_type(i)
     layer = i.get("layer", "")
     t = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+    ti = i.get("title", "").lower().replace("-", " ")   # title only — summaries are promo teasers
     if _EV_COMMENT.search(t):
         return "Commentary", "Commentary"
     if layer == "industry" or st == "Industry press":
-        if _EV_ACQ.search(t):
+        # commercial-event type is judged on the TITLE, so teaser summaries don't misfire
+        if _EV_ACQ.search(ti):
             return "Acquisition", "Market signal"
-        if _EV_FUND.search(t):
+        if _EV_FUND.search(ti):
             return "Funding round", "Market signal"
-        if _EV_PARTN.search(t):
+        if _EV_PARTN.search(ti):
             return "Partnership", "Market signal"
-        if _EV_LAUNCH.search(t):
+        if _EV_LAUNCH.search(ti):
             return "Product launch", "Market signal"
-        if _EV_DEPLOY.search(t):
+        if _EV_DEPLOY.search(ti):
             return "Deployment", "Market signal"
         # else fall through to the backbone → "Industry news"
     if _EV_META.search(t):
@@ -1116,10 +1122,12 @@ def healthcare_relevance(i):
         return "Biomedical research"
     if _REL_CLIN.search(t):
         return "Direct clinical"
+    # a health-system-stage item is Direct clinical by default — checked BEFORE the 'adjacent'
+    # net, so a clinical model that merely says 'agentic'/'foundation model' isn't demoted.
+    if layer in ("clinical", "regulation", "access", "heor"):
+        return "Direct clinical"
     if _REL_ADJ.search(t):
         return "Adjacent AI"
-    if layer in ("clinical", "regulation", "access", "heor"):
-        return "Direct clinical"        # health-system item with no sharper signal
     return "Adjacent AI"
 
 
