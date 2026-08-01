@@ -62,7 +62,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #      drug/cohort trials); (b) health-gate all Google-News URLs, not just gnews-configured ones;
 #      (c) drop market-research PR padding; (d) access reclassifier routes company news → industry
 #      and excludes private-insurer AI; (e) HEOR reclassifier moves non-economic AI reviews → clinical.
-TAXONOMY_VERSION = "1.9"
+# 2.0: health-only Research — the research layer (frontier-AI newsletters + arXiv) is now health-gated,
+#      keeping AI-in-health work and dropping general-AI capability news. Completes the precision pass.
+TAXONOMY_VERSION = "2.0"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -270,7 +272,10 @@ _HEALTH_RE = re.compile(
     r"|cadth|\bhta\b|reimburs|coverage|\bpayer\b|oncolog|cancer|tumou?r|cardio|cardiac|arrhythmia"
     r"|fibrillation|neuro|radiolog|surger|surgic|surgeon|psychiat|\bmental\b|vaccine|biotech|genom"
     r"|sepsis|\bstroke\b|screening|imaging|diabet|retina|ophthalm|dermat|implant|\bdevice\b|biomarker|digital therapeutic"
-    r"|digital health|\bsamd\b|amblyopia|hiqa|iqwig|conitec")
+    r"|digital health|\bsamd\b|amblyopia|hiqa|iqwig|conitec"
+    # clinical / specialty terms so AI-in-health preprints in the Research layer aren't lost
+    r"|colonoscop|endoscop|patholog|echocardi|biopsy|histopath|mammograph|\behr\b|\bicu\b|lesion"
+    r"|dementia|depress|psycholog|wearable|epidemiolog|prognos|comorbid|readmission")
 
 
 def _health_relevant(title, summary=""):
@@ -291,9 +296,10 @@ _AI_NATIVE_SOURCES = {"arXiv", "NEJM AI",
 
 
 def _ai_native(i):
+    # NB: the 'research' layer is NOT exempt here — it is health-gated in relevance_gate
+    # (health-only research: keep AI-in-health work, drop general-AI capability news).
     s = i.get("source", "")
-    return (i.get("layer") == "research"                 # frontier-AI newsletters + arXiv
-            or s in _AI_NATIVE_SOURCES
+    return (s in _AI_NATIVE_SOURCES
             or s.startswith("FDA — AI device"))           # openFDA authorisations
 
 
@@ -310,10 +316,16 @@ def relevance_gate(items):
     market-research PR padding is dropped everywhere. Deterministic; the one place relevance lives."""
     out = []
     for i in items:
+        t, s = i.get("title", ""), i.get("summary", "")
+        if i.get("layer") == "research":
+            # Health-only research: inherently AI (frontier newsletters + arXiv), but keep only
+            # AI-in-health work; drop general-AI capability news.
+            if _health_relevant(t, s):
+                out.append(i)
+            continue
         if _ai_native(i):
             out.append(i)
             continue
-        t, s = i.get("title", ""), i.get("summary", "")
         if not _ai_relevant(t, s):
             continue
         # Google-News items — whether configured as gnews or as plain Google-News RSS URLs.
