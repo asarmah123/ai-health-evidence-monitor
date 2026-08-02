@@ -105,7 +105,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       queries dropped globally; (b) education, bibliometric and framework/opinion papers tagged
 #       Commentary (filterable out of the empirical view); (c) pure AI method/model-development papers
 #       with no patient validation moved clinical → research; (d) category description broadened to match.
-TAXONOMY_VERSION = "2.13"
+# 2.14: Clinical category opens on Primary-evidence by default (commentary opt-in via the Evidence
+#       filter — presentation only, counts unchanged); iPatient/iDoctor perspective tagged Commentary.
+TAXONOMY_VERSION = "2.14"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1136,7 +1138,7 @@ _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective
                          r"|bibliometric|scientometric|citation analysis"
                          r"|medical education|professions education|nursing education|clinical education"
                          r"|\bcurriculum\b|medical student|virtual simulation|financiali[sz]ation"
-                         r"|towards a framework|framework for implementing")
+                         r"|towards a framework|framework for implementing|\bipatient\b|\bidoctor\b")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -2850,13 +2852,20 @@ $$('[data-tier]').forEach(b=>b.onclick=()=>{tier=b.dataset.tier;
 $$('.cat').forEach(c=>c.onclick=()=>{
   layer=c.dataset.layer;
   $('#cat-head').textContent=c.dataset.label;
-  $('#cat-lead').textContent=c.dataset.desc;
+  $('#cat-lead').textContent=c.dataset.desc+(c.dataset.layer==='clinical'
+    ?' Showing primary evidence by default — set the Evidence filter to “All evidence” for commentary and opinion.':'');
+  // Clinical opens on primary evidence — commentary/opinion is opt-in via the Evidence filter;
+  // every other category shows all evidence strengths.
+  strength=(layer==='clinical')?'Primary evidence':'all';
+  {const fs=$('#fstrength'); if(fs)fs.value=strength;}
+  updateClear();
   showList(); render();
 });
 const showall=$('[data-showall]');
 if(showall) showall.onclick=()=>{layer='all';
   $('#cat-head').textContent='All updates';
   $('#cat-lead').textContent='Every source across all six categories, unfiltered.';
+  strength='all'; {const fs=$('#fstrength'); if(fs)fs.value='all';} updateClear();
   showList(); render();};
 const back=$('[data-back]');
 if(back) back.onclick=()=>showDir();

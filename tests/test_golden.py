@@ -330,6 +330,7 @@ def test_commentary_scholarship():
                   "Advancing Radiology Education with AI: Curriculum Planning and Evaluation",
                   "Virtual simulation in medical education: a review",
                   "Artificial Intelligence and the Financialization of Medical Knowledge",
+                  "The iPatient Meets the iDoctor",
                   "Towards a framework for implementing artificial intelligence in clinical medicine"):
         etype, strength = build.classify_evidence(
             {"title": title, "summary": "", "layer": "clinical", "stype": "Journal / evidence"})
