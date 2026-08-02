@@ -357,6 +357,17 @@ def test_inclusion_rule_nonprimary():
         == ("Journal study", "Primary evidence")
 
 
+def test_hta_perspective_tagging():
+    """HTA-ecosystem commentary from broad news → 'HTA perspective'/Commentary (non-primary), kept in
+    heor; genuine model-based value evaluation stays 'HEOR / value'/Secondary."""
+    op = build.classify_evidence({"title": "AI will likely grow the HTA industrial complex, but it can also democratise the institution",
+        "summary": "", "layer": "heor", "url": "https://news.google.com/rss/x", "gnews": True, "stype": "Other"})
+    assert op == ("HTA perspective", "Commentary"), op
+    ev = build.classify_evidence({"title": "Improving laboratory workforce efficiency using AI-assisted digital cytology: a model-based evaluation for the NHS",
+        "summary": "", "layer": "heor", "url": "https://pubmed.ncbi.nlm.nih.gov/1", "stype": "Journal / evidence"})
+    assert ev == ("HEOR / value", "Secondary evidence"), ev
+
+
 def test_method_paper_to_research():
     """Pure model-development papers with no patient validation move clinical → research;
     a foundation-model paper with clinical validation stays clinical."""

@@ -111,7 +111,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       fairness) and adoption-attitude studies (trust in AI, eHealth literacy) → Commentary; narrative
 #       field-summaries ("…challenges and future directions", "paradigm shift") → Review/Secondary. So
 #       the default Primary view answers "does it work in patients?"; these stay one filter away.
-TAXONOMY_VERSION = "2.15"
+# 2.16: HEOR precision — HTA-ecosystem commentary/news (broad-news opinion with no evidence signal)
+#       labelled "HTA perspective" / Commentary (non-primary) instead of "HEOR / value", so genuine
+#       value evidence (models, evaluations, HTA reports) is distinct. Description: "demonstrated"→"assessed".
+TAXONOMY_VERSION = "2.16"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1261,6 +1264,14 @@ def classify_evidence(i):
             return "Payment / coverage", "Policy signal"
         return "Market access", "Policy signal"
     if layer == "heor":
+        # HTA-ecosystem commentary/news — opinion pieces from broad news feeds with no evidence
+        # signal — are kept in the value stage (HEOR readers follow HTA policy debate) but labelled
+        # non-primary, distinct from genuine value evidence (models, evaluations, HTA reports).
+        broad = i.get("gnews") or "news.google.com" in i.get("url", "")
+        if broad and not re.search(r"evaluation|economic model|budget impact|cost.?effective|analysis"
+                                   r"|\bstudy\b|\breport\b|assessment|appraisal|\btrial\b|\breview\b"
+                                   r"|framework|dossier|guidance|recommend|reimburs|coverage|\bqaly\b", t):
+            return "HTA perspective", "Commentary"
         if re.search(r"benefit assessment|\bappraisal\b|hta report|health technology assessment", t):
             return "HTA report", "Secondary evidence"
         if re.search(r"value framework|value assessment|value dossier|value for money", t):
@@ -2946,7 +2957,7 @@ LAYER_NAV = {
         "Does it work in patients? Clinical studies, trials and real-world evaluations "
         "assessing AI performance, safety or effectiveness in healthcare settings."),
     "heor": ("HEOR, HTA & value assessment",
-        "How is AI value demonstrated? Health technology assessment, health economics, "
+        "How is AI value assessed? Health technology assessment, health economics, "
         "cost-effectiveness, reimbursement evidence and frameworks for evaluating AI-enabled "
         "healthcare technologies."),
     "regulation": ("Regulatory, safety & authorisation",
