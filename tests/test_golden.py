@@ -305,6 +305,52 @@ def test_admin_notices_dropped():
                 and "reply to" not in t.lower()) for t in kept)         # admin notices gone
 
 
+def test_out_of_scope_dropped():
+    """Veterinary / agriculture / plant-science papers from broad PubMed AI queries are dropped;
+    human-health clinical papers are kept."""
+    items = [
+        {"source": "PubMed — AI × HTA/HEOR", "layer": "clinical", "url": "https://x/1",
+         "title": "Transcription Factors Regulating Nutrient Uptake in Plants Exposed to Abiotic Stress", "summary": ""},
+        {"source": "PubMed — AI × HTA/HEOR", "layer": "clinical", "url": "https://x/2",
+         "title": "A decision support framework for early prediction of milk yield in dairy cows", "summary": ""},
+        {"source": "PubMed — AI × HTA/HEOR", "layer": "clinical", "url": "https://x/3",
+         "title": "Silicon and beneficial microorganisms enhance plant abiotic stress tolerance via rhizosphere", "summary": ""},
+        {"source": "NEJM AI", "layer": "clinical", "url": "https://x/4",
+         "title": "Machine learning clinical decision support reduces inpatient lab utilization", "summary": ""},
+    ]
+    kept = {i["title"][:20] for i in build.relevance_gate(items)}
+    assert "Machine learning cli" in kept                    # human-health study kept
+    assert all("plant" not in t.lower() and "dairy" not in t.lower()
+               and "transcription" not in t.lower() for t in kept)   # out-of-scope gone
+
+
+def test_commentary_scholarship():
+    """Bibliometric, education and framework/opinion papers are tagged Commentary, not Journal study."""
+    for title in ("A bibliometric analysis of machine learning in ADHD diagnosis",
+                  "Advancing Radiology Education with AI: Curriculum Planning and Evaluation",
+                  "Virtual simulation in medical education: a review",
+                  "Artificial Intelligence and the Financialization of Medical Knowledge",
+                  "Towards a framework for implementing artificial intelligence in clinical medicine"):
+        etype, strength = build.classify_evidence(
+            {"title": title, "summary": "", "layer": "clinical", "stype": "Journal / evidence"})
+        assert (etype, strength) == ("Commentary", "Commentary"), title
+
+
+def test_method_paper_to_research():
+    """Pure model-development papers with no patient validation move clinical → research;
+    a foundation-model paper with clinical validation stays clinical."""
+    items = [
+        {"source": "Nature Medicine", "layer": "clinical", "url": "https://x/1",
+         "title": "A pathology foundation model pretrained with self-supervised learning", "summary": ""},
+        {"source": "Nature Medicine", "layer": "clinical", "url": "https://x/2",
+         "title": "End-to-end pathology foundation model validated in a patient cohort", "summary": ""},
+    ]
+    build.refine_method_papers(items)
+    lay = {i["title"][:20]: i["layer"] for i in items}
+    assert lay["A pathology foundati"] == "research"   # pure method dev → research
+    assert lay["End-to-end pathology"] == "clinical"   # patient-validated stays clinical
+
+
 def test_research_health_only():
     """Research is health-gated: AI-in-health preprints/newsletters stay, general-AI capability drops."""
     items = [
