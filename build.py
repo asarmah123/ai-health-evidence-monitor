@@ -95,7 +95,13 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.10: healthcare-relevance precision — reduce 'Adjacent AI' over-tagging by recognising more
 #       operations (staff hours, EHR, care costs, health plan) and clinical (behavioural health,
 #       renal, hospital, clinician) signals, so healthcare-business items aren't mislabelled adjacent.
-TAXONOMY_VERSION = "2.10"
+# 2.11: metadata precision — modality recall (screening / risk-detection → CDS) and broader commentary
+#       detection (editorials, 'in the age of…', research-agenda / policy essays → Commentary), so
+#       opinion pieces are separated from empirical evidence. Stage counts unchanged (history stays comparable).
+# 2.12: administrative notices (corrections, retractions, errata, author replies) are dropped entirely —
+#       they are not evidence and no longer count in Clinical / HEOR / Regulatory (opinion still kept &
+#       filterable as Commentary; this is a distinct rule from commentary tagging).
+TAXONOMY_VERSION = "2.12"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -338,6 +344,11 @@ def _ai_native(i):
 # forecasts). Nominally health, but not evidence — dropped globally.
 _PR_JUNK_RE = re.compile(r"market size|\bcagr\b|forecast period|market research report"
                          r"|market.{0,25}(worth|to reach|valued at) (usd|\$|us\$)")
+# Administrative notices — corrections, retractions, errata, author replies. Not evidence; dropped
+# entirely so they never count in Clinical / HEOR / Regulatory (distinct from opinion, which stays
+# and is filterable as Commentary). Matched at title position to avoid catching real studies.
+_ADMIN_RE = re.compile(r"\bauthor correction\b|\bcorrection to\b|\bcorrection:|\bretraction\b"
+                       r"|\berratum\b|\bcorrigend|expression of concern|\breply to\b")
 
 
 def relevance_gate(items):
@@ -347,6 +358,8 @@ def relevance_gate(items):
     market-research PR padding is dropped everywhere. Deterministic; the one place relevance lives."""
     out = []
     for i in items:
+        if _ADMIN_RE.search(i.get("title", "").lower()):
+            continue   # correction / retraction / erratum / reply — administrative notice, not evidence
         t, s = i.get("title", ""), i.get("summary", "")
         if i.get("layer") == "research":
             # Health-only research: inherently AI (frontier newsletters + arXiv), but keep only
@@ -417,7 +430,9 @@ _HEOR_BODY_SOURCES = {"Value in Health", "ISPOR — AI Strategic Initiative",
 _HEOR_RE = re.compile(r"cost|econom|budget|\bqaly\b|\bvalue\b|\bhta\b|reimburs|coverage|willingness.to.pay"
                       r"|cost.?effectiv|cost.?util|resource use|utili[sz]ation|real.world|\brwe\b"
                       r"|market access|health technology|pharmacoeconom|\bprice\b|payer|affordab"
-                      r"|disinvest|appraisal|decision.analy")
+                      r"|disinvest|appraisal|decision.analy"
+                      # value-adjacent AI signals (reviewer): implementation economics, workflow, ops
+                      r"|workflow|productivity|operational|\befficien|implementation (cost|econom|impact)")
 
 
 def refine_heor_layer(items):
@@ -1075,7 +1090,9 @@ def source_type(i):
 # release should not visually compete with an RCT. 'strength' is the coarse badge; 'etype' the
 # fine label. Both are descriptive, never a quality rating of the underlying work.
 _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective\b|\bcommentary\b"
-                         r"|\bcomment\b|\breply\b|correction|retraction|\berratum\b")
+                         r"|\bcomment\b|\breply\b|correction|retraction|\berratum\b|\bessay\b"
+                         r"|research agenda|call to action|position (paper|statement)|in the age of"
+                         r"|reimagining|commercial determinant")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -1250,7 +1267,7 @@ _MOD_LLM = re.compile(r"large language model|\bllm\b|generative|chatbot|foundati
                       r"|ambient (voice|scribe|documentation)|\bscribe|natural language|clinical dialogue"
                       r"|conversational|\bnlp\b")
 _MOD_CDS = re.compile(r"decision support|\bcds\b|risk model|risk stratif|\bpredict|early warning|\btriage\b"
-                      r"|clinical alert|prognostic")
+                      r"|clinical alert|prognostic|screening|risk detection|early detection|risk assessment")
 _MOD_ROBO = re.compile(r"\brobot|telesurgery")
 _MOD_MON = re.compile(r"wearable|remote monitoring|continuous glucose|\bcgm\b|smart home|biosensor|\bsensor"
                       r"|remote patient")

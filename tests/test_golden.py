@@ -286,6 +286,25 @@ def test_relevance_gate():
     assert "Cost-effectiveness of statins" not in kept
 
 
+def test_admin_notices_dropped():
+    """Corrections / retractions / errata / replies are administrative — dropped, never counted as
+    evidence. Real studies (even with 'foundation model' etc.) are kept."""
+    items = [
+        {"source": "npj Digital Medicine", "layer": "clinical", "url": "https://x/1",
+         "title": "Author Correction: Digital biomarkers for brain health", "summary": ""},
+        {"source": "Value in Health", "layer": "heor", "url": "https://x/2",
+         "title": "Retraction notice to Integrating Generative AI Into Evidence Synthesis", "summary": ""},
+        {"source": "npj Digital Medicine", "layer": "clinical", "url": "https://x/3",
+         "title": "Reply to: Clinician engagement modifies AI-enabled ECG screening", "summary": ""},
+        {"source": "Nature Medicine", "layer": "clinical", "url": "https://x/4",
+         "title": "End-to-end multimodal pathology foundation model", "summary": ""},
+    ]
+    kept = {i["title"] for i in build.relevance_gate(items)}
+    assert "End-to-end multimodal pathology foundation model" in kept   # real study kept
+    assert all(("correction" not in t.lower() and "retraction" not in t.lower()
+                and "reply to" not in t.lower()) for t in kept)         # admin notices gone
+
+
 def test_research_health_only():
     """Research is health-gated: AI-in-health preprints/newsletters stay, general-AI capability drops."""
     items = [
@@ -377,6 +396,7 @@ def test_heor_precision():
          "title": "Retraction notice to Integrating Generative AI Into Evidence Synthesis", "summary": ""},
         {"layer": "heor", "source": "OHDSI Blog", "title": "Weekly OHDSI Digest - July 2026", "summary": ""},
         {"layer": "heor", "source": "INAHTA (HTA network)", "title": "HTA appraisal: AI use for skin cancer", "summary": ""},
+        {"layer": "heor", "source": "PubMed — AI × HTA/HEOR", "title": "AI workflow efficiency and productivity in radiology", "summary": ""},
     ]
     build.refine_heor_layer(items)
     lay = {i["title"][:10]: i["layer"] for i in items}
@@ -385,6 +405,7 @@ def test_heor_precision():
     assert lay["Retraction"] == "clinical"   # correction/retraction → out of the value stream
     assert lay["Weekly OHD"] == "industry"   # newsletter/digest → out
     assert lay["HTA apprai"] == "heor"       # genuine HTA-body evidence stays
+    assert lay["AI workflo"] == "heor"       # value-adjacent (workflow/productivity) stays HEOR
 
 
 def test_ctgov_ai_gate_and_pr_junk():
@@ -450,6 +471,7 @@ def test_ai_modality():
     assert mod("Surgical robotics platform") == "Robotics"
     assert mod("Wearable temperature monitoring model") == "Remote monitoring"
     assert mod("AI-driven small-molecule drug discovery and target identification") == "Drug discovery AI"
+    assert mod("Improving mental health screening and early risk detection") == "Clinical decision support"
     assert mod("CMS proposes a payment framework") == ""     # no modality signal → blank
 
 
@@ -485,6 +507,9 @@ def test_evidence_classification():
     assert ev("NICE recommends reimbursement for the AI tool", "access") == ("Payment / coverage", "Policy signal")
     assert ev("Budget impact analysis of an AI triage tool", "heor") == ("Budget impact", "Secondary evidence")
     assert ev("G-BA benefit assessment of the AI device", "heor") == ("HTA report", "Secondary evidence")
+    # opinion / policy / education essays are commentary, not empirical evidence
+    assert ev("Health professions education in the age of generative AI", "clinical", stype="Journal / evidence") == ("Commentary", "Commentary")
+    assert ev("Reimagining regulatory strategy: agentic AI as an enabler of market access", "clinical", stype="Journal / evidence") == ("Commentary", "Commentary")
     assert ev("WellSpan Health, Hippocratic AI ink multi-year partnership", "industry", stype="Industry press") == ("Partnership", "Market signal")
     assert ev("Startup raises $40M Series B for AI imaging", "industry", stype="Industry press") == ("Funding round", "Market signal")
     assert ev("Recursion selects its first AI chief", "industry", stype="Industry press") == ("Executive move", "Market signal")
@@ -553,6 +578,26 @@ def test_overtime_section():
     assert "33%" in out                    # commercial share = (regulation+access)/total = 2/6
 
 
+def test_history_reset():
+    """RESET_HISTORY=1 discards prior rows so the trend series restarts at the current build."""
+    import os, json as _json
+    orig_get, orig_put = build.private_get, build.private_put
+    try:
+        build.private_put = lambda *a, **k: True
+        prior = _json.dumps([{"date": "2026-07-01"}, {"date": "2026-07-02"}, {"date": "2026-07-03"}])
+        build.private_get = lambda name, token=None: (prior, "sha") if name == "history.json" else ("", None)
+        items, o = _pipeline()
+        os.environ["RESET_HISTORY"] = "1"
+        _, hist = build.log_history(items, [], token="x", o=o)
+        assert len(hist) == 1                          # 3 prior rows discarded → only this build
+        os.environ.pop("RESET_HISTORY", None)
+        _, hist2 = build.log_history(items, [], token="x", o=o)
+        assert len(hist2) == 4                          # without the flag, prior rows retained
+    finally:
+        os.environ.pop("RESET_HISTORY", None)
+        build.private_get, build.private_put = orig_get, orig_put
+
+
 def test_history_row_shape():
     """The daily history row carries every Phase-2 dimension, matching the site numbers."""
     build.private_put = lambda *a, **k: True   # no local/remote write during tests
@@ -563,6 +608,7 @@ def test_history_row_shape():
         health={"contributing": 6, "expected": 8, "zero_steady": [], "failed": [], "undated": 0},
         o=o,
     )
+    assert row["taxonomy_version"] == build.TAXONOMY_VERSION   # each row stamps the rules it used
     assert row["layers"] == GOLDEN_LAYERS
     assert row["regions"] == GOLDEN_REGIONS
     assert row["clinical"] == GOLDEN_CLINICAL
