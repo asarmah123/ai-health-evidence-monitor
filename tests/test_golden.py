@@ -337,6 +337,26 @@ def test_commentary_scholarship():
         assert (etype, strength) == ("Commentary", "Commentary"), title
 
 
+def test_inclusion_rule_nonprimary():
+    """Opinion/adoption items → Commentary; narrative field-summaries → Review/Secondary — so the
+    default Primary-evidence view answers 'does it work in patients?'. Real studies stay Primary."""
+    def et(title):
+        return build.classify_evidence(
+            {"title": title, "summary": "", "layer": "clinical", "stype": "Journal / evidence"})
+    # opinion / perspective / adoption → Commentary
+    for title in ("Global health suffers when corporate AI sovereigns reign",
+                  "Going beyond algorithmic fairness in health care",
+                  "Digital Health Adoption, eHealth Literacy, and Trust in AI Among Gen Z Students"):
+        assert et(title) == ("Commentary", "Commentary"), title
+    # narrative field-summary → Review / Secondary
+    for title in ("Advancements in Cardiac Magnetic Resonance Imaging: Innovations, Challenges, and Future Directions",
+                  "Toxicity reduction in nasopharyngeal carcinoma: from paradigm shift to integrated decision-making"):
+        assert et(title) == ("Review", "Secondary evidence"), title
+    # genuine clinical study stays Primary
+    assert et("Diagnostic accuracy of a deep-learning tool for echocardiographic measurement") \
+        == ("Journal study", "Primary evidence")
+
+
 def test_method_paper_to_research():
     """Pure model-development papers with no patient validation move clinical → research;
     a foundation-model paper with clinical validation stays clinical."""

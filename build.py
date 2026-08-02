@@ -107,7 +107,11 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       with no patient validation moved clinical → research; (d) category description broadened to match.
 # 2.14: Clinical category opens on Primary-evidence by default (commentary opt-in via the Evidence
 #       filter — presentation only, counts unchanged); iPatient/iDoctor perspective tagged Commentary.
-TAXONOMY_VERSION = "2.14"
+# 2.15: enforce the clinical inclusion rule via strength — opinion/perspective (sovereign, algorithmic
+#       fairness) and adoption-attitude studies (trust in AI, eHealth literacy) → Commentary; narrative
+#       field-summaries ("…challenges and future directions", "paradigm shift") → Review/Secondary. So
+#       the default Primary view answers "does it work in patients?"; these stay one filter away.
+TAXONOMY_VERSION = "2.15"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1138,11 +1142,19 @@ _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective
                          r"|bibliometric|scientometric|citation analysis"
                          r"|medical education|professions education|nursing education|clinical education"
                          r"|\bcurriculum\b|medical student|virtual simulation|financiali[sz]ation"
-                         r"|towards a framework|framework for implementing|\bipatient\b|\bidoctor\b")
+                         r"|towards a framework|framework for implementing|\bipatient\b|\bidoctor\b"
+                         # opinion / perspective and adoption-attitude studies — not clinical evidence
+                         r"|\bsovereign|algorithmic fairness|ehealth literacy|e.health literacy"
+                         r"|digital health adoption|trust in ai\b|trust in artificial intelligence")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
 _EV_SYS = re.compile(r"systematic review|scoping review|narrative review|literature review|umbrella review")
+# Narrative field-summaries / perspectives titled as "advances, challenges and future directions" —
+# review articles, not primary studies. Title-keyed to avoid summary-teaser false positives.
+_EV_REVIEW = re.compile(r"future directions|paradigm shift|research progress|advances and challenges"
+                        r"|challenges and (future|opportunities|perspectives)|innovations, challenges"
+                        r"|\ban overview\b|current status and")
 _EV_ECON = re.compile(r"cost.?effective|cost.?util|cost.?benefit|budget impact|economic evaluation"
                       r"|\bqaly\b|pharmacoeconom|willingness.to.pay|value assessment")
 _EV_RWE = re.compile(r"real.world|registry.based|observational|\brwe\b|post.?market|pharmacovigilance"
@@ -1221,6 +1233,8 @@ def classify_evidence(i):
         return "Meta-analysis", "Secondary evidence"
     if _EV_SYS.search(t):
         return "Systematic review", "Secondary evidence"
+    if _EV_REVIEW.search(ti):
+        return "Review", "Secondary evidence"
     if _EV_BIA.search(t):
         return "Budget impact", "Secondary evidence"
     if _EV_ECON.search(t):
