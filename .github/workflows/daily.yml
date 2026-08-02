@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "0 13 * * *"   # 06:00 America/Los_Angeles (13:00 UTC). Adjust to taste.
   workflow_dispatch:        # lets you trigger a build by hand from the Actions tab
+    inputs:
+      reset_history:
+        description: "Reset trend history — start the series fresh from this build (use after a taxonomy change)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -32,6 +37,8 @@ jobs:
           COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN }}
           PRIVATE_REPO: ${{ secrets.PRIVATE_REPO }}
           FAIL_ON_DEGRADE: "1"   # fail the run (skip publish) if >20% of steady feeds go silent
+          # one-shot when the "reset_history" toggle is checked on a manual run; empty otherwise
+          RESET_HISTORY: ${{ github.event.inputs.reset_history == 'true' && '1' || '' }}
         run: python build.py
 
       - name: Commit the rebuilt page
