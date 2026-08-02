@@ -101,7 +101,11 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.12: administrative notices (corrections, retractions, errata, author replies) are dropped entirely —
 #       they are not evidence and no longer count in Clinical / HEOR / Regulatory (opinion still kept &
 #       filterable as Commentary; this is a distinct rule from commentary tagging).
-TAXONOMY_VERSION = "2.12"
+# 2.13: Clinical-evidence precision — (a) veterinary/agriculture/plant-science papers from broad PubMed
+#       queries dropped globally; (b) education, bibliometric and framework/opinion papers tagged
+#       Commentary (filterable out of the empirical view); (c) pure AI method/model-development papers
+#       with no patient validation moved clinical → research; (d) category description broadened to match.
+TAXONOMY_VERSION = "2.13"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -349,6 +353,13 @@ _PR_JUNK_RE = re.compile(r"market size|\bcagr\b|forecast period|market research 
 # and is filterable as Commentary). Matched at title position to avoid catching real studies.
 _ADMIN_RE = re.compile(r"\bauthor correction\b|\bcorrection to\b|\bcorrection:|\bretraction\b"
                        r"|\berratum\b|\bcorrigend|expression of concern|\breply to\b")
+# Out-of-scope: veterinary / agriculture / plant-science papers slip in via broad PubMed AI queries
+# ("machine learning … crop yield", "abiotic stress in plants", "milk yield in dairy cows"). Not
+# human-health evidence — dropped globally, including for otherwise AI-native journal sources.
+_OUT_OF_SCOPE_RE = re.compile(
+    r"rhizosphere|abiotic stress|biotic stress|photosynth|agronom|agricultur|\bcrops?\b|crop yield"
+    r"|dairy (cow|cattle)|milk yield|\bcattle\b|\bpoultry\b|\blivestock\b|veterinar|\bbovine\b"
+    r"|\bcanine\b|\bfeline\b|\bporcine\b|\bequine\b|transcription factor")
 
 
 def relevance_gate(items):
@@ -360,6 +371,8 @@ def relevance_gate(items):
     for i in items:
         if _ADMIN_RE.search(i.get("title", "").lower()):
             continue   # correction / retraction / erratum / reply — administrative notice, not evidence
+        if _OUT_OF_SCOPE_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()):
+            continue   # veterinary / agriculture / plant-science — not human-health evidence
         t, s = i.get("title", ""), i.get("summary", "")
         if i.get("layer") == "research":
             # Health-only research: inherently AI (frontier newsletters + arXiv), but keep only
@@ -463,6 +476,32 @@ def refine_research_layer(items):
     for i in items:
         if i.get("layer") == "research" and source_type(i) not in ("Preprint / research", "Journal / evidence"):
             i["layer"] = "industry"
+    return items
+
+
+# Method vs clinical: a pure AI method / model-development paper (foundation model, self-supervised
+# pretraining, new architecture) that reports NO patient or clinical validation is a research
+# contribution, not clinical evidence. Move those from clinical → research; anything mentioning a
+# patient / trial / cohort / real-world / clinical-outcome signal stays in clinical.
+_METHOD_DEV_RE = re.compile(r"foundation model|self.supervised|pre.?train(ing|ed)?|\bpretrain"
+                            r"|model architecture|representation learning")
+_CLINICAL_VALID_RE = re.compile(
+    r"\bpatient|\btrial\b|\bcohort\b|real.world|diagnostic accuracy|\bprospective|randomi[sz]ed"
+    r"|\bscreening\b|\bhospital|point.of.care|deployed|clinical (outcome|validation|trial|dialogue"
+    r"|practice|setting|care|workflow)")
+
+
+def refine_method_papers(items):
+    """Pure AI method/model-development papers (no patient/clinical validation) belong in research,
+    not clinical evidence. Deterministic, title-keyed; validated studies stay clinical."""
+    for i in items:
+        if i.get("layer") != "clinical":
+            continue
+        if source_type(i) not in ("Preprint / research", "Journal / evidence"):
+            continue
+        ti = i.get("title", "").lower().replace("-", " ")
+        if _METHOD_DEV_RE.search(ti) and not _CLINICAL_VALID_RE.search(ti):
+            i["layer"] = "research"
     return items
 
 
@@ -1092,7 +1131,12 @@ def source_type(i):
 _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective\b|\bcommentary\b"
                          r"|\bcomment\b|\breply\b|correction|retraction|\berratum\b|\bessay\b"
                          r"|research agenda|call to action|position (paper|statement)|in the age of"
-                         r"|reimagining|commercial determinant")
+                         r"|reimagining|commercial determinant"
+                         # non-primary scholarship: bibliometrics, education studies, framework/opinion
+                         r"|bibliometric|scientometric|citation analysis"
+                         r"|medical education|professions education|nursing education|clinical education"
+                         r"|\bcurriculum\b|medical student|virtual simulation|financiali[sz]ation"
+                         r"|towards a framework|framework for implementing")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -2876,8 +2920,8 @@ LAYER_NAV = {
     "research": ("AI research & models",
         "Frontier AI research, models and methods — an early signal of emerging AI capabilities that may influence future healthcare applications."),
     "clinical": ("Clinical evidence & trials",
-        "Does it work in patients? Peer-reviewed studies, preprints and registered "
-        "trials evaluating AI in patients."),
+        "Does it work in patients? Clinical studies, trials and real-world evaluations "
+        "assessing AI performance, safety or effectiveness in healthcare settings."),
     "heor": ("HEOR, HTA & value assessment",
         "How is AI value demonstrated? Health technology assessment, health economics, "
         "cost-effectiveness, reimbursement evidence and frameworks for evaluating AI-enabled "
@@ -3910,6 +3954,7 @@ def main():
     items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
     items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
     items = refine_research_layer(items) # research precision: newsletters/product news → industry
+    items = refine_method_papers(items)  # method vs clinical: pure model-dev papers → research
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
