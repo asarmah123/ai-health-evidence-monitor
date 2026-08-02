@@ -1,6 +1,6 @@
 {
- "generated_at": "2026-08-02T10:56:14Z",
- "taxonomy_version": "2.13",
+ "generated_at": "2026-08-02T11:11:29Z",
+ "taxonomy_version": "2.14",
  "count": 94,
  "fields": [
   "id",
@@ -1091,9 +1091,9 @@
    "source": "JAMA Network — AI in medicine",
    "source_type": "Journal / evidence",
    "stage": "clinical",
-   "evidence_type": "Journal study",
-   "evidence_strength": "Primary evidence",
-   "evidence_maturity": 1,
+   "evidence_type": "Commentary",
+   "evidence_strength": "Commentary",
+   "evidence_maturity": "",
    "healthcare_relevance": "Direct clinical",
    "ai_modality": "",
    "region": "",
