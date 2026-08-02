@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-02T03:55:26Z",
+ "generated_at": "2026-08-02T04:06:34Z",
  "taxonomy_version": "2.10",
- "count": 98,
+ "count": 99,
  "fields": [
   "id",
   "title",
@@ -1659,6 +1659,24 @@
    "date": "2026-07-22",
    "score": 0,
    "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "14361a9e6eae",
+   "title": "ListS_SFOPH-AI use for skin cancer",
+   "url": "https://www.inahta.org/download/lists_sfoph-ai-use-for-skin-cancer/",
+   "source": "INAHTA (HTA network)",
+   "source_type": "Other",
+   "stage": "heor",
+   "evidence_type": "HEOR / value",
+   "evidence_strength": "Secondary evidence",
+   "evidence_maturity": 2,
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "",
+   "region": "",
+   "country": "",
+   "date": "2026-07-17",
+   "score": 2,
+   "topics": "hta-value-evidence;oncology-ai"
   },
   {
    "id": "311fc170237f",
