@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-01T17:18:39Z",
+ "generated_at": "2026-08-02T03:55:26Z",
  "taxonomy_version": "2.10",
- "count": 101,
+ "count": 98,
  "fields": [
   "id",
   "title",
@@ -73,7 +73,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -91,7 +91,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -109,7 +109,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -127,7 +127,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research;mental-health-ai"
   },
   {
@@ -145,7 +145,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -163,7 +163,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -181,7 +181,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -199,7 +199,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -455,24 +455,6 @@
    "topics": ""
   },
   {
-   "id": "7569338ee0d3",
-   "title": "Launching Health in ChatGPT",
-   "url": "https://openai.com/index/health-in-chatgpt",
-   "source": "OpenAI News",
-   "source_type": "Other",
-   "stage": "industry",
-   "evidence_type": "Product launch",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Adjacent AI",
-   "ai_modality": "",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 1,
-   "topics": ""
-  },
-  {
    "id": "d8f73931d002",
    "title": "STAT+: HHS to convene experts on standards for clinical AI",
    "url": "https://www.statnews.com/2026/07/23/hhs-convenes-experts-on-clinical-ai-health-tech/?utm_campaign=rss",
@@ -487,42 +469,6 @@
    "region": "",
    "country": "",
    "date": "2026-07-23",
-   "score": 1,
-   "topics": ""
-  },
-  {
-   "id": "1e15110af9d7",
-   "title": "Intuitive showcases AI for surgical robotics, telesurgery capabilities",
-   "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTE5WMmpDTEVzSklmdG5uMTlJcDFKU2s1UC05Y1Vfb2p2bnZ2NDJNel9pcDFVVGNlNU1aS2NIN05CbDQyT244MkVob1VyaVNvWFVpOWJTTldNbzFQakYyMDViVVlDLVJIS3NzZWNRZm5Kb2YyOFA4ajFyVVdZNTJaUVE?oc=5",
-   "source": "MassDevice",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Robotics",
-   "region": "",
-   "country": "",
-   "date": "2026-07-23",
-   "score": 1,
-   "topics": ""
-  },
-  {
-   "id": "28991fb5e6bf",
-   "title": "STAT+: What is a ‘world model’? Nabla’s Alex LeBrun explains",
-   "url": "https://www.statnews.com/2026/07/22/what-is-a-world-model-nabla-alex-lebrun-explains-ai-prognosis/?utm_campaign=rss",
-   "source": "STAT — Health Tech",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "evidence_type": "Industry analysis",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Healthcare operations",
-   "ai_modality": "Generative AI / LLM",
-   "region": "",
-   "country": "",
-   "date": "2026-07-22",
    "score": 1,
    "topics": ""
   },
@@ -829,7 +775,7 @@
    "region": "Europe",
    "country": "United Kingdom",
    "date": "2026-07-30",
-   "score": 7,
+   "score": 6,
    "topics": "mhra-updates;regulatory-activity"
   },
   {
@@ -847,7 +793,7 @@
    "region": "Europe",
    "country": "Ireland",
    "date": "2026-07-30",
-   "score": 4,
+   "score": 3,
    "topics": "regulatory-activity"
   },
   {
@@ -865,7 +811,7 @@
    "region": "",
    "country": "",
    "date": "2026-07-30",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies"
   },
   {
@@ -1085,9 +1031,9 @@
    "topics": "regulatory-activity"
   },
   {
-   "id": "055349b2f1ec",
-   "title": "DIAGNOS Receives Health Canada Medical Device Licence for CARA System, Bringing AI-Assisted Retinal Image Analysis to Canadian Optometrists",
-   "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxPc0E2ZDZQTURIc05OUEVxS29jVmVLYXdxSzZha01CeElVeHpQWGVSaUdyQmtzVDdYc0ZURlhaLVYzYjJqenNPSW5hMWJEWFRSY2p0V3M5dHRiMW1wMHhNM05JVjM2QVBtMEc1ZThZTzlmLVB2akRheTJoLTZuWGdLUU54cjFZMy05VFFCam5kV2t2QlVGRUhrQ2VZWkx0VjFY?oc=5",
+   "id": "79b98c824c11",
+   "title": "DIAGNOS Secures Health Canada Licence for CARA AI-Driven Retinal Imaging System",
+   "url": "https://news.google.com/rss/articles/CBMixAFBVV95cUxQSWdOZ2pKLXFzUTR5aldfeUROVEt4S1BnZUhPU1VYR1ZqSDZvWXE4bnFldmR0S3lyelVCbVFWQlpEamVZSDNXSFRxeno5U2ExemtQMGFhdnk4Z0N3cUxJQTJ0V3ZIUHhnNlpqVzQ3djV0RzV5X0NaT01hUEk1X2tqSGFnV19DTFJyM2pFODBzU2lEUHpsdFkwRUhQeF8yZFI0XzQzU3ZOSXY0TFJ4RFgtYlBvcWFLczdEZ2g4RFo0dTQ1b2RN?oc=5",
    "source": "Canada — CADTH & Health Canada",
    "source_type": "Regulator",
    "stage": "regulation",
@@ -1100,7 +1046,7 @@
    "country": "Canada",
    "date": "2026-07-27",
    "score": 6,
-   "topics": "regulatory-activity"
+   "topics": "regulatory-activity;radiology-imaging-ai"
   },
   {
    "id": "777155a379e0",
