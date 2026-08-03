@@ -158,7 +158,7 @@ def test_export_schema():
     from pathlib import Path
     cols = ["id", "title", "url", "source", "source_type", "stage",
             "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
-            "region", "country", "date", "score", "topics"]
+            "decision_type", "payer_type", "region", "country", "date", "score", "topics"]
     items = [
         {"id": "e1", "title": "FDA cleared AI", "url": "https://accessdata.fda.gov/K1",
          "source": "FDA — AI device authorisations", "layer": "regulation", "date": "2026-07-20",
@@ -355,6 +355,21 @@ def test_inclusion_rule_nonprimary():
     # genuine clinical study stays Primary
     assert et("Diagnostic accuracy of a deep-learning tool for echocardiographic measurement") \
         == ("Journal study", "Primary evidence")
+
+
+def test_access_facets():
+    """Access items carry structured decision_type + payer_type; non-access items get empty facets."""
+    def f(title, source, layer="access"):
+        return build.access_facets({"title": title, "summary": "", "source": source, "layer": layer})
+    assert f("CMS finalises National Coverage Determination for AI stroke triage", "CMS coverage determinations (NCD/LCD) — AI") \
+        == ("Coverage", "National HTA / payer")
+    assert f("UnitedHealthcare updates medical policy on AI risk scoring", "US commercial payer AI coverage policies") \
+        == ("Coverage", "Commercial payer")
+    assert f("NHS England signs national AI imaging framework agreement", "Hospital & national AI procurement")[0] == "Procurement"
+    assert f("ARPA-H funding programme backs AI diagnostics deployment", "AI health funding programmes")[0] == "Funding"
+    assert f("Medicare NTAP add-on payment and CPT coding for AI tool", "CMS coverage determinations (NCD/LCD) — AI")[0] in ("Coverage", "Payment / coding")
+    # non-access → empty facets
+    assert build.access_facets({"title": "RCT of AI triage", "summary": "", "source": "NEJM AI", "layer": "clinical"}) == ("", "")
 
 
 def test_payer_decision_outranks_procurement():
