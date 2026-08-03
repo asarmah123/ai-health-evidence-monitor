@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-03T11:05:07Z",
- "taxonomy_version": "2.25",
- "count": 96,
+ "generated_at": "2026-08-03T11:15:01Z",
+ "taxonomy_version": "2.27",
+ "count": 95,
  "fields": [
   "id",
   "title",
@@ -491,7 +491,7 @@
    "source": "Healthcare IT News",
    "source_type": "Other",
    "stage": "industry",
-   "evidence_type": "Funding round",
+   "evidence_type": "Industry news",
    "evidence_strength": "Market signal",
    "evidence_maturity": "",
    "healthcare_relevance": "Direct clinical",
@@ -1103,26 +1103,6 @@
    "date": "2026-07-28",
    "score": 1,
    "topics": "diga-updates;digital-therapeutics"
-  },
-  {
-   "id": "66b682bbf90d",
-   "title": "South Korea's FDA Sets First Concrete Clinical Trial Exemption Rules for Medical AI, Expands Special Provisions for Generative AI",
-   "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1CWlBVclp5SmliWjd6eGlkd2R2Y3VHVGhxbVF5UlFjYkdFRERvZ3JRaURMUmREWUtua0REUDhycEoyQXFkY2pvb3R1VmYzUFB5V3NfWDFvTWx5NnhLdEFMUGdiX1hoVk1mQmdXeGY2bnJLUnNEZ3c?oc=5",
-   "source": "APAC AI device regulation & reimbursement",
-   "source_type": "Other",
-   "stage": "regulation",
-   "evidence_type": "Regulatory guidance",
-   "evidence_strength": "Policy signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Generative AI / LLM",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "Asia-Pacific",
-   "country": "South Korea",
-   "date": "2026-07-28",
-   "score": 3,
-   "topics": "regulatory-activity"
   },
   {
    "id": "2acf7ccbcb32",
