@@ -430,6 +430,17 @@ def test_csv_formula_injection_safe():
     assert build._csv_safe(8) == "8"
 
 
+def test_coverage_litigation_not_a_decision():
+    """A court case about a coverage decision is not itself a coverage decision — decision_type Unknown."""
+    dt, pt = build.access_facets({"layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI",
+        "title": "Court Examines AI Discovery in Medicare Advantage Coverage Decision Case", "summary": ""})
+    assert dt == "Unknown", dt
+    # a genuine coverage determination still reads Coverage
+    dt2, _ = build.access_facets({"layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI",
+        "title": "CMS finalises National Coverage Determination reimbursing AI stroke triage", "summary": ""})
+    assert dt2 == "Coverage", dt2
+
+
 def test_access_facets():
     """Access items carry structured decision_type + payer_type; unmatched → 'Unknown' (no false
     default); non-access items get empty facets."""
