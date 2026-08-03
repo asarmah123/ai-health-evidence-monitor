@@ -114,7 +114,16 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.16: HEOR precision — HTA-ecosystem commentary/news (broad-news opinion with no evidence signal)
 #       labelled "HTA perspective" / Commentary (non-primary) instead of "HEOR / value", so genuine
 #       value evidence (models, evaluations, HTA reports) is distinct. Description: "demonstrated"→"assessed".
-TAXONOMY_VERSION = "2.16"
+# 2.17: Market-access precision + UX — EU Joint Clinical Assessment routed to HEOR (it's an HTA
+#       mechanism, was landing in Industry); empty-category message is now honest and category-aware
+#       (the "Market access" stage is sparse by nature — it fills only when a payer/HTA body acts).
+# 2.18: Market-access enrichment — description makes procurement explicit; market-access retention
+#       recognises hospital/national purchasing signals (tenders, framework agreements, adoption/
+#       diagnostic funds), so purchasing-route access items stay in the stage rather than Industry.
+# 2.19: Ranking-only (history-neutral) — within Market access, a formal payer/coverage decision gets
+#       a small rank edge over procurement/tender announcements, so reimbursement decisions surface
+#       first. Stage counts and classification unchanged.
+TAXONOMY_VERSION = "2.19"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1193,7 +1202,7 @@ _PAY_RE = re.compile(r"reimburs|\bcovered\b|coverage (decision|determination|pat
 _HTA_VALUE_RE = re.compile(r"benefit assessment|\bappraisal\b|health technology assessment|\bhta\b"
                            r"|cost.?effective|cost.?util|budget impact|economic evaluation"
                            r"|value (assessment|framework|dossier|for money)|\bqaly\b|coverage recommendation"
-                           r"|reimbursement review|early value assessment")
+                           r"|reimbursement review|early value assessment|joint clinical assessment")
 _EV_BIA = re.compile(r"budget impact|budget.impact")
 # market-access mechanisms (procurement, payment models, adoption pathways) — these belong in the
 # reimbursement/market-access stream alongside coverage decisions, distinct from HTA value assessment.
@@ -1201,7 +1210,10 @@ _MARKET_ACCESS_RE = re.compile(
     r"market access|procure|payment model|reimbursement (pathway|model|framework)"
     r"|coverage with evidence|access pathway|funding pathway|adoption pathway"
     r"|value based (care|payment|contract|purchas)|managed entry|risk shar"
-    r"|medicines funding|patient access|purchasing (framework|agreement)")
+    r"|medicines funding|patient access|purchasing (framework|agreement)"
+    # hospital / national purchasing — market access via procurement even without reimbursement
+    r"|\btender\b|framework agreement|call for tender|national (tender|procurement)"
+    r"|health.system contract|adoption fund|diagnostic fund")
 
 
 def classify_evidence(i):
@@ -1672,6 +1684,10 @@ def rank_score(i):
 
     if layer == "access":
         s += 3; reasons.append("Reimbursement / coverage")
+        # within market access, a formal payer/coverage decision outranks a procurement/tender
+        # announcement — so reimbursement decisions surface above purchasing news.
+        if _PAY_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")):
+            s += 1; reasons.append("Formal payer / coverage decision")
     elif layer == "regulation":
         s += 2; reasons.append("Regulatory / authorisation")
 
@@ -2839,6 +2855,11 @@ function render(){
     source:(a,b)=>a.source.localeCompare(b.source)||byDateDesc(a,b),
   }[sort]||((a,b)=>(b.score||0)-(a.score||0));
   list.sort(cmp);
+  const layerHas = ITEMS.filter(i=>(tier==='all'||i.tier===tier)&&(layer==='all'||i.layer===layer)).length;
+  const emptyMsg = layerHas>0 ? 'Nothing matches — try another filter.'
+    : layer==='access' ? 'No new coverage or reimbursement signals in this build’s window — AI-specific payment and HTA decisions are infrequent, and translate into this stage only when a payer or HTA body acts. The curated clearance-to-coverage dataset is on the Home page.'
+    : layer==='all' ? 'No updates in the latest build.'
+    : 'No updates in this category in the latest build’s window.';
   $('#feed').innerHTML = list.map(i=>`
     <div class="card ${read.has(i.id)?'read':''}" style="border-left:3px solid ${SC[i.layer]||'#dcdcdc'}">
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
@@ -2854,7 +2875,7 @@ function render(){
         <button data-i="${i.id}">${read.has(i.id)?'Mark unread':'Mark read'}</button>
         ${(i.why&&i.why.length)?`<details class="whyrank"><summary>Why ranked · ${i.score}</summary><ul>${i.why.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>`:''}
       </div>
-    </div>`).join('') || '<div class="dnote">Nothing matches — try another filter.</div>';
+    </div>`).join('') || `<div class="dnote">${emptyMsg}</div>`;
   $$('.acts button').forEach(b=>b.onclick=()=>{const id=b.dataset.i;read.has(id)?read.delete(id):read.add(id);save();render();});
   const baseN=ITEMS.filter(i=>tier==='all'||i.tier===tier)
                    .filter(i=>layer==='all'||i.layer===layer)
@@ -2964,9 +2985,9 @@ LAYER_NAV = {
         "Can AI be safely deployed and authorised for healthcare use? Regulatory guidance, AI governance "
         "requirements, safety expectations and AI-enabled medical device authorisations."),
     "access": ("Market access, reimbursement & coverage",
-        "How does AI reach healthcare systems? Coverage decisions, reimbursement pathways, payment "
-        "models, procurement and adoption mechanisms that translate evidence and authorisation into "
-        "clinical use."),
+        "How is AI reaching clinical practice? Coverage decisions, reimbursement policies, procurement "
+        "programmes, payer guidance and funding mechanisms that translate evidence and authorisation "
+        "into routine clinical use — including where market access comes through purchasing, not payment."),
     "industry": ("Industry, investment & partnerships",
         "The business of healthcare AI — company strategy, investments, partnerships, acquisitions, "
         "product launches and commercial adoption signals."),

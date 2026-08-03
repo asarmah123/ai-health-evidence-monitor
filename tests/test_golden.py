@@ -84,7 +84,7 @@ def _pipeline():
 
 
 # --- golden baselines (regenerate consciously if a rule intentionally changes) -
-GOLDEN_SCORES = {"g1": 10, "g2": 7, "g3": 5, "g4": 2, "g5": 1, "g6": 1, "g7": 1}
+GOLDEN_SCORES = {"g1": 10, "g2": 8, "g3": 5, "g4": 2, "g5": 1, "g6": 1, "g7": 1}  # g2: +1 formal payer/coverage decision (2.19)
 GOLDEN_COLLAPSE_IDS = ["g1", "g2", "g3", "g4", "g5", "g7"]  # g6 merged into g7
 GOLDEN_KEPT_DUP_TITLE = "Tempus AI raises $200M for oncology diagnostics platform"
 GOLDEN_RANK_ORDER = ["g1", "g2", "g3", "g4", "g5", "g7"]
@@ -355,6 +355,43 @@ def test_inclusion_rule_nonprimary():
     # genuine clinical study stays Primary
     assert et("Diagnostic accuracy of a deep-learning tool for echocardiographic measurement") \
         == ("Journal study", "Primary evidence")
+
+
+def test_payer_decision_outranks_procurement():
+    """Within Market access, a formal payer/coverage decision scores higher than a procurement/tender
+    announcement, so reimbursement decisions surface above purchasing news."""
+    payer = {"layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI", "tier": "weekly",
+             "url": "https://news.google.com/rss/x1", "date": "",
+             "title": "CMS finalises National Coverage Determination reimbursing AI stroke triage", "summary": ""}
+    procurement = {"layer": "access", "source": "Hospital & national AI procurement", "tier": "weekly",
+                   "url": "https://news.google.com/rss/x2", "date": "",
+                   "title": "NHS England signs AI imaging framework agreement with vendors", "summary": ""}
+    sp, _ = build.rank_score(payer)
+    sq, _ = build.rank_score(procurement)
+    assert sp > sq, (sp, sq)
+
+
+def test_procurement_stays_access():
+    """Hospital/national purchasing (tender, framework agreement) is market access via procurement —
+    it stays in the access stage rather than being routed to industry."""
+    items = [
+        {"layer": "access", "source": "AI device reimbursement & coding", "url": "https://news.google.com/rss/x1",
+         "gnews": True, "title": "NHS England awards national AI imaging framework agreement to consortium", "summary": ""},
+        {"layer": "access", "source": "AI device reimbursement & coding", "url": "https://news.google.com/rss/x2",
+         "gnews": True, "title": "VA issues tender for AI triage software across regional hospitals", "summary": ""},
+    ]
+    build.refine_access_layer(items)
+    assert all(i["layer"] == "access" for i in items), [i["layer"] for i in items]
+
+
+def test_jca_routes_to_heor():
+    """EU Joint Clinical Assessment is an HTA mechanism — an access-sourced JCA item is routed to
+    HEOR, not left in Industry."""
+    items = [{"layer": "access", "source": "EU Joint Clinical Assessment (EUnetHTA / HTACG)",
+              "url": "https://news.google.com/rss/x", "gnews": True,
+              "title": "Strengthening pharma and medtech joint clinical assessment with AI", "summary": ""}]
+    build.refine_access_layer(items)
+    assert items[0]["layer"] == "heor", items[0]["layer"]
 
 
 def test_hta_perspective_tagging():
