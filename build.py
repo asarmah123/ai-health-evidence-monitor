@@ -148,7 +148,12 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.27: CI resilience (no classification change) — errored-source guard: when >30% of sources error
 #       (e.g. Google News rate-limiting the runner), the build aborts and holds the last good site
 #       instead of publishing a gutted one. Activates under the existing FAIL_ON_DEGRADE env.
-TAXONOMY_VERSION = "2.27"
+# 2.28: overview accuracy — (a) coverage litigation ("court examines…coverage decision") no longer
+#       counts as a Coverage decision (facet + hero metric); (b) "HTA & value evidence" tile counts
+#       HEOR-stage items (matches the stage/topic), not "items from a PubMed query"; (c) Geography
+#       By-region/country counts all placed items (matches completeness metric); (d) hero label
+#       "Regulatory actions"→"Regulatory updates" (regulation-stage items include guidance/statements).
+TAXONOMY_VERSION = "2.28"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1280,8 +1285,13 @@ _DT_FUNDING = re.compile(r"\bfunding\b|arpa.h|eu4health|horizon europe|innovatio
 _DT_HTA_REC = re.compile(r"health technology assessment|\bhta\b|\bappraisal\b|early value assessment|\beva\b"
                          r"|benefit assessment|\bguidance\b|recommends?|reimbursement review")
 
+# Litigation about a coverage decision is not itself a payer decision — don't count it as one.
+_LITIGATION_RE = re.compile(r"\bcourt\b|court case|lawsuit|\blitigation\b|\bsued\b|\bsues\b|plaintiff"
+                            r"|class action|legal challenge|files? (a )?suit|\bjudge\b")
+
 def _access_decision_type(text):
     # No silent default — an unmatched access item is 'Unknown', never assumed to be a coverage decision.
+    if _LITIGATION_RE.search(text): return "Unknown"     # coverage litigation ≠ a coverage decision
     if _DT_COVERAGE.search(text): return "Coverage"
     if _DT_CODING.search(text):   return "Payment / coding"
     if _DT_PROCURE.search(text):  return "Procurement"
@@ -1680,7 +1690,7 @@ def overview_stats(items):
     clears = [i for i in items if i["source"].startswith("FDA — AI device")]
     trials = [i for i in items if "clinicaltrials" in i["url"]]
     econ = [i for i in trials if _econ_endpoint(i)]
-    papers = [i for i in items if i["source"].startswith("PubMed — AI")]
+    papers = [i for i in items if i["layer"] == "heor"]   # actual HTA/value-stage evidence, not "from a PubMed query"
 
     # evidence vs access balance
     research = sum(1 for i in items if i["layer"] in ("research", "clinical", "heor"))
@@ -1705,14 +1715,16 @@ def overview_stats(items):
     pathways.sort(key=lambda x: -x[1])
 
     layers = {k: sum(1 for i in items if i["layer"] == k) for k in LAYERS}
-    # the two market-access gates, as concrete decisions
+    # the two market-access gates, as concrete decisions — litigation about coverage is not a decision
     coverage_actions = [i for i in items if i["layer"] == "access"
-                        and any(k in i["source"] for k in ("CMS", "NICE", "Federal"))]
+                        and any(k in i["source"] for k in ("CMS", "NICE", "Federal"))
+                        and not _LITIGATION_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower())]
 
-    # geography: country + macro-region (over regulatory/reimbursement items)
+    # geography: country + macro-region over ALL placed items (regulatory bodies, trial locations, …),
+    # so the panel matches the geography-completeness metric; only mapped regions are counted.
     from collections import Counter
-    countries = Counter(c for c in (country_of(i) for i in reg) if c)
-    macro = Counter(MACRO.get(c, "Other") for c in (country_of(i) for i in reg) if c)
+    countries = Counter(c for c in (country_of(i) for i in items) if c)
+    macro = Counter(r for r in (MACRO.get(country_of(i)) for i in items) if r)
     # bodies by role (over all items, so ISPOR/HTAi in any layer are caught)
     bodies = _body_role_counts(items)
 
@@ -1970,9 +1982,9 @@ def overview_html(items, cov_pub, o, history=None, take=""):
         _trial_sub = f"{len(o['econ'])} of {len(o['trials'])} AI trials in this build included an economic endpoint."
     ind_tiles = [
         ("Economic-endpoint trials", len(o["econ"]), _trial_sub),
-        ("HTA &amp; value papers", len(o["papers"]),
-         "Peer-reviewed HTA and value studies in this build." if o["papers"]
-         else "No HTA or value studies in this build."),
+        ("HTA &amp; value evidence", len(o["papers"]),
+         "HTA, health-economic and value-assessment items in this build." if o["papers"]
+         else "No HTA or value evidence in this build."),
     ]
     gate_html = render_tiles(gate_tiles)
     ind_html = render_tiles(ind_tiles)
@@ -2153,7 +2165,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
     _updnote = f"typical ~{sum(_totp)/len(_totp):.0f}" if len(_totp) >= 3 else ""
     metrics = ('<div class="brief">'
                + _bm(len(items), "update", note=_updnote)
-               + _bm(o["layers"].get("regulation", 0), "regulatory<br>action", hot=True)
+               + _bm(o["layers"].get("regulation", 0), "regulatory<br>update", hot=True)
                + _bm(len(o["coverage_actions"]), "coverage<br>decision", hot=True)
                + _bm(o["layers"].get("clinical", 0), "clinical<br>study")
                + '</div>')
