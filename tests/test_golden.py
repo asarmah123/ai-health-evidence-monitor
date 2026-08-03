@@ -350,7 +350,8 @@ def test_inclusion_rule_nonprimary():
         assert et(title) == ("Commentary", "Commentary"), title
     # narrative field-summary → Review / Secondary
     for title in ("Advancements in Cardiac Magnetic Resonance Imaging: Innovations, Challenges, and Future Directions",
-                  "Toxicity reduction in nasopharyngeal carcinoma: from paradigm shift to integrated decision-making"):
+                  "Toxicity reduction in nasopharyngeal carcinoma: from paradigm shift to integrated decision-making",
+                  "Translating AI into clinical practice for GI endoscopy: current applications and future perspectives"):
         assert et(title) == ("Review", "Secondary evidence"), title
     # genuine clinical study stays Primary
     assert et("Diagnostic accuracy of a deep-learning tool for echocardiographic measurement") \

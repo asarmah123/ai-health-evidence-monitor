@@ -141,7 +141,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       ClinicalTrials.gov location country (strongest source, wins over regex). (c) adoption-attitude
 #       phrase family broadened. (d) disclaimer: automated-classification + no-endorsement framing.
 #       (e) build.json gains geography_completeness_pct. (f) CSP meta added. No new sources.
-TAXONOMY_VERSION = "2.24"
+# 2.25: review-detection gap — narrative reviews titled "current applications and future perspectives"
+#       now classify as Review/Secondary (were leaking as Journal study/Primary).
+TAXONOMY_VERSION = "2.25"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1209,9 +1211,9 @@ _EV_META = re.compile(r"meta.analysis")
 _EV_SYS = re.compile(r"systematic review|scoping review|narrative review|literature review|umbrella review")
 # Narrative field-summaries / perspectives titled as "advances, challenges and future directions" —
 # review articles, not primary studies. Title-keyed to avoid summary-teaser false positives.
-_EV_REVIEW = re.compile(r"future directions|paradigm shift|research progress|advances and challenges"
-                        r"|challenges and (future|opportunities|perspectives)|innovations, challenges"
-                        r"|\ban overview\b|current status and")
+_EV_REVIEW = re.compile(r"future directions|future perspectives|paradigm shift|research progress"
+                        r"|advances and challenges|challenges and (future|opportunities|perspectives)"
+                        r"|innovations, challenges|current applications|\ban overview\b|current status and")
 _EV_ECON = re.compile(r"cost.?effective|cost.?util|cost.?benefit|budget impact|economic evaluation"
                       r"|\bqaly\b|pharmacoeconom|willingness.to.pay|value assessment")
 _EV_RWE = re.compile(r"real.world|registry.based|observational|\brwe\b|post.?market|pharmacovigilance"
