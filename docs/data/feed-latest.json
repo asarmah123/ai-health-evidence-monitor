@@ -1,6 +1,6 @@
 {
- "generated_at": "2026-08-03T10:54:15Z",
- "taxonomy_version": "2.24",
+ "generated_at": "2026-08-03T11:05:07Z",
+ "taxonomy_version": "2.25",
  "count": 96,
  "fields": [
   "id",
@@ -971,8 +971,8 @@
    "source": "PubMed — AI × HTA/HEOR",
    "source_type": "Journal / evidence",
    "stage": "clinical",
-   "evidence_type": "Journal study",
-   "evidence_strength": "Primary evidence",
+   "evidence_type": "Review",
+   "evidence_strength": "Secondary evidence",
    "evidence_maturity": 1,
    "healthcare_relevance": "Direct clinical",
    "ai_modality": "Imaging AI",
