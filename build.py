@@ -126,7 +126,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.20: leak fixes — (a) EU Joint Clinical Assessment now stays in HEOR end-to-end (added to _HEOR_RE
 #       so refine_heor doesn't evict what refine_access routed in); (b) out-of-scope filter extended to
 #       insect farming / aquaculture / animal-feed and non-health domains (sport).
-TAXONOMY_VERSION = "2.20"
+# 2.21: market-access normalisation — access items now carry structured facets decision_type
+#       (Coverage / Payment-coding / Procurement / Funding / Guidance) and payer_type (National HTA /
+#       Commercial payer / Hospital-provider / Government), exported for richer analytics. Data-only.
+TAXONOMY_VERSION = "2.21"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1221,6 +1224,47 @@ _MARKET_ACCESS_RE = re.compile(
     # hospital / national purchasing — market access via procurement even without reimbursement
     r"|\btender\b|framework agreement|call for tender|national (tender|procurement)"
     r"|health.system contract|adoption fund|diagnostic fund")
+
+
+# Access normalisation — structured facets for market-access items, for analytics / filtering /
+# trend analysis (per reviewer). Deterministic; populated only for the 'access' stage.
+_DT_COVERAGE = re.compile(r"coverage (decision|determination|polic)|\bncd\b|\blcd\b|will (cover|reimburse)"
+                          r"|reimbursement (decision|recommendation)|positive recommendation|prior authoriz|\bcovered\b")
+_DT_CODING = re.compile(r"\bcpt\b|\bhcpcs\b|\bntap\b|\bdrg\b|fee schedule|\bcoding\b|\btariff\b|payment (model|rate)")
+_DT_PROCURE = re.compile(r"procure|\btender\b|framework agreement|purchasing|supply chain|contract award|sam\.gov|find a tender")
+_DT_FUNDING = re.compile(r"\bfunding\b|\bfund\b|arpa.h|eu4health|horizon europe|innovation (fund|programme|program)|\bgrant\b")
+_DT_GUIDANCE = re.compile(r"\bguidance\b|early value assessment|\beva\b|\bappraisal\b|recommends?|evaluation")
+
+def _access_decision_type(text):
+    if _DT_COVERAGE.search(text): return "Coverage"
+    if _DT_CODING.search(text):   return "Payment / coding"
+    if _DT_PROCURE.search(text):  return "Procurement"
+    if _DT_FUNDING.search(text):  return "Funding"
+    if _DT_GUIDANCE.search(text): return "Guidance"
+    return "Coverage"
+
+_PT_COMMERCIAL = re.compile(r"unitedhealth|\baetna\b|\bcigna\b|\bhumana\b|elevance|\banthem\b|blue cross"
+                            r"|\bbcbs\b|kaiser|\binsurer\b|insurance (compan|group|giant)")
+_PT_NATIONAL = re.compile(r"\bnice\b|cadth|\bicer\b|\bg.ba\b|iqwig|\bhas\b|\btlv\b|\bpbac\b|\bmsac\b|\bhira\b"
+                          r"|conitec|\bdiga\b|\bcms\b|medicare|medicaid|zorginstituut|\baifa\b|aihta"
+                          r"|health technology assessment|\bhta\b")
+_PT_HOSPITAL = re.compile(r"\bnhs\b|hospital|health system|health board|veterans affairs|\bva\b|provider|supply chain")
+_PT_GOVERNMENT = re.compile(r"ministry|department of health|\bhhs\b|\bwho\b|world health|\boecd\b|government|commission")
+
+def _payer_type(source, text):
+    s = source + " " + text
+    if _PT_COMMERCIAL.search(s): return "Commercial payer"
+    if _PT_NATIONAL.search(s):   return "National HTA / payer"
+    if _PT_HOSPITAL.search(s):   return "Hospital / provider"
+    if _PT_GOVERNMENT.search(s): return "Government"
+    return "Other"
+
+def access_facets(i):
+    """(decision_type, payer_type) for access-stage items; ('', '') otherwise."""
+    if i.get("layer") != "access":
+        return "", ""
+    text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+    return _access_decision_type(text), _payer_type(i.get("source", "").lower(), text)
 
 
 def classify_evidence(i):
@@ -3196,7 +3240,7 @@ def write_export(items):
     data_dir.mkdir(parents=True, exist_ok=True)
     cols = ["id", "title", "url", "source", "source_type", "stage",
             "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
-            "region", "country", "date", "score", "topics"]
+            "decision_type", "payer_type", "region", "country", "date", "score", "topics"]
 
     def row_of(i):
         _et, _str = (i.get("etype"), i.get("strength"))
@@ -3214,6 +3258,8 @@ def write_export(items):
             "evidence_maturity": ("" if i.get("maturity") is None else i.get("maturity")),
             "healthcare_relevance": i.get("relevance") or healthcare_relevance(i),
             "ai_modality": i.get("modality", ai_modality(i)),
+            "decision_type": i.get("decision_type") or access_facets(i)[0],
+            "payer_type": i.get("payer_type") or access_facets(i)[1],
             "region": i.get("region", ""),
             "country": i.get("country", ""),
             "date": i.get("date", ""),           # "" = date unknown (never guessed)
@@ -3480,6 +3526,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["relevance"] = healthcare_relevance(i)
         i["modality"] = ai_modality(i)
         i["maturity"], i["maturity_lab"] = evidence_maturity(i)
+        i["decision_type"], i["payer_type"] = access_facets(i)   # market-access normalisation
 
     # Evidence-tab filter options, from what's actually in this build
     _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]
