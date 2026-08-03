@@ -143,7 +143,12 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       (e) build.json gains geography_completeness_pct. (f) CSP meta added. No new sources.
 # 2.25: review-detection gap — narrative reviews titled "current applications and future perspectives"
 #       now classify as Review/Secondary (were leaking as Journal study/Primary).
-TAXONOMY_VERSION = "2.25"
+# 2.26: industry-event fix — 'raises' only reads as a Funding round with a money/round context, so
+#       headlines like "AI misdiagnoses raise new liability questions" are no longer Funding round.
+# 2.27: CI resilience (no classification change) — errored-source guard: when >30% of sources error
+#       (e.g. Google News rate-limiting the runner), the build aborts and holds the last good site
+#       instead of publishing a gutted one. Activates under the existing FAIL_ON_DEGRADE env.
+TAXONOMY_VERSION = "2.27"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1227,7 +1232,9 @@ _EV_AUTH = re.compile(r"clearance|cleared|510\(k\)|de novo|authoris|authoriz|\ba
                       r"|ce mark|\bmdr\b|licen[sc]e|classification|premarket|marketing author")
 # industry: commercial-event subtype
 _EV_ACQ = re.compile(r"acqui|\bmerger\b|buyout|takeover")
-_EV_FUND = re.compile(r"raises?|funding round|series [a-e]\b|\bfunding\b|\binvestment\b|\binvestor|\binvests\b"
+# 'raises' only counts as funding with a money/round context — not "raises questions/concerns".
+_EV_FUND = re.compile(r"raises? (\$|€|£|us\$|[\d]|funding|capital|seed|series|a (series|seed|round)|venture)"
+                      r"|funding round|series [a-e]\b|\bfunding\b|\binvestment\b|\binvestor|\binvests\b"
                       r"|\bipo\b|venture round|seed round")
 _EV_PARTN = re.compile(r"partnership|\bpartners\b|\bpact\b|collaborat|alliance|licensing|\bink(s|ed)?\b|joins? forces")
 _EV_LAUNCH = re.compile(r"launch|unveil|introduc|debut|\breleases?\b|rolls? out|white label")
@@ -3924,10 +3931,19 @@ def _emit_ci_health(health, dead):
             pass
 
     if os.environ.get("FAIL_ON_DEGRADE"):
-        frac = len(steady) / (health["expected"] or 1)
+        exp = health["expected"] or 1
+        frac = len(steady) / exp
         if frac > 0.20:
             print(f"::error title=Pipeline degraded::{len(steady)} steady sources "
                   f"({frac:.0%}) produced nothing — exceeds the 20% threshold")
+            sys.exit(1)
+        # errored-source guard: a network outage (e.g. Google News rate-limiting the runner) can knock
+        # out a large block of sources at once and publish a gutted build over the good one. Abort
+        # instead, so the previous validated site stays live.
+        efrac = len(failed) / exp
+        if efrac > 0.30:
+            print(f"::error title=Pipeline degraded::{len(failed)} sources ({efrac:.0%}) errored — "
+                  f"exceeds the 30% threshold; holding the last good build rather than publishing a partial one")
             sys.exit(1)
 
 
