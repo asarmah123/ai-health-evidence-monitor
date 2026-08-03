@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-03T09:17:12Z",
+ "generated_at": "2026-08-03T09:24:07Z",
  "taxonomy_version": "2.19",
- "count": 91,
+ "count": 96,
  "fields": [
   "id",
   "title",
@@ -833,6 +833,24 @@
    "topics": "regulatory-activity"
   },
   {
+   "id": "f6de56b0f07a",
+   "title": "Court Examines AI Discovery in Medicare Advantage Coverage Decision Case",
+   "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQaE1oRDJ5aEhUcFVWYUZ3MlJXNlNNUFM3VkdmSXoyaGh5YkN0VTNTTC1xeE1EZ1Y5SmtJa3F1cjEzN2FZRnNxYVR6Zk10R25kajZKY1B6XzhOMFp0QmJ1UDBuUmFpaUppQjFZTTVEZXNudEVINjdSaTdfVUJ2bVJURGdoU2hLM1F4S3VjSlhCVEpZdzBHUlFQQnBqN2VGeGFqTHlwWFltWkJtdw?oc=5",
+   "source": "CMS coverage determinations (NCD/LCD) — AI",
+   "source_type": "HTA / payer",
+   "stage": "access",
+   "evidence_type": "Payment / coverage",
+   "evidence_strength": "Policy signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "",
+   "region": "North America",
+   "country": "United States",
+   "date": "2026-07-30",
+   "score": 8,
+   "topics": "cms-coverage;reimbursement-coverage"
+  },
+  {
    "id": "5abc9ca6ff3f",
    "title": "Changes in Clinician Time Expenditure and Visit Quantity With Artificial Intelligence-Powered Scribes-Reply.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42530899/",
@@ -975,6 +993,24 @@
    "date": "2026-07-28",
    "score": 1,
    "topics": "diga-updates;digital-therapeutics"
+  },
+  {
+   "id": "66b682bbf90d",
+   "title": "South Korea's FDA Sets First Concrete Clinical Trial Exemption Rules for Medical AI, Expands Special Provisions for Generative AI",
+   "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE1CWlBVclp5SmliWjd6eGlkd2R2Y3VHVGhxbVF5UlFjYkdFRERvZ3JRaURMUmREWUtua0REUDhycEoyQXFkY2pvb3R1VmYzUFB5V3NfWDFvTWx5NnhLdEFMUGdiX1hoVk1mQmdXeGY2bnJLUnNEZ3c?oc=5",
+   "source": "APAC AI device regulation & reimbursement",
+   "source_type": "Other",
+   "stage": "regulation",
+   "evidence_type": "Regulatory guidance",
+   "evidence_strength": "Policy signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "Generative AI / LLM",
+   "region": "Asia-Pacific",
+   "country": "South Korea",
+   "date": "2026-07-28",
+   "score": 3,
+   "topics": "regulatory-activity"
   },
   {
    "id": "2acf7ccbcb32",
@@ -1247,6 +1283,24 @@
    "topics": "regulatory-activity;radiology-imaging-ai"
   },
   {
+   "id": "49cbd3b939b4",
+   "title": "NHS AI tool improving waiting times across West Midlands | News - Greatest Hits Radio (Black Country & Shropshire)",
+   "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxNSVVYRHRub2tvdkdGS2hmTE5yczBOcURsQUJTRzhhb0RlVlJpSFZjWFY2dkNZbVRVZ2ZvWlZSZS1obXFMLUtKM0hMVzVJNkdIc3JVVFNZODVoRUF4R0JRRThla21wQ3h3dG5zVXVqZGJyZ3dEdkw1V0VCdU9xS2g4NlU3Z1o3Zy05VUdaMzg5d3ZrNVNGUkRLWWdlRGVxUXlYYnJYSTJ6WGhJQTZZS3FwQlpZRUV5d3E1dVhIV0R2a3gwaGNLNTZN?oc=5",
+   "source": "Digital-health reimbursement programmes (DiGA / PECAN / NHS AI funding)",
+   "source_type": "Other",
+   "stage": "industry",
+   "evidence_type": "Industry news",
+   "evidence_strength": "Market signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Adjacent AI",
+   "ai_modality": "",
+   "region": "Europe",
+   "country": "Germany",
+   "date": "2026-07-17",
+   "score": 0,
+   "topics": "diga-updates;digital-therapeutics"
+  },
+  {
    "id": "ea9f521c5597",
    "title": "Research progress on the application of virtual simulation in medical education.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42540122/",
@@ -1281,6 +1335,42 @@
    "date": "2026-07-16",
    "score": 0,
    "topics": "ai-clinical-studies"
+  },
+  {
+   "id": "b08662467b9d",
+   "title": "NHS AI use cases spotlighted by World Economic Forum for work with FLock.io - healthcare-in-europe.com",
+   "url": "https://news.google.com/rss/articles/CBMiigFBVV95cUxOZUhLUXpzNzFjai1oNGVqSUpnSFgxZGpBWHhHQlJmNkhZQzVOQnJxMXloTWxSR0JBU2JSUnQ5S0xrN1pLMmUwcUVpSEhLVnZvUjF5SDR2c2dJckpka1FkdzdQQUM3NV96VDFyYjZwdmxNU2RUNWJFXzBUckFjcjJySTBNcFVWYi16MEE?oc=5",
+   "source": "Digital-health reimbursement programmes (DiGA / PECAN / NHS AI funding)",
+   "source_type": "Other",
+   "stage": "industry",
+   "evidence_type": "Industry news",
+   "evidence_strength": "Market signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Adjacent AI",
+   "ai_modality": "",
+   "region": "Europe",
+   "country": "Germany",
+   "date": "2026-07-14",
+   "score": 0,
+   "topics": "diga-updates;digital-therapeutics"
+  },
+  {
+   "id": "2b33f4545907",
+   "title": "Health sector cautiously welcomes NHS AI rollout",
+   "url": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQcjJ2SFhnYVlfWDdFa3doR1VKd24yY0ZfQm1EWERUd2FaTlNIMXBUVFM0WE5qU2pqbkhxbDdCOVpnYWNWZHNMclo5eF9TWkRLdl94U25VeUllRDVxOFc4Z0VRakhBenFCTHVjd2dlaUlTQ3pSaFI5Y3F5WDRpeEZUOWtDbDFPNzBxdDJ3SjhVUmU?oc=5",
+   "source": "Digital-health reimbursement programmes (DiGA / PECAN / NHS AI funding)",
+   "source_type": "Other",
+   "stage": "industry",
+   "evidence_type": "Industry news",
+   "evidence_strength": "Market signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Adjacent AI",
+   "ai_modality": "",
+   "region": "Europe",
+   "country": "Germany",
+   "date": "2026-07-14",
+   "score": 0,
+   "topics": "diga-updates;digital-therapeutics"
   },
   {
    "id": "d35b66f283e7",
