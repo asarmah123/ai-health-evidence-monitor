@@ -1,6 +1,6 @@
 {
- "generated_at": "2026-08-03T15:41:19Z",
- "taxonomy_version": "2.27",
+ "generated_at": "2026-08-03T16:08:56Z",
+ "taxonomy_version": "2.28",
  "count": 91,
  "fields": [
   "id",
@@ -876,7 +876,7 @@
    "evidence_maturity": "",
    "healthcare_relevance": "Direct clinical",
    "ai_modality": "",
-   "decision_type": "Coverage",
+   "decision_type": "Unknown",
    "payer_type": "National payer",
    "region": "North America",
    "country": "United States",
