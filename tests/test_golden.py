@@ -357,19 +357,62 @@ def test_inclusion_rule_nonprimary():
         == ("Journal study", "Primary evidence")
 
 
+def test_geography_from_source():
+    """National regulator/HTA/payer source names place items even when the headline omits the country;
+    trade-press source names carry no country token, so those items stay unplaced."""
+    assert build.country_of({"source": "Canada — CADTH & Health Canada",
+                             "title": "New AI retinal imaging licence granted", "summary": ""}) == "Canada"
+    assert build.country_of({"source": "US commercial payer AI coverage policies",
+                             "title": "Aetna updates AI prior-authorization policy", "summary": ""}) == "United States"
+    assert build.country_of({"source": "AI health funding programmes (ARPA-H / EU4Health / Horizon / NHS)",
+                             "title": "Sonus ultrasound AI wins major ARPA-H award", "summary": ""}) == "United States"
+    # trade press about a global topic → unplaced (no false geography)
+    assert build.country_of({"source": "STAT — Health Tech",
+                             "title": "Clinical chatbots are taking medicine by storm", "summary": ""}) is None
+
+
+def test_adoption_attitude_commentary():
+    """Adoption-attitude / AI-aversion studies are tagged Commentary, not primary clinical evidence."""
+    et, strg = build.classify_evidence(
+        {"title": "AI Aversion: Do People Trust and Accept Artificial Intelligence Risk Calculator Recommendations?",
+         "summary": "", "layer": "clinical", "stype": "Journal / evidence"})
+    assert (et, strg) == ("Commentary", "Commentary")
+
+
+def test_csv_formula_injection_safe():
+    """CSV export neutralises spreadsheet formula injection from third-party titles."""
+    assert build._csv_safe("=HYPERLINK(\"http://evil\")").startswith("'=")
+    assert build._csv_safe("+cmd|calc").startswith("'+")
+    assert build._csv_safe("-2+3").startswith("'-")
+    assert build._csv_safe("@SUM(A1)").startswith("'@")
+    assert build._csv_safe("FDA clears AI tool") == "FDA clears AI tool"   # normal text untouched
+    assert build._csv_safe(8) == "8"
+
+
 def test_access_facets():
-    """Access items carry structured decision_type + payer_type; non-access items get empty facets."""
+    """Access items carry structured decision_type + payer_type; unmatched → 'Unknown' (no false
+    default); non-access items get empty facets."""
     def f(title, source, layer="access"):
         return build.access_facets({"title": title, "summary": "", "source": source, "layer": layer})
     assert f("CMS finalises National Coverage Determination for AI stroke triage", "CMS coverage determinations (NCD/LCD) — AI") \
-        == ("Coverage", "National HTA / payer")
+        == ("Coverage", "National payer")
     assert f("UnitedHealthcare updates medical policy on AI risk scoring", "US commercial payer AI coverage policies") \
         == ("Coverage", "Commercial payer")
-    assert f("NHS England signs national AI imaging framework agreement", "Hospital & national AI procurement")[0] == "Procurement"
-    assert f("ARPA-H funding programme backs AI diagnostics deployment", "AI health funding programmes")[0] == "Funding"
-    assert f("Medicare NTAP add-on payment and CPT coding for AI tool", "CMS coverage determinations (NCD/LCD) — AI")[0] in ("Coverage", "Payment / coding")
+    assert f("NICE recommends AI imaging via health technology evaluation", "NICE guidance")[0] == "HTA recommendation"
+    assert f("NHS England signs national AI imaging framework agreement", "Procurement & tenders") == ("Procurement", "Procurement body")
+    assert f("ARPA-H funding programme backs AI diagnostics", "AI health funding programmes")[0] == "Funding programme"
+    # unmatched access item → Unknown, never silently 'Coverage'
+    assert f("Vendor announces AI platform milestone", "Some access source") == ("Unknown", "Unknown")
     # non-access → empty facets
     assert build.access_facets({"title": "RCT of AI triage", "summary": "", "source": "NEJM AI", "layer": "clinical"}) == ("", "")
+
+
+def test_ctgov_geography():
+    """A trial's dominant location country (ClinicalTrials.gov structured metadata) wins over regex."""
+    assert build.country_of({"source": "AI/ML intervention trials", "geo_country": "Germany",
+                             "title": "AI decision support in the emergency department", "summary": ""}) == "Germany"
+    # normalisation of ClinicalTrials.gov country spelling happens in the fetcher via _CTGOV_GEO
+    assert build._CTGOV_GEO["Korea, Republic of"] == "South Korea"
 
 
 def test_payer_decision_outranks_procurement():
