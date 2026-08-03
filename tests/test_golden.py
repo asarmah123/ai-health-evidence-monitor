@@ -372,6 +372,46 @@ def test_geography_from_source():
                              "title": "Clinical chatbots are taking medicine by storm", "summary": ""}) is None
 
 
+def test_errored_source_guard():
+    """With FAIL_ON_DEGRADE set, a build where >30% of sources errored aborts (holds the last good
+    build); a few flaky sources do not."""
+    import os
+    saved = os.environ.get("FAIL_ON_DEGRADE")
+    os.environ["FAIL_ON_DEGRADE"] = "1"
+    try:
+        def health(nfail):
+            return {"expected": 10, "contributing": 10 - nfail, "zero_steady": [], "quiet": [],
+                    "undated": 0, "failed": [f"s{i}" for i in range(nfail)]}
+        # 40% errored → abort
+        aborted = False
+        try:
+            build._emit_ci_health(health(4), [])
+        except SystemExit:
+            aborted = True
+        assert aborted, "should abort when 40% of sources errored"
+        # 10% errored → no abort
+        ok = True
+        try:
+            build._emit_ci_health(health(1), [])
+        except SystemExit:
+            ok = False
+        assert ok, "should not abort on a single flaky source"
+    finally:
+        if saved is None:
+            os.environ.pop("FAIL_ON_DEGRADE", None)
+        else:
+            os.environ["FAIL_ON_DEGRADE"] = saved
+
+
+def test_funding_raise_context():
+    """'raises' is a Funding round only with money/round context — not 'raise questions'."""
+    def et(title):
+        return build.classify_evidence({"title": title, "summary": "", "layer": "industry", "stype": "Industry press"})[0]
+    assert et("AI misdiagnoses raise new liability questions for health systems") != "Funding round"
+    assert et("Hippocratic AI raises $141M Series B to scale clinical agents") == "Funding round"
+    assert et("Health startup raises Series A for AI triage") == "Funding round"
+
+
 def test_adoption_attitude_commentary():
     """Adoption-attitude / AI-aversion studies are tagged Commentary, not primary clinical evidence."""
     et, strg = build.classify_evidence(
