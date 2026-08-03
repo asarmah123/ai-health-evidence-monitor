@@ -129,7 +129,19 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.21: market-access normalisation — access items now carry structured facets decision_type
 #       (Coverage / Payment-coding / Procurement / Funding / Guidance) and payer_type (National HTA /
 #       Commercial payer / Hospital-provider / Government), exported for richer analytics. Data-only.
-TAXONOMY_VERSION = "2.21"
+# 2.22: security — CSV/Excel exports are now formula-injection safe (third-party feed titles beginning
+#       with = + - @ are prefixed with an apostrophe). Export-only; classification/history unchanged.
+# 2.23: geography completeness — country_of also matches the source name, so national regulator / HTA /
+#       payer items are placed even when the headline omits the country (US payers, ARPA-H, NUHS added);
+#       adoption-attitude leak fixed (AI aversion / trust-and-accept → Commentary); content-attribution
+#       principle added to Trust & limitations. Region breakdown will place more items going forward.
+# 2.24: maturity sprint — (a) access facets no longer default: decision_type/payer_type are 'Unknown'
+#       when unmatched (no false certainty); relabelled (Funding programme, HTA recommendation; HTA
+#       agency / National payer / Procurement body / Hospital-system). (b) structured geography from
+#       ClinicalTrials.gov location country (strongest source, wins over regex). (c) adoption-attitude
+#       phrase family broadened. (d) disclaimer: automated-classification + no-endorsement framing.
+#       (e) build.json gains geography_completeness_pct. (f) CSP meta added. No new sources.
+TAXONOMY_VERSION = "2.24"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -929,11 +941,23 @@ def fetch_ctgov(sources, lookback):
             outcomes = p.get("outcomesModule", {}).get("primaryOutcomes", []) or []
             primary = outcomes[0].get("measure", "") if outcomes else ""
             bits = " · ".join(x for x in [sponsor, phase, status] if x)
+            # structured geography: the trial's location countries (ClinicalTrials.gov's strongest
+            # metadata). Use the modal country when the trial is single- or dominant-country; leave
+            # blank for genuinely multinational trials rather than guess.
+            locs = p.get("contactsLocationsModule", {}).get("locations", []) or []
+            ctry = [l.get("country", "") for l in locs if l.get("country")]
+            geo = ""
+            if ctry:
+                from collections import Counter
+                top, n = Counter(ctry).most_common(1)[0]
+                if n >= len(ctry) * 0.6:                       # one country dominates the sites
+                    geo = _CTGOV_GEO.get(top, top)
             items.append({
                 "id": uid(nct), "title": clean(title, 200),
                 "url": f"https://clinicaltrials.gov/study/{nct}",
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when[:10] if when else "",
+                "geo_country": geo,
                 "summary": clean(f"{bits} — primary endpoint: {primary}" if primary else bits, 220),
             })
     return items, dead
@@ -943,6 +967,14 @@ def fetch_ctgov(sources, lookback):
 _HIST_NESTED = {"layers": "stage", "regions": "region", "clinical": "clinical",
                 "topics": "topic", "bodies": "body", "terms": "term",
                 "qa": "qa", "health": "health"}
+
+
+def _csv_safe(v):
+    """Neutralise spreadsheet formula (CSV) injection. Feed titles are third-party text and the
+    exports are meant to open in Excel/Sheets; a cell starting with = + - @ (or a tab / CR) can be
+    executed as a formula. Prefix such cells with an apostrophe so they are treated as text."""
+    s = "" if v is None else str(v)
+    return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
 
 
 def _history_wide_csv(hist):
@@ -974,7 +1006,7 @@ def _history_wide_csv(hist):
             if isinstance(d, dict):
                 for k, v in d.items():
                     flat[f"{pref}.{k}"] = ";".join(map(str, v)) if isinstance(v, list) else v
-        w.writerow(flat)
+        w.writerow({k: _csv_safe(v) for k, v in flat.items()})   # formula-injection safe
     return "﻿" + buf.getvalue()
 
 
@@ -1167,7 +1199,10 @@ _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective
                          r"|towards a framework|framework for implementing|\bipatient\b|\bidoctor\b"
                          # opinion / perspective and adoption-attitude studies — not clinical evidence
                          r"|\bsovereign|algorithmic fairness|ehealth literacy|e.health literacy"
-                         r"|digital health adoption|trust in ai\b|trust in artificial intelligence")
+                         r"|digital health adoption|trust in ai\b|trust in artificial intelligence"
+                         r"|\bai aversion\b|trust and accept|technology acceptance|acceptance of ai"
+                         r"|accept(ing)? ai|attitudes toward|perceptions of ai|willingness to use"
+                         r"|patient acceptance|clinician acceptance|user acceptance")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -1229,38 +1264,44 @@ _MARKET_ACCESS_RE = re.compile(
 # Access normalisation — structured facets for market-access items, for analytics / filtering /
 # trend analysis (per reviewer). Deterministic; populated only for the 'access' stage.
 _DT_COVERAGE = re.compile(r"coverage (decision|determination|polic)|\bncd\b|\blcd\b|will (cover|reimburse)"
-                          r"|reimbursement (decision|recommendation)|positive recommendation|prior authoriz|\bcovered\b")
-_DT_CODING = re.compile(r"\bcpt\b|\bhcpcs\b|\bntap\b|\bdrg\b|fee schedule|\bcoding\b|\btariff\b|payment (model|rate)")
+                          r"|reimbursement (decision|recommendation)|positive recommendation|prior authoriz|\bcovered\b|medical policy")
+_DT_CODING = re.compile(r"\bcpt\b|\bhcpcs\b|\bntap\b|\bdrg\b|fee schedule|\bcoding\b|\btariff\b|payment (model|rate)|add.on payment")
 _DT_PROCURE = re.compile(r"procure|\btender\b|framework agreement|purchasing|supply chain|contract award|sam\.gov|find a tender")
-_DT_FUNDING = re.compile(r"\bfunding\b|\bfund\b|arpa.h|eu4health|horizon europe|innovation (fund|programme|program)|\bgrant\b")
-_DT_GUIDANCE = re.compile(r"\bguidance\b|early value assessment|\beva\b|\bappraisal\b|recommends?|evaluation")
+_DT_FUNDING = re.compile(r"\bfunding\b|arpa.h|eu4health|horizon europe|innovation (fund|programme|program)|\bgrant\b|\bfund\b")
+_DT_HTA_REC = re.compile(r"health technology assessment|\bhta\b|\bappraisal\b|early value assessment|\beva\b"
+                         r"|benefit assessment|\bguidance\b|recommends?|reimbursement review")
 
 def _access_decision_type(text):
+    # No silent default — an unmatched access item is 'Unknown', never assumed to be a coverage decision.
     if _DT_COVERAGE.search(text): return "Coverage"
     if _DT_CODING.search(text):   return "Payment / coding"
     if _DT_PROCURE.search(text):  return "Procurement"
-    if _DT_FUNDING.search(text):  return "Funding"
-    if _DT_GUIDANCE.search(text): return "Guidance"
-    return "Coverage"
+    if _DT_FUNDING.search(text):  return "Funding programme"
+    if _DT_HTA_REC.search(text):  return "HTA recommendation"
+    return "Unknown"
 
 _PT_COMMERCIAL = re.compile(r"unitedhealth|\baetna\b|\bcigna\b|\bhumana\b|elevance|\banthem\b|blue cross"
                             r"|\bbcbs\b|kaiser|\binsurer\b|insurance (compan|group|giant)")
-_PT_NATIONAL = re.compile(r"\bnice\b|cadth|\bicer\b|\bg.ba\b|iqwig|\bhas\b|\btlv\b|\bpbac\b|\bmsac\b|\bhira\b"
-                          r"|conitec|\bdiga\b|\bcms\b|medicare|medicaid|zorginstituut|\baifa\b|aihta"
-                          r"|health technology assessment|\bhta\b")
-_PT_HOSPITAL = re.compile(r"\bnhs\b|hospital|health system|health board|veterans affairs|\bva\b|provider|supply chain")
-_PT_GOVERNMENT = re.compile(r"ministry|department of health|\bhhs\b|\bwho\b|world health|\boecd\b|government|commission")
+_PT_HTA = re.compile(r"\bnice\b|cadth|\bicer\b|\bg.ba\b|iqwig|\bhas\b|\btlv\b|\bpbac\b|\bmsac\b|\bneca\b|aihta"
+                     r"|inahta|conitec|zorginstituut|\baifa\b|health technology assessment|\bhta\b")
+_PT_NATIONAL = re.compile(r"\bcms\b|medicare|medicaid|\bhira\b|\bnhsa\b|\bdiga\b|bfarm"
+                          r"|national (payer|insurance|health service|health insurance)")
+_PT_PROCURE = re.compile(r"find a tender|sam\.gov|nhs supply chain|\btender\b|framework agreement|contract award|procure|purchasing")
+_PT_HOSPITAL = re.compile(r"\bnhs\b|hospital|health system|health board|veterans affairs|\bprovider\b|\btrust\b")
 
 def _payer_type(source, text):
+    # No silent default — an unmatched access item is 'Unknown', never assumed to be a specific payer.
     s = source + " " + text
     if _PT_COMMERCIAL.search(s): return "Commercial payer"
-    if _PT_NATIONAL.search(s):   return "National HTA / payer"
-    if _PT_HOSPITAL.search(s):   return "Hospital / provider"
-    if _PT_GOVERNMENT.search(s): return "Government"
-    return "Other"
+    if _PT_HTA.search(s):        return "HTA agency"
+    if _PT_NATIONAL.search(s):   return "National payer"
+    if _PT_PROCURE.search(s):    return "Procurement body"
+    if _PT_HOSPITAL.search(s):   return "Hospital / system"
+    return "Unknown"
 
 def access_facets(i):
-    """(decision_type, payer_type) for access-stage items; ('', '') otherwise."""
+    """(decision_type, payer_type) for access-stage items; ('', '') otherwise. Unmatched access items
+    are 'Unknown' rather than defaulted, so growth never manufactures false certainty."""
     if i.get("layer") != "access":
         return "", ""
     text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
@@ -1461,8 +1502,17 @@ def evidence_maturity(i):
     return 1, "Retrospective"   # default for journal studies
 
 
+# ClinicalTrials.gov country names → the canonical labels used in MACRO / the checks below.
+_CTGOV_GEO = {"Korea, Republic of": "South Korea", "Iran, Islamic Republic of": "Iran",
+              "Russian Federation": "Russia", "Viet Nam": "Vietnam", "Türkiye": "Turkey",
+              "Czechia": "Czech Republic", "Taiwan": "Taiwan", "Hong Kong": "Hong Kong"}
+
+
 def country_of(i):
-    """Best-effort country/jurisdiction for a regulatory or reimbursement item."""
+    """Best-effort country/jurisdiction for an item. Structured metadata (a trial's location country
+    from ClinicalTrials.gov) wins; then unambiguous source substrings; then content; then source name."""
+    if i.get("geo_country"):
+        return i["geo_country"]
     src = i.get("source", "")
     if any(k in src for k in ("FDA", "CMS")):
         return "United States"
@@ -1472,9 +1522,13 @@ def country_of(i):
         return "European Union"
     if "DiGA" in src:
         return "Germany"
-    blob = (i.get("title", "") + " " + i.get("summary", "")).lower()
+    # content first (most specific); then fall back to the source name — national regulator / HTA /
+    # payer sources encode their own geography (e.g. 'Canada — CADTH'), so items get placed even when
+    # the headline omits the country. Trade-press / journal source names carry no country token.
     checks = [
-        ("United States", ["ntap", "medicare", "medicaid", "510(k)", "de novo", "u.s. food and drug"]),
+        ("United States", ["ntap", "medicare", "medicaid", "510(k)", "de novo", "u.s. food and drug",
+                           "unitedhealthcare", "aetna", "cigna", "humana", "elevance", "anthem",
+                           "blue cross", "kaiser permanente", "arpa-h", "veterans affairs", "sam.gov"]),
         ("Germany", ["diga", "bfarm", "g-ba", "nub-"]),
         ("France", ["pecan", "cnedimts", "lppr", "haute autorite"]),
         ("Japan", ["pmda", "japan", "chuikyo", "mhlw"]),
@@ -1482,7 +1536,7 @@ def country_of(i):
         ("Australia", ["tga", "pbac", "msac", "australia"]),
         ("South Korea", ["mfds", "hira", "neca", "south korea", "korea"]),
         ("India", ["cdsco", "india"]),
-        ("Singapore", ["hsa singapore", "singapore", "agency for care effectiveness"]),
+        ("Singapore", ["hsa singapore", "singapore", "agency for care effectiveness", "nuhs", "singhealth", "synapxe"]),
         ("Thailand", ["hitap", "thailand", "thai fda"]),
         ("Canada", ["cadth", "health canada", "canada"]),
         ("Switzerland", ["swissmedic", "switzerland"]),
@@ -1506,10 +1560,13 @@ def country_of(i):
         ("United Kingdom", ["nice ", " nhs", "mhra", "ukca", "early value assessment"]),
         ("European Union", ["ema ", "ce mark", "ce-mark", "eudamed", "european commission", "eu ai act", "joint clinical assessment"]),
     ]
-    for label, keys in checks:
-        if any(k in blob for k in keys):
-            return label
-    return None
+    def _match(text):
+        for label, keys in checks:
+            if any(k in text for k in keys):
+                return label
+        return None
+    # content wins; source name only fills genuinely unplaced items
+    return _match((i.get("title", "") + " " + i.get("summary", "")).lower()) or _match(src.lower())
 
 
 def _body_role_counts(items):
@@ -3219,6 +3276,9 @@ def write_manifest(items, health):
         "silent_sources": len(health.get("zero_steady", [])),
         "errored_sources": len(health.get("failed", [])),
         "undated_items": health.get("undated"),
+        "geography_placed": sum(1 for i in items if i.get("region")),
+        "geography_completeness_pct": (round(100 * sum(1 for i in items if i.get("region")) / len(items), 1)
+                                       if items else 0.0),
         "qa": dict(_QA_STATS),
         "qa_passed": True,
     }
@@ -3285,7 +3345,7 @@ def write_export(items):
     w = csv.DictWriter(buf, fieldnames=cols)
     w.writeheader()
     for r in rows:
-        w.writerow(r)
+        w.writerow({k: _csv_safe(v) for k, v in r.items()})   # formula-injection safe
     # utf-8-sig: Excel then opens accented source names / em-dashes correctly
     (data_dir / "feed-latest.csv").write_text(buf.getvalue(), encoding="utf-8-sig")
     print(f"  export: docs/data/feed-latest.json + .csv ({len(rows)} items)")
@@ -3568,6 +3628,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     (DOCS / "index.html").write_text(f"""<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'">
 <title>AI in Health — Clinical, Regulatory &amp; Market Access Evidence Monitor</title>
 <meta name="description" content="Daily market intelligence on how AI moves through healthcare — from clinical evidence and regulatory authorisation to reimbursement and market adoption. Built from curated public sources.">
 <meta property="og:type" content="website">
@@ -3676,7 +3737,9 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     <li><b>No invented dates.</b> Dates are read from the source; when none exists the item reads “date unknown” and is excluded from date-based figures.</li>
     <li><b>No causal claims.</b> We report what changed and how unusual it is — never why, beyond what the counts support.</li>
     <li><b>Ranking is priority, not confidence.</b> Order follows explicit additive rules; every item shows its own “Why ranked” breakdown.</li>
-    <li><b>Verify against the source.</b> An automated monitor can miss, misclassify or fail to date an item, and sources may change or retract. Nothing here is regulatory, legal, financial or medical advice.</li>
+    <li><b>Informational only — automated classification.</b> Evidence stages, primary/secondary strength and market-access facets (decision and payer type) are generated by rules and a fixed taxonomy for triage — they are automated intelligence signals, not authoritative determinations, and may contain errors.</li>
+    <li><b>Verify against the source.</b> An automated monitor can miss, misclassify or fail to date an item, and sources may change or retract. Nothing here is medical, regulatory, reimbursement, legal or investment advice, and inclusion of an item implies no endorsement.</li>
+    <li><b>Headlines, linked to their origin.</b> We surface titles, links and short factual metadata with attribution — never full articles. All content remains © its original publisher; open the linked source to read and cite it.</li>
   </ul>
   <div class="sec">Privacy &amp; technical details</div>
   <div class="abt">No accounts, tracking cookies or personal-data storage — your read/unread state stays in your browser only. The site is rebuilt daily from curated public APIs, feeds and official publications and served as a static site via GitHub Pages. An <a href="feed.xml">RSS feed</a> of the top-ranked items is also available, and the current build can be downloaded as <a href="data/feed-latest.csv" download>CSV</a> or <a href="data/feed-latest.json" download>JSON</a>. The engine is open source; the curated source list and ranking configuration are maintained privately.</div>
