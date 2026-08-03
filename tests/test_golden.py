@@ -385,13 +385,29 @@ def test_procurement_stays_access():
 
 
 def test_jca_routes_to_heor():
-    """EU Joint Clinical Assessment is an HTA mechanism — an access-sourced JCA item is routed to
-    HEOR, not left in Industry."""
+    """EU Joint Clinical Assessment is an HTA mechanism — a JCA item lands in HEOR through the FULL
+    pipeline (refine_access routes it in, refine_heor must not evict it)."""
     items = [{"layer": "access", "source": "EU Joint Clinical Assessment (EUnetHTA / HTACG)",
               "url": "https://news.google.com/rss/x", "gnews": True,
               "title": "Strengthening pharma and medtech joint clinical assessment with AI", "summary": ""}]
     build.refine_access_layer(items)
+    build.refine_heor_layer(items)          # must survive both refiners
     assert items[0]["layer"] == "heor", items[0]["layer"]
+
+
+def test_out_of_scope_insect_and_sport():
+    """Insect-farming/animal-feed and non-health (sport) items from broad queries are dropped."""
+    items = [
+        {"source": "PubMed — AI × HTA/HEOR", "layer": "clinical", "url": "https://x/1",
+         "title": "Machine learning models for predicting crude protein and fat content in black soldier fly larvae", "summary": ""},
+        {"source": "LATAM — HTA & coverage (CONITEC)", "layer": "access", "url": "https://news.google.com/rss/2",
+         "gnews": True, "title": "An AI commentor will assist with coverage of the New Mexico Open golf tournament", "summary": ""},
+        {"source": "NEJM AI", "layer": "clinical", "url": "https://x/3",
+         "title": "Machine learning decision support reduces inpatient lab utilization", "summary": ""},
+    ]
+    kept = {i["title"] for i in build.relevance_gate(items)}
+    assert any("decision support" in t for t in kept)                       # real study kept
+    assert not any(("larvae" in t.lower() or "golf" in t.lower()) for t in kept)  # leaks dropped
 
 
 def test_hta_perspective_tagging():

@@ -123,7 +123,10 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 # 2.19: Ranking-only (history-neutral) — within Market access, a formal payer/coverage decision gets
 #       a small rank edge over procurement/tender announcements, so reimbursement decisions surface
 #       first. Stage counts and classification unchanged.
-TAXONOMY_VERSION = "2.19"
+# 2.20: leak fixes — (a) EU Joint Clinical Assessment now stays in HEOR end-to-end (added to _HEOR_RE
+#       so refine_heor doesn't evict what refine_access routed in); (b) out-of-scope filter extended to
+#       insect farming / aquaculture / animal-feed and non-health domains (sport).
+TAXONOMY_VERSION = "2.20"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -377,7 +380,10 @@ _ADMIN_RE = re.compile(r"\bauthor correction\b|\bcorrection to\b|\bcorrection:|\
 _OUT_OF_SCOPE_RE = re.compile(
     r"rhizosphere|abiotic stress|biotic stress|photosynth|agronom|agricultur|\bcrops?\b|crop yield"
     r"|dairy (cow|cattle)|milk yield|\bcattle\b|\bpoultry\b|\blivestock\b|veterinar|\bbovine\b"
-    r"|\bcanine\b|\bfeline\b|\bporcine\b|\bequine\b|transcription factor")
+    r"|\bcanine\b|\bfeline\b|\bporcine\b|\bequine\b|transcription factor"
+    # insect farming / aquaculture / animal feed, and non-health domains (sport) that slip broad queries
+    r"|black soldier fly|\blarvae\b|crude protein|aquaculture|fishmeal|insect (protein|meal|farming|rearing)"
+    r"|\bgolf\b|\bpga\b|premier league|\bnba\b|\bnfl\b")
 
 
 def relevance_gate(items):
@@ -463,7 +469,8 @@ _HEOR_RE = re.compile(r"cost|econom|budget|\bqaly\b|\bvalue\b|\bhta\b|reimburs|c
                       r"|market access|health technology|pharmacoeconom|\bprice\b|payer|affordab"
                       r"|disinvest|appraisal|decision.analy"
                       # value-adjacent AI signals (reviewer): implementation economics, workflow, ops
-                      r"|workflow|productivity|operational|\befficien|implementation (cost|econom|impact)")
+                      r"|workflow|productivity|operational|\befficien|implementation (cost|econom|impact)"
+                      r"|joint clinical assessment")
 
 
 def refine_heor_layer(items):
