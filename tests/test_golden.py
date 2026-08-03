@@ -430,6 +430,17 @@ def test_csv_formula_injection_safe():
     assert build._csv_safe(8) == "8"
 
 
+def test_litigation_digest_bucket():
+    """A coverage/regulatory court case is grouped under 'Legal / litigation', not 'Regulatory actions'."""
+    o = {"clears": [], "econ": [],
+         "reg": [{"id": "x1", "source": "CMS coverage determinations (NCD/LCD) — AI", "layer": "access",
+                  "title": "Court Examines AI Discovery in Medicare Advantage Coverage Decision Case", "summary": ""}]}
+    whys = {w for w, _ in build._digest(o)}
+    assert "Legal / litigation" in whys
+    assert "Regulatory actions" not in whys        # not double-counted / mis-framed
+    assert "Legal / litigation" in build.WHY_TEXT and "Legal / litigation" in build.WHY_MATTERS
+
+
 def test_coverage_litigation_not_a_decision():
     """A court case about a coverage decision is not itself a coverage decision — decision_type Unknown."""
     dt, pt = build.access_facets({"layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI",

@@ -153,7 +153,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       HEOR-stage items (matches the stage/topic), not "items from a PubMed query"; (c) Geography
 #       By-region/country counts all placed items (matches completeness metric); (d) hero label
 #       "Regulatory actions"→"Regulatory updates" (regulation-stage items include guidance/statements).
-TAXONOMY_VERSION = "2.28"
+# 2.29: featured-story framing — a coverage/regulatory court case now surfaces under a "Legal /
+#       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
+TAXONOMY_VERSION = "2.29"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1751,6 +1753,10 @@ def _digest(o):
 
     add(o["clears"], "Device authorisations")
     add(o["econ"], "Trials · economic endpoint")
+    # litigation before regulatory actions, so a coverage/regulatory court case is framed as a legal
+    # development rather than a regulator's decision.
+    add([i for i in o["reg"] if _LITIGATION_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower())],
+        "Legal / litigation")
     add([i for i in o["reg"] if any(b in i["source"] for b in ("FDA", "CMS", "EMA", "NICE"))],
         "Regulatory actions")
     return picks[:8]
@@ -1765,6 +1771,8 @@ WHY_TEXT = {
                                   "reimbursement case, not just clinical validation.",
     "Regulatory actions": "A move by a major regulator or HTA body — the decisions that shape whether, "
                           "and how, an AI product reaches patients.",
+    "Legal / litigation": "A legal or court case bearing on how AI is regulated, covered or used — an "
+                          "emerging signal to watch, not a settled decision.",
 }
 
 # Short, factual significance line per digest group — explains why the CATEGORY matters
@@ -1773,6 +1781,7 @@ WHY_MATTERS = {
     "Device authorisations": "Authorisation is the first step from evidence toward commercial deployment.",
     "Trials · economic endpoint": "Economic endpoints build the reimbursement case, not just clinical proof.",
     "Regulatory actions": "Major-regulator and HTA actions shape how — and whether — a product reaches patients.",
+    "Legal / litigation": "Litigation and legal challenges can reshape AI coverage, liability and regulation ahead of any formal decision.",
 }
 
 # Category (not cause) for each tracked term — lets Trends say WHAT KIND of signal a
@@ -2010,6 +2019,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
                       f'<span class="digbox-n">{len(gitems)}</span></summary>{wm_html}{grows}</details>')
         _WHY_PHRASE = {"Device authorisations": "new device authorisations",
                        "Trials · economic endpoint": "trials with an economic endpoint",
+                       "Legal / litigation": "legal and litigation developments",
                        "Regulatory actions": "actions from a major regulator (FDA, CMS, EMA, NICE)"}
         _cats = "; ".join(_WHY_PHRASE[w] for w in groups if w in _WHY_PHRASE) or "the day\u2019s highest-consequence updates"
         digest = f'<details class="ovsec" open><summary class="secsum">Priority updates</summary><div class="seccap">The highest-consequence updates today, pulled to the top by rule — {_cats}.</div><div class="digboxes">{boxes}</div></details>'
