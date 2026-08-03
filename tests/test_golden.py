@@ -430,6 +430,22 @@ def test_csv_formula_injection_safe():
     assert build._csv_safe(8) == "8"
 
 
+def test_dedup_prefers_primary_url():
+    """When the same story arrives via a Google-News redirect and a direct primary feed, the collapse
+    keeps the primary link."""
+    items = [
+        {"id": "g", "title": "MHRA clarifies regulatory status of ambient voice technologies in the NHS",
+         "url": "https://news.google.com/rss/articles/CBMxyz", "source": "MHRA (UK)", "layer": "regulation",
+         "date": "2026-07-29", "summary": ""},
+        {"id": "p", "title": "MHRA clarifies regulatory status of ambient voice technologies in the NHS",
+         "url": "https://www.gov.uk/government/news/mhra-ambient-voice-technologies", "source": "MHRA — GOV.UK",
+         "layer": "regulation", "date": "2026-07-29", "summary": ""},
+    ]
+    out = build.collapse_near_duplicates(items)
+    assert len(out) == 1, [i["url"] for i in out]
+    assert "news.google.com" not in out[0]["url"] and "gov.uk" in out[0]["url"], out[0]["url"]
+
+
 def test_litigation_digest_bucket():
     """A coverage/regulatory court case is grouped under 'Legal / litigation', not 'Regulatory actions'."""
     o = {"clears": [], "econ": [],

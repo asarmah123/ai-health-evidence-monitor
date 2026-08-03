@@ -155,7 +155,9 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       "Regulatory actions"→"Regulatory updates" (regulation-stage items include guidance/statements).
 # 2.29: featured-story framing — a coverage/regulatory court case now surfaces under a "Legal /
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
-TAXONOMY_VERSION = "2.29"
+# 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
+#       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
+TAXONOMY_VERSION = "2.30"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -4049,8 +4051,12 @@ def collapse_near_duplicates(items):
     order = {n: n for n in range(len(items))}
     keep = []
     for members in clusters.values():
-        # representative: prefer dated, then the fullest title, then the highest rank
-        best = max(members, key=lambda k: (1 if items[k].get("date") else 0,
+        # representative: prefer a PRIMARY link (publisher/regulator/journal) over a Google-News
+        # redirect for the same story, then dated, then the fullest title, then the highest rank.
+        def _primary(k):
+            return 0 if "news.google.com" in items[k].get("url", "") else 1
+        best = max(members, key=lambda k: (_primary(k),
+                                           1 if items[k].get("date") else 0,
                                            len(items[k].get("title", "")),
                                            rank_score(items[k])[0]))
         keep.append((order[best], items[best]))
