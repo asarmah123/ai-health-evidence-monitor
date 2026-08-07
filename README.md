@@ -4,7 +4,7 @@
 
 Daily intelligence on how AI technologies move through healthcare — from research and clinical validation to regulation, health technology assessment, reimbursement and adoption.
 
-`Curated public sources` · `regulators, HTA & payer bodies across 20+ markets` · `North America · Europe · APAC · LATAM · MEA`
+`Curated public sources` · `regulators, HTA & payer bodies across 25+ markets` · `North America · Europe · APAC · LATAM · MEA`
 
 It pulls public signals from regulators, journals, trial registries and industry press into one briefing that refreshes every morning — framed the way a market-access team thinks, around two questions: **can it be sold?** (authorisation) and **will it be paid for?** (coverage).
 
@@ -27,7 +27,7 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 - **Spot what's unusual** — stage activity and term mentions compared against their own recent baseline (attention, not importance).
 - **Track the two gates** — *can it be sold?* (authorisation) vs *will it be paid?* (coverage).
 - **Read leading indicators** — trials registering an economic endpoint, peer-reviewed value papers.
-- **Compare activity across regions and countries** — regulators, HTA and payer bodies across 15+ markets.
+- **Compare activity across regions and countries** — regulators, HTA and payer bodies across 25+ markets.
 - **Explore and filter** — search and filter the feed by stage, region, source type and date.
 - **Follow topics** — subscribe to curated evidence streams (FDA authorisations, CMS coverage, NICE evaluations, oncology AI, digital therapeutics…) via a shareable link and a per-topic RSS feed.
 - **Subscribe via RSS** — the top-ranked items as a standard feed, plus a feed per Follow topic.
@@ -78,10 +78,10 @@ Everything runs on a schedule and renders to a single static page, so there is n
 | Layer | Examples |
 |---|---|
 | **Research** | arXiv (cs.AI / cs.LG / cs.CL) |
-| **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine |
+| **Clinical evidence** | ClinicalTrials.gov, NEJM AI, Lancet Digital Health, Nature Medicine, Cochrane reviews |
 | **HEOR & HTA** | ICER, HTAi, ISPOR, PubMed AI × HTA searches |
-| **Regulation** | FDA, EMA, MHRA, PMDA, ANVISA (openFDA, US Federal Register) |
-| **Reimbursement** | CMS, NICE, DiGA, G-BA/IQWiG, CADTH, PBAC, CONITEC |
+| **Regulation** | FDA, EMA, MHRA, PMDA, NMPA/CDSCO, ANVISA (openFDA, US Federal Register) |
+| **Reimbursement** | CMS, US commercial payers, NICE, DiGA, G-BA/IQWiG, CADTH, PBAC, NHSA, CONITEC, ABDM |
 | **Industry** | STAT, Endpoints, Fierce, MedTech Dive |
 
 ---
