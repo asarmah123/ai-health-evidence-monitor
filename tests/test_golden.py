@@ -673,7 +673,7 @@ def test_heor_precision():
     assert lay["Retraction"] == "clinical"   # correction/retraction → out of the value stream
     assert lay["Weekly OHD"] == "industry"   # newsletter/digest → out
     assert lay["HTA apprai"] == "heor"       # genuine HTA-body evidence stays
-    assert lay["AI workflo"] == "heor"       # value-adjacent (workflow/productivity) stays HEOR
+    assert lay["AI workflo"] == "clinical"   # decision 1: bare workflow/productivity is NOT HEOR → clinical
 
 
 def test_ctgov_ai_gate_and_pr_junk():
@@ -1039,6 +1039,93 @@ def test_regulation_gnews_query_non_regulatory():
     assert items[0]["layer"] == "industry", "non-reg launch via regulator-named query should leave regulation"
     assert items[1]["layer"] == "regulation", "genuine regulatory guidance should stay"
     assert items[2]["layer"] == "regulation", "native regulator feed should always stay"
+
+
+def test_pubmed_health_relevance_required():
+    """Cat-3 fix: a PubMed item with no health signal is dropped even from an AI-native source."""
+    ewaste = {"title": "Donor-acceptor cationic porous organic polymers for photo-enhanced gold recovery from electronic waste",
+              "summary": "A machine-learning-optimised polymer for selective gold adsorption from e-waste leachate.",
+              "layer": "heor", "source": "PubMed — AI × HTA/HEOR", "url": "https://pubmed.ncbi.nlm.nih.gov/9/"}
+    assert ewaste not in build.relevance_gate([ewaste])
+    health = {"title": "Cost-effectiveness of an AI triage tool in the emergency department",
+              "summary": "We assessed patient outcomes and costs.", "layer": "heor",
+              "source": "PubMed — AI × HTA/HEOR", "url": "https://pubmed.ncbi.nlm.nih.gov/10/"}
+    assert health in build.relevance_gate([health])
+
+
+def test_regulation_type_keyed_on_stage():
+    """Cat-2/5 fix: an item routed to industry is not typed 'Regulatory guidance' just because its
+    source name carries a regulator token."""
+    et, _ = build.classify_evidence({"title": "How AI Is Flipping Power Dynamics in Modern Healthcare",
+        "layer": "industry", "source": "LATAM — device authorisation (ANVISA / COFEPRIS)",
+        "url": "https://news.google.com/rss/articles/ZZZ", "summary": ""})
+    assert et != "Regulatory guidance", et
+    # a genuine regulation-stage item still types as regulatory
+    assert build.classify_evidence({"title": "MHRA issues guidance on AI devices", "layer": "regulation",
+        "source": "MHRA — GOV.UK (primary)", "stype": "Regulator", "summary": ""})[0] == "Regulatory guidance"
+
+
+def test_commentary_out_of_industry():
+    """Cat-5 fix: industry-stage opinion/commentary is routed to research, not left in Industry."""
+    items = [{"title": "Opinion: AI won't enhance physician autonomy. It will diminish it",
+              "layer": "industry", "source": "STAT — Health Tech", "summary": "", "pubtype": []},
+             {"title": "HealthSnap raises $25M for AI virtual care", "layer": "industry",
+              "source": "MobiHealthNews", "summary": "", "pubtype": []}]
+    build.refine_commentary_layer(items)
+    assert items[0]["layer"] == "research", "industry opinion should move to research"
+    assert items[1]["layer"] == "industry", "a funding story stays in industry"
+
+
+def test_heor_requires_economic_signal():
+    """Decision 1: HEOR needs an explicit economic/value signal; bare workflow/efficiency is not HEOR."""
+    items = [
+        {"title": "AI in dermatologic pharmacokinetics: quantitative modeling and optimization of therapeutics",
+         "layer": "heor", "source": "PubMed — AI × HTA/HEOR", "summary": ""},
+        {"title": "An AI tool improves workflow efficiency and productivity in radiology",
+         "layer": "heor", "source": "PubMed — AI × HTA/HEOR", "summary": ""},
+        {"title": "Cost-effectiveness and budget impact of an AI triage tool",
+         "layer": "heor", "source": "PubMed — AI × HTA/HEOR", "summary": ""},
+    ]
+    build.refine_heor_layer(items)
+    assert items[0]["layer"] == "clinical", "PK paper with no economics should leave HEOR"
+    assert items[1]["layer"] == "clinical", "bare workflow/efficiency is not HEOR"
+    assert items[2]["layer"] == "heor", "genuine cost-effectiveness stays HEOR"
+
+
+def test_industry_to_access_override():
+    """Decision 2: genuine coverage/payment/procurement/funding routes Industry → Access; deployment stays."""
+    items = [
+        {"title": "NHS Supply Chain awards national procurement framework for AI diagnostics", "layer": "industry", "source": "MedTech Dive", "summary": ""},
+        {"title": "CMS finalises reimbursement coding for the AI algorithm", "layer": "industry", "source": "STAT — Health Tech", "summary": ""},
+        {"title": "Hospital rolls out AI scribe across its clinics", "layer": "industry", "source": "MobiHealthNews", "summary": ""},
+    ]
+    build.refine_industry_to_access(items)
+    assert items[0]["layer"] == "access"
+    assert items[1]["layer"] == "access"
+    assert items[2]["layer"] == "industry", "ordinary deployment stays industry"
+
+
+def test_industry_to_regulation_canonical():
+    """Decision 3: regulatory-event stories route Industry → Regulation; commercial-primary stays."""
+    items = [
+        {"title": "London launches AI health regulatory sandbox for NHS innovation", "layer": "industry", "source": "AI health funding programmes", "summary": ""},
+        {"title": "Are AI scribes medical devices? U.K. regulator weighs in", "layer": "industry", "source": "STAT — Health Tech", "summary": ""},
+        {"title": "AI imaging startup raises $40M after FDA clearance", "layer": "industry", "source": "MobiHealthNews", "summary": ""},
+    ]
+    build.refine_industry_to_regulation(items)
+    assert items[0]["layer"] == "regulation"
+    assert items[1]["layer"] == "regulation"
+    assert items[2]["layer"] == "industry", "funding-primary story stays industry despite mentioning clearance"
+
+
+def test_education_dropped_unless_commercial():
+    """Decision 4: pure education/training programmes are dropped unless they carry a commercial signal."""
+    edu = {"title": "CEP IIT Delhi Announces the Launch of Batch 2 of its Executive Programme for AI in Healthcare",
+           "layer": "industry", "source": "The Batch", "url": "https://x", "summary": ""}
+    assert edu not in build.relevance_gate([edu])
+    edu_funded = {"title": "AI training programme launches with $10M funding and hospital partnership",
+                  "layer": "industry", "source": "MobiHealthNews", "url": "https://y", "summary": ""}
+    assert edu_funded in build.relevance_gate([edu_funded])
 
 
 # --- standalone runner --------------------------------------------------------

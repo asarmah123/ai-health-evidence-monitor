@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.32"
+TAXONOMY_VERSION = "2.34"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -410,6 +410,16 @@ _ADMIN_RE = re.compile(r"\bauthor correction\b|\bcorrection to\b|\bcorrection:|\
 # 'ListS_SFOPH-...' download entries — a raw filename, not a human-readable publication title.
 _FILENAME_TITLE_RE = re.compile(r"^\s*lists?_|^\s*download\b|^\s*file[_\s]"
                                 r"|\.(pdf|docx?|xlsx?|pptx?|zip|csv)\s*$", re.I)
+# Pure education/training programmes (category QA decision 4): dropped from the feed unless they
+# carry a material commercial signal (funding/partnership/M&A) — Industry is not an education bucket.
+_EDUCATION_RE = re.compile(r"executive (programme|program)|training (programme|program|course)|\bcurriculum\b"
+                           r"|\bcertification\b|\bbootcamp\b|masterclass|short course|\bmooc\b"
+                           r"|fellowship programme|batch \d+ of|\bcohort\b (programme|intake)|enrol(l|ment)")
+# Commercial-primary signal: when this is the substantive event, an item stays in Industry even if it
+# also mentions regulation (a company story about a regulatory development is still commercial).
+_COMMERCIAL_PRIMARY_RE = re.compile(
+    r"\braises?\b (\$|€|£|us\$|[\d]|funding|capital|series|seed|round|venture)|funding round|series [a-e]\b"
+    r"|\bipo\b|acqui|\bmerger\b|buyout|takeover|\bpartnership\b|\bpartners\b|collaborat|joins? forces|\bdeal\b")
 # Out-of-scope: veterinary / agriculture / plant-science papers slip in via broad PubMed AI queries
 # ("machine learning … crop yield", "abiotic stress in plants", "milk yield in dairy cows"). Not
 # human-health evidence — dropped globally, including for otherwise AI-native journal sources.
@@ -440,9 +450,20 @@ def relevance_gate(items):
             continue   # correction / retraction / erratum / reply — administrative notice, not evidence
         if _FILENAME_TITLE_RE.search(i.get("title", "")):
             continue   # filename-like / non-article title (e.g. 'ListS_SFOPH-…') — ingestion artefact
+        if _EDUCATION_RE.search(i.get("title", "").lower()) and not _COMMERCIAL_PRIMARY_RE.search(
+                (i.get("title", "") + " " + i.get("summary", "")).lower()):
+            continue   # pure education/training programme, no commercial signal — not evidence (decision 4)
         if _OUT_OF_SCOPE_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()):
             continue   # veterinary / agriculture / plant-science — not human-health evidence
         t, s = i.get("title", ""), i.get("summary", "")
+        # Broad cross-journal PubMed standing queries ("PubMed — AI × HTA/HEOR", "PubMed — digital
+        # health value…") scope AI but NOT health, so they pull non-health science (materials
+        # chemistry, e-waste, environmental engineering) that merely uses ML. Now that abstracts flow,
+        # require health-relevance for these. Targeted at the "PubMed —" standing queries only, so
+        # health-JOURNAL feeds (NEJM AI, JAMA, Cochrane, Value in Health…) are unaffected.
+        # (Fixes the 'gold recovery from electronic waste' leak without touching journal items.)
+        if i.get("source", "").startswith("PubMed") and not _health_relevant(t, s):
+            continue
         if i.get("layer") == "research":
             # Health-only research: inherently AI (frontier newsletters + arXiv), but keep only
             # AI-in-health work; drop general-AI capability news.
@@ -509,13 +530,16 @@ def refine_access_layer(items):
 # bodies/journals are always kept.
 _HEOR_BODY_SOURCES = {"Value in Health", "ISPOR — AI Strategic Initiative",
                       "INAHTA (HTA network)", "OHDSI Blog", "FDA Sentinel (real-world evidence)"}
-_HEOR_RE = re.compile(r"cost|econom|budget|\bqaly\b|\bvalue\b|\bhta\b|reimburs|coverage|willingness.to.pay"
-                      r"|cost.?effectiv|cost.?util|resource use|utili[sz]ation|real.world|\brwe\b"
-                      r"|market access|health technology|pharmacoeconom|\bprice\b|payer|affordab"
-                      r"|disinvest|appraisal|decision.analy"
-                      # value-adjacent AI signals (reviewer): implementation economics, workflow, ops
-                      r"|workflow|productivity|operational|\befficien|implementation (cost|econom|impact)"
-                      r"|joint clinical assessment")
+# Tightened (category QA): HEOR requires an EXPLICIT economic / value-assessment signal. Bare
+# workflow/efficiency/productivity/operational are NOT HEOR triggers (they produced false positives);
+# an item needs cost/economics/QALY/HTA/reimbursement/value-assessment/RWE to stay in the value stream.
+_HEOR_RE = re.compile(r"\bcosts?\b|cost.?effectiv|cost.?util|cost.?benefit|cost.?minimi|econom"
+                      r"|budget impact|budget.impact|\bqaly\b|\bdaly\b|willingness.to.pay"
+                      r"|value (assessment|framework|dossier|for money|based)|value.based (care|payment|pricing)"
+                      r"|\bhta\b|health technology assessment|reimburs|coverage (decision|determination|polic|recommend)"
+                      r"|\bpayer\b|pharmacoeconom|\bpric(e|ing)\b|affordab|disinvest|\bappraisal\b"
+                      r"|decision.analytic|resource (use|utili[sz]ation|cost|consumption)"
+                      r"|real.world (evidence|cost|data|outcome)|\brwe\b|joint clinical assessment|market access")
 
 
 def refine_heor_layer(items):
@@ -606,16 +630,58 @@ def refine_regulation_layer(items):
 
 
 def refine_commentary_layer(items):
-    """Opinion/commentary is not clinical evidence (audit E3). Move clinical-stage commentary to
-    'research' (Research/Policy commentary) — NOT industry, which is a market/news catch-all.
-    Detected as elsewhere: the _EV_COMMENT keyword net plus NLM comment/editorial publication types."""
+    """Opinion/commentary is not clinical or industry evidence (audit E3 + category-5 review). Move
+    clinical- AND industry-stage commentary to 'research' (Research/Policy commentary) — so Industry
+    stops acting as a general-purpose opinion bucket. Detected as elsewhere: the _EV_COMMENT keyword
+    net plus NLM comment/editorial publication types."""
     for i in items:
-        if i.get("layer") != "clinical":
+        if i.get("layer") not in ("clinical", "industry"):
             continue
         text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
         pt = " ".join(str(x) for x in (i.get("pubtype") or [])).lower()
         if _EV_COMMENT.search(text) or any(x in pt for x in ("comment", "editorial", "letter")):
             i["layer"] = "research"
+    return items
+
+
+# Canonical routing (category QA decisions 2 & 3): the SUBSTANTIVE event decides the category, not
+# the source/publisher. Industry holds commercial/company/investment/partnership only.
+_REG_EVENT_RE = re.compile(
+    r"regulatory sandbox|regulatory (pathway|clearance|approval|status|framework|classification)"
+    r"|medical device (status|classification|licen[sc]e|regulation)|are .{0,25}medical devices"
+    r"|classif\w+ as (a )?medical device|510\(k\)|de novo|\bce mark\b|marketing authoris"
+    r"|premarket|notified body|issues? (draft )?guidance|weighs in")
+_ACCESS_OVERRIDE_RE = re.compile(
+    r"coverage (decision|determination|polic|recommend)|\bncd\b|\blcd\b|reimburs"
+    r"|will (cover|reimburse|pay)|prior authoriz|formulary|fee schedule|\bntap\b|\bdrg\b|\bcpt\b|\bhcpcs\b"
+    r"|payment (model|rate|determination|framework)|coding decision"
+    r"|procure(ment)?|\btender\b|framework agreement|contract award|purchasing (framework|agreement)"
+    r"|\bdiga\b|\bpecan\b|medtech funding mandate|funding (programme|program|mechanism|award|scheme)"
+    r"|arpa.h|eu4health|national (procurement|purchasing)|access (programme|pathway|fund)")
+
+
+def refine_industry_to_regulation(items):
+    """An industry-stage story whose substantive event is a regulatory action (sandbox, device-status
+    ruling, regulatory pathway) belongs in Regulation — unless the primary signal is a commercial
+    event (funding / M&A / partnership), which keeps it in Industry (decision 3)."""
+    for i in items:
+        if i.get("layer") != "industry":
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        if _REG_EVENT_RE.search(text) and not _COMMERCIAL_PRIMARY_RE.search(text):
+            i["layer"] = "regulation"
+    return items
+
+
+def refine_industry_to_access(items):
+    """An industry-stage story about a genuine coverage / payment / procurement / funding MECHANISM
+    belongs in market access — not ordinary deployment or adoption news (decision 2)."""
+    for i in items:
+        if i.get("layer") != "industry":
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        if _ACCESS_OVERRIDE_RE.search(text):
+            i["layer"] = "access"
     return items
 
 
@@ -1518,7 +1584,9 @@ def _classify_core(i):
         return "Preprint", "Primary evidence"
     # Regulatory routing precedence: a regulator's announcement is policy, not a study design — so a
     # sandbox/guidance whose summary merely mentions 'real-world evidence' is NOT typed RWE (audit E5b).
-    if st == "Regulator" or layer == "regulation":
+    # Keyed on the STAGE (not source name): an item from a regulator-named source that was routed to
+    # industry must NOT be typed 'Regulatory guidance' just because its source carries a regulator token.
+    if layer == "regulation":
         if _EV_GOV.search(t):          return "AI governance", "Policy signal"
         if _EV_AUTH.search(t):         return "Regulatory authorisation", "Policy signal"
         if _EV_REG_ENFORCE.search(t):  return "Enforcement / safety", "Policy signal"
@@ -4347,6 +4415,8 @@ def main():
     items = refine_method_papers(items)  # method vs clinical: pure model-dev papers → research
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
     items = refine_commentary_layer(items) # commentary/opinion is not clinical evidence → research
+    items = refine_industry_to_regulation(items) # canonical: regulatory-event stories → regulation
+    items = refine_industry_to_access(items)     # canonical: coverage/procurement/funding → access
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
