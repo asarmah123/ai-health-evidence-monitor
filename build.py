@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.34"
+TAXONOMY_VERSION = "2.36"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -562,6 +562,26 @@ def refine_heor_layer(items):
     return items
 
 
+# A clinical-stage study whose PRIMARY contribution is an economic evaluation belongs in HEOR, not
+# clinical evidence (category-2 boundary). Stronger than _HEOR_RE — an explicit economic-evaluation
+# signal, not a passing 'cost' mention.
+_ECON_EVAL_RE = re.compile(r"cost.?effective|cost.?util|cost.?benefit|cost.?minimi|budget impact|budget.impact"
+                           r"|\bqaly\b|\bdaly\b|economic evaluation|economic model|willingness.to.pay"
+                           r"|value for money|incremental cost|\bicer\b|health.economic")
+
+
+def refine_clinical_to_heor(items):
+    """A clinical-stage study whose primary contribution is an economic evaluation (cost-effectiveness,
+    budget impact, QALY, economic model) belongs in HEOR (category-2 boundary: economics ≠ clinical evidence)."""
+    for i in items:
+        if i.get("layer") != "clinical":
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        if _ECON_EVAL_RE.search(text):
+            i["layer"] = "heor"
+    return items
+
+
 def refine_research_layer(items):
     """Research is preprint/journal research only. Frontier-AI newsletters and company blogs that
     passed the health gate — product launches ('Launching Health in ChatGPT'), training programmes,
@@ -578,7 +598,14 @@ def refine_research_layer(items):
 # contribution, not clinical evidence. Move those from clinical → research; anything mentioning a
 # patient / trial / cohort / real-world / clinical-outcome signal stays in clinical.
 _METHOD_DEV_RE = re.compile(r"foundation model|self.supervised|pre.?train(ing|ed)?|\bpretrain"
-                            r"|model architecture|representation learning")
+                            r"|model architecture|representation learning"
+                            # methodological AI contributions (capability, not clinical evaluation) →
+                            # Category 1 — provided there's no patient/clinical-validation signal below
+                            r"|reporting (guideline|standard|checklist)|guideline for reporting|\bchecklist\b"
+                            r"|software (package|toolkit|library)|\br package\b|python (package|library|toolkit)"
+                            r"|open.source (tool|package|framework|library)|retrieval.augmented|\brag\b"
+                            r"|benchmark(ing)? (method|framework|dataset|suite)|stress.test|red.team(ing)?"
+                            r"|jailbreak|adversarial (attack|robustness|example)|fabricated (disease|condition)")
 _CLINICAL_VALID_RE = re.compile(
     r"\bpatient|\btrial\b|\bcohort\b|real.world|diagnostic accuracy|\bprospective|randomi[sz]ed"
     r"|\bscreening\b|\bhospital|point.of.care|deployed|clinical (outcome|validation|trial|dialogue"
@@ -630,18 +657,12 @@ def refine_regulation_layer(items):
 
 
 def refine_commentary_layer(items):
-    """Opinion/commentary is not clinical or industry evidence (audit E3 + category-5 review). Move
-    clinical- AND industry-stage commentary to 'research' (Research/Policy commentary) — so Industry
-    stops acting as a general-purpose opinion bucket. Detected as elsewhere: the _EV_COMMENT keyword
-    net plus NLM comment/editorial publication types."""
-    for i in items:
-        if i.get("layer") not in ("clinical", "industry"):
-            continue
-        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
-        pt = " ".join(str(x) for x in (i.get("pubtype") or [])).lower()
-        if _EV_COMMENT.search(text) or any(x in pt for x in ("comment", "editorial", "letter")):
-            i["layer"] = "research"
-    return items
+    """Opinion/commentary is not evidence and has no canonical home in the taxonomy (models /
+    clinical evidence / regulatory events / economics / coverage / commercial). Per the taxonomy
+    hierarchy, GENERAL COMMENTARY IS EXCLUDED — it is not parked in research (which would pollute
+    'frontier AI models & methods') nor in industry (a commercial bucket). Uses the same canonical
+    determination that types an item 'Commentary' (title/summary keywords + NLM comment/editorial types)."""
+    return [i for i in items if classify_evidence(i)[0] != "Commentary"]
 
 
 # Canonical routing (category QA decisions 2 & 3): the SUBSTANTIVE event decides the category, not
@@ -658,6 +679,19 @@ _ACCESS_OVERRIDE_RE = re.compile(
     r"|procure(ment)?|\btender\b|framework agreement|contract award|purchasing (framework|agreement)"
     r"|\bdiga\b|\bpecan\b|medtech funding mandate|funding (programme|program|mechanism|award|scheme)"
     r"|arpa.h|eu4health|national (procurement|purchasing)|access (programme|pathway|fund)")
+
+
+def refine_research_precision(items):
+    """Category 1 = frontier AI models / architectures / benchmarks / methods / capability evaluations
+    (healthcare relevance direct OR adjacent). Evidence *synthesis* — reviews, systematic reviews,
+    meta-analyses — is not a frontier-AI contribution; route it to clinical. Preprints and model/
+    benchmark work (incl. medical foundation models) stay. Commentary is already excluded upstream."""
+    for i in items:
+        if i.get("layer") != "research":
+            continue
+        if classify_evidence(i)[0] in ("Review", "Systematic review", "Meta-analysis"):
+            i["layer"] = "clinical"
+    return items
 
 
 def refine_industry_to_regulation(items):
@@ -1380,7 +1414,9 @@ _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective
                          r"|digital health adoption|trust in ai\b|trust in artificial intelligence"
                          r"|\bai aversion\b|trust and accept|technology acceptance|acceptance of ai"
                          r"|accept(ing)? ai|attitudes toward|perceptions of ai|willingness to use"
-                         r"|patient acceptance|clinician acceptance|user acceptance")
+                         r"|patient acceptance|clinician acceptance|user acceptance"
+                         r"|public acceptance|societal acceptance|acceptance of artificial intelligence"
+                         r"|acceptability of (ai|artificial|the (ai|tool|system|technolog))")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -3370,8 +3406,10 @@ LAYER_NAV = {
         "programmes, payer guidance and funding mechanisms that translate evidence and authorisation "
         "into routine clinical use — including where market access comes through purchasing, not payment."),
     "industry": ("Industry, investment & partnerships",
-        "The business of healthcare AI — company strategy, investments, partnerships, acquisitions, "
-        "product launches and commercial adoption signals."),
+        "Who is doing business around healthcare AI — company strategy, investment and M&A, "
+        "partnerships and licensing, product launches, vendor/procurement and build-vs-buy decisions, "
+        "and enterprise adoption tied to a commercial actor. Regulatory, reimbursement, clinical-evidence "
+        "and broad digital-health policy signals live in their own categories."),
 }
 
 
@@ -4411,10 +4449,12 @@ def main():
     items = apply_source_caps(items, _caps)
     items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
     items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
+    items = refine_clinical_to_heor(items) # clinical economic evaluations → HEOR (category-2 boundary)
     items = refine_research_layer(items) # research precision: newsletters/product news → industry
     items = refine_method_papers(items)  # method vs clinical: pure model-dev papers → research
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
-    items = refine_commentary_layer(items) # commentary/opinion is not clinical evidence → research
+    items = refine_commentary_layer(items) # general commentary is excluded (not evidence)
+    items = refine_research_precision(items) # research = models/methods only; reviews → clinical
     items = refine_industry_to_regulation(items) # canonical: regulatory-event stories → regulation
     items = refine_industry_to_access(items)     # canonical: coverage/procurement/funding → access
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")

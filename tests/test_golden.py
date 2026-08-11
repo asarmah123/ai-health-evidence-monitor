@@ -991,15 +991,28 @@ def test_litigation_type_and_ranking():
     assert "Reimbursement / coverage" in build.rank_score(cov)[1]
 
 
-def test_commentary_moved_out_of_clinical():
-    """P1-8: clinical-stage commentary is routed to research (Research/Policy), never industry."""
-    items = [{"title": "Artificial intelligence as a new commercial determinant of health",
-              "layer": "clinical", "source": "BMJ — AI in medicine", "summary": "", "pubtype": []},
-             {"title": "A randomized controlled trial of an AI sepsis alert", "layer": "clinical",
-              "source": "npj Digital Medicine", "summary": "", "pubtype": ["Randomized Controlled Trial"]}]
-    build.refine_commentary_layer(items)
-    assert items[0]["layer"] == "research", "commentary should leave clinical"
-    assert items[1]["layer"] == "clinical", "a real RCT should stay clinical"
+def test_commentary_excluded():
+    """Commentary is EXCLUDED from the feed (not parked in research/industry) — taxonomy hierarchy."""
+    comment = {"title": "Artificial intelligence as a new commercial determinant of health",
+               "layer": "clinical", "source": "BMJ — AI in medicine", "summary": "", "pubtype": []}
+    rct = {"title": "A randomized controlled trial of an AI sepsis alert", "layer": "clinical",
+           "source": "npj Digital Medicine", "summary": "", "pubtype": ["Randomized Controlled Trial"]}
+    kept = build.refine_commentary_layer([comment, rct])
+    assert comment not in kept, "commentary should be excluded"
+    assert rct in kept, "a real RCT should stay"
+
+
+def test_research_precision_reviews_to_clinical():
+    """Research = models/methods/benchmarks; evidence-synthesis reviews route to clinical."""
+    items = [
+        {"title": "MedPixel: a unified pixel-language model for medical imaging", "layer": "research",
+         "source": "arXiv", "url": "https://arxiv.org/abs/1", "summary": ""},
+        {"title": "The state of digital health adoption in Nevada: a narrative review", "layer": "research",
+         "source": "PubMed — AI × HTA/HEOR", "url": "https://pubmed.ncbi.nlm.nih.gov/2/", "summary": "",
+         "pubtype": ["Review"]}]
+    build.refine_research_precision(items)
+    assert items[0]["layer"] == "research", "a model preprint stays in research"
+    assert items[1]["layer"] == "clinical", "an evidence-synthesis review leaves research"
 
 
 def test_scrape_nav_rejected():
@@ -1065,15 +1078,15 @@ def test_regulation_type_keyed_on_stage():
         "source": "MHRA — GOV.UK (primary)", "stype": "Regulator", "summary": ""})[0] == "Regulatory guidance"
 
 
-def test_commentary_out_of_industry():
-    """Cat-5 fix: industry-stage opinion/commentary is routed to research, not left in Industry."""
-    items = [{"title": "Opinion: AI won't enhance physician autonomy. It will diminish it",
-              "layer": "industry", "source": "STAT — Health Tech", "summary": "", "pubtype": []},
-             {"title": "HealthSnap raises $25M for AI virtual care", "layer": "industry",
-              "source": "MobiHealthNews", "summary": "", "pubtype": []}]
-    build.refine_commentary_layer(items)
-    assert items[0]["layer"] == "research", "industry opinion should move to research"
-    assert items[1]["layer"] == "industry", "a funding story stays in industry"
+def test_commentary_industry_excluded():
+    """Industry-stage opinion/commentary is excluded (not left in Industry); commercial news stays."""
+    op = {"title": "Opinion: AI won't enhance physician autonomy. It will diminish it",
+          "layer": "industry", "source": "STAT — Health Tech", "summary": "", "pubtype": []}
+    fund = {"title": "HealthSnap raises $25M for AI virtual care", "layer": "industry",
+            "source": "MobiHealthNews", "summary": "", "pubtype": []}
+    kept = build.refine_commentary_layer([op, fund])
+    assert op not in kept, "industry opinion should be excluded"
+    assert fund in kept, "a funding story stays in industry"
 
 
 def test_heor_requires_economic_signal():
@@ -1126,6 +1139,39 @@ def test_education_dropped_unless_commercial():
     edu_funded = {"title": "AI training programme launches with $10M funding and hospital partnership",
                   "layer": "industry", "source": "MobiHealthNews", "url": "https://y", "summary": ""}
     assert edu_funded in build.relevance_gate([edu_funded])
+
+
+def test_clinical_economic_to_heor():
+    """Cat-2 boundary: a clinical study whose primary contribution is an economic evaluation → HEOR."""
+    items = [
+        {"title": "Cost-effectiveness of an AI skin-cancer triage tool", "layer": "clinical", "source": "PubMed — AI × HTA/HEOR", "summary": ""},
+        {"title": "A prospective diagnostic evaluation of an AI pancreatic-cyst classifier", "layer": "clinical", "source": "AI/ML intervention trials", "summary": ""},
+    ]
+    build.refine_clinical_to_heor(items)
+    assert items[0]["layer"] == "heor", "economic evaluation → HEOR"
+    assert items[1]["layer"] == "clinical", "a clinical diagnostic study stays clinical"
+
+
+def test_methodological_ai_to_research():
+    """Cat-1 vs Cat-2: methodological AI (reporting guideline, software, RAG, safety) → research, when
+    there is no patient/clinical-validation signal; a patient study stays clinical."""
+    def lay(title):
+        items = [{"title": title, "layer": "clinical", "source": "medRxiv — Health Informatics",
+                  "url": "https://www.medrxiv.org/x", "summary": ""}]
+        build.refine_method_papers(items)
+        return items[0]["layer"]
+    assert lay("CiteSure: a biomedical retrieval-augmented RAG method") == "research"
+    assert lay("The CINEX consensus guideline for reporting clinical informatics") == "research"
+    assert lay("A software package for rigorous survival analysis") == "research"
+    assert lay("A prospective trial of an AI sepsis alert in ICU patients") == "clinical"   # patient signal → stays
+
+
+def test_acceptance_studies_excluded():
+    """Cat-2 boundary: acceptance/attitude studies are commentary (excluded), not clinical evidence."""
+    et = build.classify_evidence({"title": "Public Acceptance of Artificial Intelligence in Health Care",
+                                  "layer": "clinical", "source": "JAMA Network — AI in medicine",
+                                  "stype": "Journal / evidence", "summary": ""})[0]
+    assert et == "Commentary", et
 
 
 # --- standalone runner --------------------------------------------------------
