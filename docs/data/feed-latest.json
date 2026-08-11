@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-11T19:38:13Z",
+ "generated_at": "2026-08-11T19:54:22Z",
  "taxonomy_version": "2.46",
- "count": 95,
+ "count": 94,
  "fields": [
   "id",
   "title",
@@ -1043,26 +1043,6 @@
    "date": "2026-08-06",
    "score": 1,
    "topics": ""
-  },
-  {
-   "id": "e12b888a19b0",
-   "title": "Young workers skip cancer screenings as AI replaces the doctor visit",
-   "url": "https://news.google.com/rss/articles/CBMizwFBVV95cUxPbWFST3R5bGJfWGxvaVdzVEVERHZXc2t1MHp6QVdqME5UOFBsellWUTBDU1h5X18yd25VTTM5dElnVFc0LWRhcjl6LVlwSGp2Q0lNNmxtSTRiSVJGejU1cmkyZkpjLXhqZWo3b2VyR3FmTHVxOWl5NGZWSVVtaWNoUGFuOVpMNWYzUGJxSXY0SktDWXFKMEUwWmtMTUNuTWpQcFVVOGZISENIazE3QjNaVGdJUzNrRV85d25iV2E0REIyNjZNcUlILURrVWRlY0U?oc=5",
-   "source": "China — reimbursement & payment (NHSA)",
-   "source_type": "Regulator",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Clinical decision support",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-05",
-   "score": 1,
-   "topics": "oncology-ai"
   },
   {
    "id": "22acceb91452",
