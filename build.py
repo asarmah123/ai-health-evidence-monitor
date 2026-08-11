@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.44"
+TAXONOMY_VERSION = "2.45"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1979,6 +1979,35 @@ def _econ_endpoint(i):
     return "clinicaltrials" in i["url"] and any(w in i.get("summary", "").lower() for w in econ)
 
 
+# A genuine regulator DEVICE authorisation of a product — De Novo / 510(k) / PMA / marketing
+# authorisation / medical-device licence granted. Used by the Authorisation gate and the FDA feed so a
+# real authorisation reported via NEWS (not only the openFDA API) is counted — otherwise the gate reads
+# 0 on a day the page elsewhere shows and trends an actual FDA De Novo authorisation.
+_DEVICE_AUTH_EVENT_RE = re.compile(
+    r"\bde novo\b|510\(k\)|\bpma\b|premarket (clearance|approval|authoris|authoriz)"
+    r"|market(ing)? authoris(ation|ed|é)|grant(s|ed)? (a )?(de novo|clearance|marketing authoris|authoris)"
+    r"|receives? .{0,30}(medical device licen[cs]e|clearance|marketing authoris)"
+    r"|clears? .{0,25}(device|algorithm|software|system)", re.I)
+
+
+def _is_device_authorisation(i):
+    """A genuine device authorisation — from the openFDA API OR reported via news. Excludes rule/
+    requirement changes (e.g. 'software NOW NEEDS a licence') which are not a product authorisation."""
+    if i.get("source", "").startswith("FDA — AI device"):
+        return True
+    if i.get("layer") != "regulation":
+        return False
+    return bool(_DEVICE_AUTH_EVENT_RE.search((i.get("title", "") + " " + i.get("summary", ""))))
+
+
+def _is_fda_authorisation(i):
+    """A device authorisation specifically by the FDA — openFDA API or FDA-attributed news."""
+    if i.get("source", "").startswith("FDA — AI device"):
+        return True
+    txt = i.get("title", "") + " " + i.get("summary", "")
+    return "fda" in txt.lower() and i.get("layer") == "regulation" and bool(_DEVICE_AUTH_EVENT_RE.search(txt))
+
+
 SPECIALTIES = [
     ("Radiology & imaging", ["radiolog", "imaging", "mammogra", "ct scan", " mri", "x-ray", "chest"]),
     ("Cardiology", ["cardio", "cardiac", "heart", "coronary", "ecg", "echocardiog", "arrhythmia"]),
@@ -2053,7 +2082,13 @@ def overview_stats(items):
     market-access lens. No LLM — all rules, all auditable."""
     reg = [i for i in items if i["layer"] in ("regulation", "access")]
     clears = [i for i in items if i["source"].startswith("FDA — AI device")]
-    trials = [i for i in items if "clinicaltrials" in i["url"]]
+    # Authorisation gate: any genuine device authorisation, whether from the openFDA API or reported via
+    # news — so a visible FDA De Novo is not undercounted as 0.
+    authorisations = [i for i in items if _is_device_authorisation(i)]
+    # Only CLINICAL-stage trials belong in the "N AI trials … economic endpoint" denominator; a trial
+    # reclassified to HEOR (an economic/cost-effectiveness study) is value evidence, not a pending trial,
+    # and is counted under HTA & value evidence instead — otherwise the denominator contradicts itself.
+    trials = [i for i in items if "clinicaltrials" in i["url"] and i["layer"] == "clinical"]
     econ = [i for i in trials if _econ_endpoint(i)]
     papers = [i for i in items if i["layer"] == "heor"]   # actual HTA/value-stage evidence, not "from a PubMed query"
 
@@ -2094,7 +2129,8 @@ def overview_stats(items):
     bodies = _body_role_counts(items)
 
     return {
-        "reg": reg, "clears": clears, "trials": trials, "econ": econ, "papers": papers,
+        "reg": reg, "clears": clears, "authorisations": authorisations,
+        "trials": trials, "econ": econ, "papers": papers,
         "research": research, "access": access, "pathways": pathways,
         "layers": layers, "coverage_actions": coverage_actions,
         "focus": clinical_focus(items),
@@ -2350,8 +2386,8 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             f'<div class="tile"><div class="tl">{t}</div><div class="tv">{v}</div>'
             f'<div class="ts">{sub if "&" in sub else html.escape(sub)}</div></div>' for t, v, sub in rows)
     gate_tiles = [
-        ("Authorisation", len(o["clears"]),
-         "Recent FDA AI authorisations — can it be sold? (published with a lag)."),
+        ("Authorisation", len(o["authorisations"]),
+         "AI device authorisations (FDA, Health Canada and others) — can it be sold? FDA publishes with a lag."),
         ("Coverage", len(o["coverage_actions"]),
          "Recent CMS and NICE payment decisions — will it be paid for?"),
     ]
@@ -3535,7 +3571,7 @@ TOPICS = [
     {"slug": "ai-research", "pillar": "Evidence", "label": "AI research & models",
      "pred": lambda i: i["layer"] == "research"},
     {"slug": "fda-ai-authorisations", "pillar": "Authorisation", "label": "FDA AI authorisations",
-     "pred": lambda i: i.get("source", "").startswith("FDA — AI device")},
+     "pred": _is_fda_authorisation},
     {"slug": "ema-activity", "pillar": "Authorisation", "label": "EMA activity",
      "pred": lambda i: "EMA" in i.get("source", "")},
     {"slug": "mhra-updates", "pillar": "Authorisation", "label": "MHRA updates",
@@ -3557,7 +3593,8 @@ TOPICS = [
     {"slug": "oncology-ai", "pillar": "Clinical area", "label": "Oncology AI",
      "pred": lambda i: any(w in _topic_text(i) for w in ("oncolog", "cancer", "tumour", "tumor"))},
     {"slug": "cardiology-ai", "pillar": "Clinical area", "label": "Cardiology AI",
-     "pred": lambda i: any(w in _topic_text(i) for w in ("cardio", "cardiac", "heart"))},
+     "pred": lambda i: any(w in _topic_text(i) for w in
+                          ("cardio", "cardiac", "heart", "coronary", "ecg", "echocardiog", "arrhythmia"))},
     {"slug": "radiology-imaging-ai", "pillar": "Clinical area", "label": "Radiology & imaging AI",
      "pred": lambda i: any(w in _topic_text(i) for w in ("radiolog", "imaging", "mri", "ct scan", "x-ray", "radiograph"))},
     {"slug": "mental-health-ai", "pillar": "Clinical area", "label": "Mental-health AI",
@@ -3952,7 +3989,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     else:
         contrib = len({i["source"] for i in items}); exp = contrib
         nfail = len({d.split(":")[0].strip() for d in dead})
-    status_short = f"Built {built} · {contrib} of {exp} sources updated"
+    status_short = f"Built {built} · {contrib} of {exp} source feeds updated"
     _dead_names = sorted({d.split(":")[0].strip() for d in dead})
     status_full = f"{nfail} returned nothing · {undated} undated this run"
     if _dead_names:
@@ -3960,7 +3997,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     build_health = (
         '<div class="sec" style="margin-top:6px">Build health</div>'
         '<div class="bh">'
-        f'<div class="bh-m"><div class="bh-v">{contrib}/{exp}</div><div class="bh-l">sources updated</div></div>'
+        f'<div class="bh-m"><div class="bh-v">{contrib}/{exp}</div><div class="bh-l">source feeds updated</div></div>'
         f'<div class="bh-m"><div class="bh-v">{nfail}</div><div class="bh-l">returned nothing</div></div>'
         f'<div class="bh-m"><div class="bh-v">{undated}</div><div class="bh-l">undated \u00b7 shown as \u201cdate unknown\u201d</div></div>'
         f'<div class="bh-m"><div class="bh-v" style="font-size:13px;font-weight:600">{built}</div><div class="bh-l">last built</div></div>'

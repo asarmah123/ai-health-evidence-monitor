@@ -1322,6 +1322,49 @@ def test_featured_prefers_primary_url():
     assert not reg.search("MHRA clarifies regulatory status of AI scribes")
 
 
+def test_authorisation_counts_news_reported_fda():
+    """2.45 Analysis #1: a genuine FDA authorisation reported via NEWS counts toward the Authorisation
+    gate and the FDA feed (not only openFDA-API items); a rule/requirement change does not."""
+    denovo = {"title": "FDA Grants De Novo Authorization for AI-Based Coronary Inflammation Quantification",
+              "layer": "regulation", "source": "AI-enabled device clearances", "summary": "", "url": "https://news.google.com/x"}
+    diagnos = {"title": "DIAGNOS Receives Health Canada Medical Device Licence for CARA System",
+               "layer": "regulation", "source": "Canada — CADTH & Health Canada", "summary": "", "url": "https://x"}
+    rule = {"title": "CDSCO's New Rules: AI Diagnostic Software Now Needs Medical Device Licence",
+            "layer": "regulation", "source": "India — device authorisations", "summary": "", "url": "https://y"}
+    guidance = {"title": "MHRA calls for regulation of AI in healthcare",
+                "layer": "regulation", "source": "MHRA (UK)", "summary": "", "url": "https://z"}
+    assert build._is_device_authorisation(denovo)
+    assert build._is_device_authorisation(diagnos)
+    assert not build._is_device_authorisation(rule), "a 'now needs a licence' rule is not a product authorisation"
+    assert not build._is_device_authorisation(guidance), "a call for regulation is not an authorisation"
+    # FDA-specific: only the FDA De Novo, not the Health Canada licence
+    assert build._is_fda_authorisation(denovo)
+    assert not build._is_fda_authorisation(diagnos)
+
+
+def test_econ_trial_denominator_clinical_only():
+    """2.45 Analysis #2: the 'N AI trials' denominator counts CLINICAL-stage trials only, so a trial
+    reclassified to HEOR (a cost-effectiveness study) is not counted as a trial-with-no-economic-endpoint."""
+    items = [
+        {"title": "A prospective AI sepsis-alert trial", "layer": "clinical", "source": "ClinicalTrials.gov",
+         "url": "https://clinicaltrials.gov/ct2/show/NCT1", "summary": ""},
+        {"title": "SloMo2: Implementation, Effectiveness, and Cost-effectiveness Study", "layer": "heor",
+         "source": "ClinicalTrials.gov", "url": "https://clinicaltrials.gov/ct2/show/NCT2",
+         "summary": "cost-effectiveness of a digital tool"},
+    ]
+    o = build.overview_stats(items)
+    assert len(o["trials"]) == 1, "the HEOR-reclassified cost-effectiveness study is excluded from the trial denominator"
+
+
+def test_cardiology_topic_matches_specialty_scan():
+    """2.45 Analysis #3: the cardiology-ai follow-topic recognises the same terms as the specialty
+    tally (coronary/ECG/echo), so the two do not disagree on the same 'Cardiology' label."""
+    pred = build.TOPIC_BY_SLUG["cardiology-ai"]["pred"]
+    coronary = {"title": "FDA De Novo for AI coronary inflammation quantification", "summary": "",
+                "layer": "regulation", "source": "x", "url": "https://x"}
+    assert pred(coronary), "a coronary-artery AI item is a cardiology item in both tallies"
+
+
 # --- standalone runner --------------------------------------------------------
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
