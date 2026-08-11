@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.43"
+TAXONOMY_VERSION = "2.44"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -455,6 +455,25 @@ _OUT_OF_SCOPE_RE = re.compile(
     r"|electrocatal|battery (cathode|anode|electrolyte|cell|material|storage|technolog)"
     r"|high.entropy (alloy|engineering|material|oxide)"
     r"|river sediment|dredg(e|ed|ing)|wastewater|sewage sludge|\beffluent\b|geopolymer")
+# Pharmaceutical drug authorisations are out of scope: this monitor tracks AI/software/devices, not
+# small-molecule or biologic drug approvals. These slip in via broad news queries when the only "AI"
+# token is a vendor/publisher name (e.g. "MedPal AI Highlights MHRA Approval of ... GLP-1 pill").
+# Anchored on an approval verb within ~60 chars of a drug token (either order) so a drug-DISCOVERY
+# AI paper that merely mentions a molecule is NOT caught.
+_DRUG_APPROVAL_RE = re.compile(
+    r"(approv|authoris|authoriz|clear(ed|ance)|licen[sc]|green.?light).{0,60}"
+    r"\b(glp-?1|weight[- ]loss (pill|drug)|oral (glp|weight|pill)|\bpill\b|tablet|capsule|"
+    r"semaglutide|orforglipron|tirzepatide|retatrutide|lecanemab|donanemab)\b"
+    r"|\b(glp-?1|weight[- ]loss (pill|drug)|semaglutide|orforglipron|tirzepatide|retatrutide|"
+    r"lecanemab|donanemab)\b.{0,60}(approv|authoris|authoriz|clear(ed|ance)|licen[sc]|green.?light)", re.I)
+# AI / software / device tokens that KEEP an item in scope even when a drug + approval co-occur (e.g.
+# "FDA clears AI algorithm for insulin dosing"). Deliberately excludes bare "AI" so a vendor NAME
+# alone (MedPal AI, Doctronic) cannot rescue a pure drug-approval story.
+_AI_DEVICE_SCOPE_RE = re.compile(
+    r"machine learning|deep learning|\balgorithm\b|software as a medical device|\bsamd\b|neural network|"
+    r"large language model|\bllm\b|computer.?aided|clinical decision support|\bcad[et]\b|"
+    r"ai[- ](model|device|system|tool|software|diagnostic|algorithm|platform)|medical device|"
+    r"imaging ai|predictive model|diagnostic (software|algorithm)", re.I)
 
 
 def relevance_gate(items):
@@ -473,6 +492,9 @@ def relevance_gate(items):
             continue   # pure education/training programme, no commercial signal — not evidence (decision 4)
         if _OUT_OF_SCOPE_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()):
             continue   # veterinary / agriculture / plant-science — not human-health evidence
+        _blob = i.get("title", "") + " " + i.get("summary", "")
+        if _DRUG_APPROVAL_RE.search(_blob) and not _AI_DEVICE_SCOPE_RE.search(_blob):
+            continue   # pharmaceutical drug authorisation (e.g. GLP-1 pill) — tracks AI, not drugs
         t, s = i.get("title", ""), i.get("summary", "")
         # Broad cross-journal PubMed standing queries ("PubMed — AI × HTA/HEOR", "PubMed — digital
         # health value…") scope AI but NOT health, so they pull non-health science (materials
@@ -1540,6 +1562,12 @@ _DT_HTA_REC = re.compile(r"health technology assessment|\bhta\b|\bappraisal\b|ea
 # Litigation about a coverage decision is not itself a payer decision — don't count it as one.
 _LITIGATION_RE = re.compile(r"\bcourt\b|court case|lawsuit|\blitigation\b|\bsued\b|\bsues\b|plaintiff"
                             r"|class action|legal challenge|files? (a )?suit|\bjudge\b")
+# Reference-guide genre (law-firm country chapters, comparative practice guides). These are secondary
+# reference publications, not discrete regulator ACTIONS — keep them in the feed but never let one
+# headline the featured card as "a move by a major regulator".
+_REFERENCE_GUIDE_RE = re.compile(
+    r"laws and regulations\s+\d{4}|legal guide|\biclg\b|\bchambers\b|practice guide|comparative guide"
+    r"|country comparison|jurisdictional guide|q&a guide|\bhandbook\b", re.I)
 
 def _access_decision_type(text):
     # No silent default — an unmatched access item is 'Unknown', never assumed to be a coverage decision.
@@ -2078,11 +2106,14 @@ def _digest(o):
 
     def _islit(i):
         return bool(_LITIGATION_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()))
+    def _isref(i):
+        return bool(_REFERENCE_GUIDE_RE.search(i.get("title", "")))
     add(o["clears"], "Device authorisations")
     add(o["econ"], "Trials · economic endpoint")
     # genuine regulatory and coverage ACTIONS lead; litigation is demoted BELOW them — a court case is
     # not itself an authorisation, coverage or regulatory decision, so it must not lead the featured card.
-    add([i for i in o["reg"] if i["layer"] == "regulation" and not _islit(i)], "Regulatory actions")
+    # Reference-guide chapters (ICLG-style "Laws and Regulations 2026") are excluded — they are not events.
+    add([i for i in o["reg"] if i["layer"] == "regulation" and not _islit(i) and not _isref(i)], "Regulatory actions")
     add([i for i in o["reg"] if i["layer"] == "access" and not _islit(i)], "Coverage / access")
     add([i for i in o["reg"] if _islit(i)], "Legal / litigation")
     return picks[:8]
@@ -2452,9 +2483,13 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             return d is not None and (_today - d).days <= 10
         _fresh_picks = [(w, it) for w, it in hpicks if _fresh(it)]
         # prefer a fresh pick with a PRIMARY (non-Google-News) link, so the featured card opens the
-        # actual source rather than a Google-News redirect.
-        why, hi = next(((w, it) for w, it in _fresh_picks if "news.google.com" not in it.get("url", "")),
-                       (_fresh_picks[0] if _fresh_picks else hpicks[0]))
+        # actual source rather than a Google-News redirect. If the fresh pool is all Google-News, fall
+        # back to any primary-source digest item (even slightly older) before featuring a gnews link.
+        def _primary(it):
+            return "news.google.com" not in it.get("url", "")
+        why, hi = next(((w, it) for w, it in _fresh_picks if _primary(it)),
+                       next(((w, it) for w, it in hpicks if _primary(it)),
+                            (_fresh_picks[0] if _fresh_picks else hpicks[0])))
         why_text = WHY_TEXT.get(why, why)
         _kind = _KIND.get(hi.get("layer", ""), "")
         _kind_html = f'<span class="ts-kind">{_kind}</span> · ' if _kind else ""

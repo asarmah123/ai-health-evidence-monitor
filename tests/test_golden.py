@@ -1279,6 +1279,49 @@ def test_digest_demotes_litigation():
     assert why["r1"] == "Regulatory actions"
 
 
+def test_pharma_drug_approval_dropped():
+    """2.44 Defect A: pharmaceutical drug authorisations (e.g. a GLP-1 weight-loss pill) are out of
+    scope even when a vendor NAME contains 'AI'; a genuine AI-device clearance that mentions a drug stays."""
+    drug = {"title": "MedPal AI Highlights UK MHRA Approval of Eli Lilly's Orforglipron as Second Oral "
+                     "GLP-1 Weight Loss Pill in Two Months",
+            "layer": "regulation", "source": "MHRA (UK)", "url": "https://news.google.com/rss/x", "summary": ""}
+    assert drug not in build.relevance_gate([drug]), "GLP-1 drug approval must be dropped"
+    # a real AI-device clearance that happens to mention a drug is KEPT (AI-device token rescues it)
+    dev = {"title": "FDA clears AI algorithm for insulin dosing in type 2 diabetes",
+           "layer": "regulation", "source": "openFDA device clearances", "url": "https://accessdata.fda.gov/x",
+           "summary": ""}
+    assert dev in build.relevance_gate([dev]), "AI-device clearance stays in scope"
+    # a drug-DISCOVERY AI paper that merely mentions a molecule (no approval) is NOT caught by the guard
+    disc = {"title": "A machine-learning model for GLP-1 receptor agonist discovery",
+            "layer": "research", "source": "arXiv", "url": "https://arxiv.org/abs/2", "summary": ""}
+    assert build._DRUG_APPROVAL_RE.search(disc["title"]) is None, "discovery paper is not an approval event"
+
+
+def test_reference_guide_not_featured():
+    """2.44 Defect B: ICLG-style 'Laws and Regulations 2026' reference chapters are not regulator ACTIONS
+    and must never headline the featured card; a genuine regulator action is featured instead."""
+    ref = {"id": "g1", "title": "Korea - Digital Health Laws and Regulations 2026", "summary": "",
+           "layer": "regulation", "source": "APAC AI device regulation & reimbursement",
+           "url": "https://news.google.com/rss/x"}
+    act = {"id": "a1", "title": "MHRA clarifies regulatory status of ambient voice technologies in the NHS",
+           "summary": "", "layer": "regulation", "source": "MHRA — GOV.UK (primary)",
+           "url": "https://www.gov.uk/government/news/x"}
+    o = {"clears": [], "econ": [], "reg": [ref, act]}
+    picks = build._digest(o)
+    whys = {it["id"]: w for w, it in picks}
+    assert "g1" not in whys, "reference guide must be excluded from the digest"
+    assert whys.get("a1") == "Regulatory actions"
+
+
+def test_featured_prefers_primary_url():
+    """2.44 Defect B: the featured pick prefers a primary-source (non-Google-News) link even when the
+    freshest digest item is a Google-News redirect."""
+    reg = build._REFERENCE_GUIDE_RE
+    assert reg.search("Korea - Digital Health Laws and Regulations 2026")
+    assert reg.search("USA Digital Health Legal Guide")
+    assert not reg.search("MHRA clarifies regulatory status of AI scribes")
+
+
 # --- standalone runner --------------------------------------------------------
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
