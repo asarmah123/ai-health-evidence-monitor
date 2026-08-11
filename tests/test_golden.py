@@ -1174,6 +1174,52 @@ def test_acceptance_studies_excluded():
     assert et == "Commentary", et
 
 
+def test_arxiv_health_specificity():
+    """Cat-1 health-specificity: arXiv research must be MATERIALLY biomedical (title term); generic AI
+    benchmarks are excluded even if they mention health in a multi-domain benchmark."""
+    def kept(title):
+        i = {"title": title, "summary": "spans natural science, healthcare and engineering domains",
+             "layer": "research", "source": "arXiv", "url": "https://arxiv.org/abs/1"}
+        return i in build.relevance_gate([i])
+    # generic AI benchmarks → excluded (health mention only in the abstract/motivation)
+    assert not kept("Avalon-ToM-Bench: Evaluating Theory of Mind via Asymmetric Game Mechanics")
+    assert not kept("Sci-VBench: Reasoning-Intensive Video Generation in Science Domains")
+    assert not kept("Decoding-Level Taboo: A Diagnostic Stress Test for LLM Robustness")
+    # materially biomedical arXiv research → kept
+    assert kept("MedPixel: A Unified Pixel-Language Model for Medical Reasoning")
+    assert kept("Deep Multimodal Wearable Sensor Fusion for Body-Focused Repetitive Behaviors")
+    assert kept("Disentangling Co-Occurring Retinal Pathologies")
+
+
+def test_safety_surveillance_to_regulation():
+    """Cat-4 boundary: postmarketing safety surveillance → Regulation, not HEOR; value/RWE stays HEOR."""
+    items = [
+        {"title": "Integrating Human and AI for Robust Postmarketing Safety Surveillance Systems",
+         "layer": "heor", "source": "FDA Sentinel (real-world evidence)", "summary": ""},
+        {"title": "Deriving real-world insights to inform trials using EHR and machine learning",
+         "layer": "heor", "source": "PCORnet (real-world evidence)", "summary": ""},
+        {"title": "Cost-effectiveness of an AI triage tool", "layer": "heor", "source": "PubMed — AI × HTA/HEOR", "summary": ""},
+    ]
+    build.refine_safety_surveillance_to_regulation(items)
+    assert items[0]["layer"] == "regulation", "postmarketing safety surveillance → regulation"
+    assert items[1]["layer"] == "heor", "comparative-effectiveness RWE stays HEOR"
+    assert items[2]["layer"] == "heor", "economic evaluation stays HEOR"
+
+
+def test_workforce_advocacy_excluded():
+    """Cat-6 boundary: workforce/adoption-advocacy commentary is excluded; a real commercial signal stays."""
+    et = build.classify_evidence({"title": "Nurses seek a seat at the table as they fight expanding clinical AI",
+                                  "layer": "industry", "source": "STAT — Health Tech", "summary": ""})[0]
+    assert et == "Commentary", et
+    et2 = build.classify_evidence({"title": "AI won't fix nurse burnout. Nurses will",
+                                   "layer": "industry", "source": "Fierce Healthcare", "summary": ""})[0]
+    assert et2 == "Commentary", et2
+    # a genuine commercial story stays a market signal
+    keep = build.classify_evidence({"title": "Nursing-AI vendor Hospital IQ raises $30M Series B",
+                                     "layer": "industry", "source": "MobiHealthNews", "summary": ""})[0]
+    assert keep == "Funding round", keep
+
+
 # --- standalone runner --------------------------------------------------------
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.36"
+TAXONOMY_VERSION = "2.40"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -377,6 +377,24 @@ def _health_relevant(title, summary=""):
     return _HEALTH_RE.search(text) is not None
 
 
+# Category-1 health-SPECIFICITY gate (title-level, clearly-biomedical terms; deliberately excludes bare
+# "diagnostic", which is ML jargon in "diagnostic stress test"). arXiv is general CS/AI, so a research
+# item must be MATERIALLY about healthcare/biomedicine — a biomedical term in its TITLE — not merely
+# mention health in a multi-domain benchmark or motivation. Drops generic LLM/agent/video/reasoning
+# benchmarks (theory-of-mind games, science-domain video generation, LLM robustness) while keeping
+# medical foundation models, clinical NLP, biomedical RAG, medical vision-language models, etc.
+_BIOMED_TITLE_RE = re.compile(
+    r"\bmedic(al|ine)?\b|\bclinic(al)?\b|\bpatient|healthcare|health care|biomed|\bdisease"
+    r"|oncolog|cancer|tumou?r|cardio|cardiac|radiolog|retina|ophthalm|patholog|dermat|dental"
+    r"|surg|\bicu\b|hospital|\bdrug\b|pharma|genom|\bprotein\b|therapeut|\bwearable\b|nurs"
+    r"|physician|\behr\b|electronic health|screening|psychiat|mental health|sepsis|stroke|diabet"
+    r"|body.focused repetitive|repetitive behavio|multimorbidit|health informatics|epidemi"
+    # clinical procedures / imaging / specialties (clearly biomedical, absent from generic AI benchmarks)
+    r"|colonoscop|endoscop|mammograph|biopsy|echocardi|\bmri\b|ultrasound|\bx.ray\b|lesion|dementia"
+    r"|arrhythmia|fibrillation|comorbid|prognos|readmission|vaccine|immuno|antibod|\btriage\b"
+    r"|rehabilit|prosthes|implant|\bicd\b|neuroimag|histopath|cytolog|glucose|\bcgm\b", re.I)
+
+
 # Sources trusted as inherently AI — keyword-filtering these would wrongly drop real AI items
 # whose title carries no keyword (a device trade name, a clinical trial title, an NEJM AI paper).
 # Everything else must pass the keyword test, because its query/feed is NOT AI-scoped.
@@ -467,7 +485,14 @@ def relevance_gate(items):
         if i.get("layer") == "research":
             # Health-only research: inherently AI (frontier newsletters + arXiv), but keep only
             # AI-in-health work; drop general-AI capability news.
-            if _health_relevant(t, s):
+            if "arxiv" in (i.get("url", "") + i.get("source", "")).lower():
+                # arXiv is general CS/AI — require MATERIAL biomedicine (a biomedical term in the
+                # TITLE), not a passing health mention in a multi-domain benchmark or motivation.
+                # (Drops generic LLM/agent/video/reasoning benchmarks; keeps medical-AI research.)
+                if _BIOMED_TITLE_RE.search(i.get("title", "")):
+                    out.append(i)
+                continue
+            if _health_relevant(t, s):   # medRxiv / biomedical journals are inherently health
                 out.append(i)
             continue
         if _ai_native(i):
@@ -582,6 +607,25 @@ def refine_clinical_to_heor(items):
     return items
 
 
+# Postmarketing safety surveillance / pharmacovigilance (e.g. FDA Sentinel) is a regulatory SAFETY
+# activity, not value assessment — its use of AI doesn't make it HEOR (category-4 boundary).
+_SAFETY_SURVEILLANCE_RE = re.compile(r"postmarket\w*|pharmacovigilance|safety surveillance"
+                                     r"|adverse event (surveillance|reporting|monitoring)|algorithmovigilance"
+                                     r"|active surveillance (system|program)")
+
+
+def refine_safety_surveillance_to_regulation(items):
+    """Route postmarketing-safety / pharmacovigilance items out of HEOR (or clinical) to Regulation —
+    they concern safety oversight of AI, not assessment of its economic/value contribution."""
+    for i in items:
+        if i.get("layer") not in ("heor", "clinical"):
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        if _SAFETY_SURVEILLANCE_RE.search(text):
+            i["layer"] = "regulation"
+    return items
+
+
 def refine_research_layer(items):
     """Research is preprint/journal research only. Frontier-AI newsletters and company blogs that
     passed the health gate — product launches ('Launching Health in ChatGPT'), training programmes,
@@ -676,9 +720,11 @@ _ACCESS_OVERRIDE_RE = re.compile(
     r"coverage (decision|determination|polic|recommend)|\bncd\b|\blcd\b|reimburs"
     r"|will (cover|reimburse|pay)|prior authoriz|formulary|fee schedule|\bntap\b|\bdrg\b|\bcpt\b|\bhcpcs\b"
     r"|payment (model|rate|determination|framework)|coding decision"
-    r"|procure(ment)?|\btender\b|framework agreement|contract award|purchasing (framework|agreement)"
-    r"|\bdiga\b|\bpecan\b|medtech funding mandate|funding (programme|program|mechanism|award|scheme)"
-    r"|arpa.h|eu4health|national (procurement|purchasing)|access (programme|pathway|fund)")
+    r"|procure(ment)?|commission(ing|ed)|\btender\b|framework agreement|contract award|purchasing (framework|agreement)"
+    r"|\bdiga\b|\bpecan\b|medtech funding mandate|adoption fund|diagnostic fund"
+    # deliberately NOT generic research/innovation funding (ARPA-H/Horizon/EU4Health) — that is not
+    # market access (category-5 boundary); only adoption/procurement/commissioning funding counts.
+    r"|national (procurement|purchasing|commissioning)|access (programme|pathway|fund)")
 
 
 def refine_research_precision(items):
@@ -1416,7 +1462,11 @@ _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective
                          r"|accept(ing)? ai|attitudes toward|perceptions of ai|willingness to use"
                          r"|patient acceptance|clinician acceptance|user acceptance"
                          r"|public acceptance|societal acceptance|acceptance of artificial intelligence"
-                         r"|acceptability of (ai|artificial|the (ai|tool|system|technolog))")
+                         r"|acceptability of (ai|artificial|the (ai|tool|system|technolog))"
+                         # workforce / adoption advocacy opinion — not an industry/commercial signal
+                         r"|seek a seat at the table|fight(ing)? (expanding|the rise of|against)"
+                         r"|won.?t (fix|solve) .* burnout|will not (fix|solve) .* burnout"
+                         r"|(nurses|physicians|clinicians|doctors|workers) (fight|resist|revolt|push back|demand)")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -3390,26 +3440,29 @@ LAYER_GROUPS = [
 # self-explanatory name + what the feed represents (shown at the top of each list)
 LAYER_NAV = {
     "research": ("AI research & models",
-        "Frontier AI research, models and methods — an early signal of emerging AI capabilities that may influence future healthcare applications."),
+        "Can AI do this? Frontier AI research, models, methods and evaluation techniques that are "
+        "directly relevant to healthcare or biomedical AI — an early signal of emerging capabilities. "
+        "Generic AI benchmarks and methods with no material biomedical focus are excluded."),
     "clinical": ("Clinical evidence & trials",
         "Does it work in patients? Clinical studies, trials and real-world evaluations "
         "assessing AI performance, safety or effectiveness in healthcare settings."),
     "heor": ("HEOR, HTA & value assessment",
-        "How is AI value assessed? Health technology assessment, health economics, "
-        "cost-effectiveness, reimbursement evidence and frameworks for evaluating AI-enabled "
-        "healthcare technologies."),
+        "How is the value of AI-enabled healthcare assessed and paid for? Health technology assessment, "
+        "health economics, cost-effectiveness, budget impact, reimbursement evidence and frameworks for "
+        "evaluating the clinical, economic and system value of AI-enabled healthcare technologies."),
     "regulation": ("Regulatory, safety & authorisation",
         "Can AI be safely deployed and authorised for healthcare use? Regulatory guidance, AI governance "
         "requirements, safety expectations and AI-enabled medical device authorisations."),
     "access": ("Market access, reimbursement & coverage",
         "How is AI reaching clinical practice? Coverage decisions, reimbursement policies, procurement "
-        "programmes, payer guidance and funding mechanisms that translate evidence and authorisation "
-        "into routine clinical use — including where market access comes through purchasing, not payment."),
+        "and commissioning programmes, payer guidance, and other mechanisms that translate evidence and "
+        "authorisation into routine clinical use — including where market access comes through purchasing "
+        "rather than payment."),
     "industry": ("Industry, investment & partnerships",
-        "Who is doing business around healthcare AI — company strategy, investment and M&A, "
-        "partnerships and licensing, product launches, vendor/procurement and build-vs-buy decisions, "
-        "and enterprise adoption tied to a commercial actor. Regulatory, reimbursement, clinical-evidence "
-        "and broad digital-health policy signals live in their own categories."),
+        "Who is doing business around healthcare AI? Commercial strategy, investment and M&A, "
+        "partnerships and licensing, product launches, vendor/procurement decisions, build-vs-buy, "
+        "and enterprise adoption involving a commercial actor. Regulatory, reimbursement, "
+        "clinical-evidence, HEOR/HTA and broad digital-health policy signals live in their own categories."),
 }
 
 
@@ -4450,6 +4503,7 @@ def main():
     items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
     items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
     items = refine_clinical_to_heor(items) # clinical economic evaluations → HEOR (category-2 boundary)
+    items = refine_safety_surveillance_to_regulation(items) # postmarketing safety → Regulation (cat-4 boundary)
     items = refine_research_layer(items) # research precision: newsletters/product news → industry
     items = refine_method_papers(items)  # method vs clinical: pure model-dev papers → research
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
