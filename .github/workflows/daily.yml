@@ -45,9 +45,47 @@ jobs:
         run: |
           git config user.name  "feed-bot"
           git config user.email "feed-bot@users.noreply.github.com"
-          git add docs/index.html docs/feed.xml docs/feed.xsl docs/feed-*.xml docs/build.json docs/data/
+          git add docs/index.html docs/feed.xml docs/feed.xsl docs/feed-*.xml docs/build.json docs/validation.json docs/data/
           git diff --staged --quiet || git commit -m "feed: $(date -u +'%Y-%m-%d')"
           # Rebase onto any commits that landed during the run (e.g. a manual code push),
           # then push — so a race with main advancing doesn't fail the publish. Retry once.
           git pull --rebase --autostash origin main || true
           git push || (git pull --rebase --autostash origin main && git push)
+
+      # ---- post-publish validation (never blocks the publish above) --------------------------------
+      # build.py has already written validation_status.json + validation_report.{md,html}. We read the
+      # status and, only when the build flags issues, email a detailed summary so problems get caught
+      # proactively. Publication has already happened by this point — validation is alert-only.
+      - name: Read validation status
+        id: val
+        if: always()
+        run: |
+          if [ -f validation_status.json ]; then
+            nerr=$(jq -r '.n_errors' validation_status.json)
+            nwarn=$(jq -r '.n_warnings' validation_status.json)
+            ok=$(jq -r '.ok' validation_status.json)
+            if [ "$ok" = "true" ]; then tag="✅ PASS"; else tag="⚠️ ${nerr} error(s), ${nwarn} warning(s)"; fi
+            echo "have=true"                       >> "$GITHUB_OUTPUT"
+            echo "tag=$tag"                        >> "$GITHUB_OUTPUT"
+            echo "date=$(date -u +'%Y-%m-%d')"     >> "$GITHUB_OUTPUT"
+          else
+            echo "have=false"       >> "$GITHUB_OUTPUT"
+            echo "tag=❓ no report"  >> "$GITHUB_OUTPUT"
+          fi
+
+      # Email the validation summary on EVERY build (pass or fail), so there is a positive daily record
+      # that the build was checked — silence is never assumed to mean 'clean'.
+      - name: Email validation report
+        if: always() && steps.val.outputs.have == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: AI-HEOR Monitor <${{ secrets.SMTP_USERNAME }}>
+          to: tercera.research@gmail.com
+          subject: "AI-HEOR build validation — ${{ steps.val.outputs.tag }} — ${{ steps.val.outputs.date }}"
+          html_body: file://validation_report.html
+          convert_markdown: false

@@ -30,6 +30,7 @@ _bs4.BeautifulSoup = object
 sys.modules.setdefault("bs4", _bs4)
 
 _ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))   # so `import validate_build` (repo-root module) resolves in tests
 _spec = importlib.util.spec_from_file_location("build", _ROOT / "build.py")
 build = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(build)
@@ -1363,6 +1364,223 @@ def test_cardiology_topic_matches_specialty_scan():
     coronary = {"title": "FDA De Novo for AI coronary inflammation quantification", "summary": "",
                 "layer": "regulation", "source": "x", "url": "https://x"}
     assert pred(coronary), "a coronary-artery AI item is a cardiology item in both tallies"
+
+
+import validate_build   # noqa: E402  (repo-root module; sys.path patched above)
+
+
+def _vmk(n, **k):
+    d = {"id": f"id{n}", "title": "A prospective RCT of an AI sepsis alert in ICU patients",
+         "url": f"https://example.org/{n}", "source": "NEJM AI", "summary": "",
+         "layer": "clinical", "date": "2026-08-10", "score": 100 - n}
+    d.update(k)
+    d["etype"], d["strength"] = build.classify_evidence(d)
+    d["relevance"] = build.healthcare_relevance(d)
+    d["modality"] = build.ai_modality(d)
+    d["maturity"], d["maturity_lab"] = build.evidence_maturity(d)
+    d["topics"] = [t["slug"] for t in build.TOPICS if t["pred"](d)]
+    return d
+
+
+def _clean_items():
+    return [
+        _vmk(1, url="https://clinicaltrials.gov/ct2/show/NCT1", source="ClinicalTrials.gov"),
+        _vmk(2, title="Cost-effectiveness of an AI triage tool", layer="heor", source="Value in Health"),
+        _vmk(3, title="MHRA clarifies regulatory status of AI scribes", layer="regulation",
+             url="https://www.gov.uk/government/news/x", source="MHRA — GOV.UK (primary)", date="2026-08-09"),
+        _vmk(4, title="Novo Nordisk, AWS launch AI drug discovery hub", layer="industry",
+             source="Fierce Healthcare"),
+    ]
+
+
+def _render_html(items, o):
+    """Minimal stand-in for docs/index.html carrying the exact anchors the R/Z layers parse."""
+    import json as _j
+    n = len(items)
+    tiles = "".join(
+        f'<div class="brief-m"><div class="brief-v">{v}</div><div class="brief-l">{lbl}</div></div>'
+        for v, lbl in ((o["layers"].get("regulation", 0), "regulatory<br>update"),
+                       (len(o["coverage_actions"]), "coverage<br>decision"),
+                       (o["layers"].get("clinical", 0), "clinical<br>study")))
+    feat = build.select_featured(o)
+    topstory = (f'<div class="topstory" data-open="{feat[1]["url"]}">{feat[1]["title"]}</div>'
+                if feat else '<div class="topstory quiet">A quiet day</div>')
+    hrefs = "".join(f'<a class="tbrow" href="{i["url"]}">{i["title"]}</a>' for i in items)
+    return (f'<div class="sub">Updated x · {n} updates</div>{topstory}'
+            f'<div class="brief">{tiles}</div>{hrefs}'
+            f'<div class="tab">Evidence <span class="tabcount">({n})</span></div>'
+            f'<span class="seeall">View all {n} updates →</span>'
+            f'<script>const ITEMS={_j.dumps(items)};const TOPIC_LABELS={{}};</script>')
+
+
+def _vbuild(items, rendered=True):
+    o = build.overview_stats(items)
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items),
+            "check_links": False}   # no network in tests
+    html = _render_html(items, o) if rendered else None
+    return validate_build.run_validation(
+        items, o, {"contributing": 3, "expected": 5, "failed": []}, meta, build, rendered_html=html)
+
+
+def test_validator_clean_build_passes():
+    """2.46: a well-formed build (data + rendered page) raises no validation ERRORs."""
+    r = _vbuild(_clean_items())
+    assert not r.errors, "clean build should have no errors: " + str([(i.code, i.detail) for i in r.errors])
+    assert r.checks_run == 8, "all layers should run on a clean build"
+
+
+# --------- MUTATION TESTS: prove each check is SENSITIVE to the defect it targets ---------
+def _codes_after(mutate, rendered=True):
+    items = _clean_items()
+    o_html = mutate(items)   # mutate may return a replacement rendered-html string
+    o = build.overview_stats(items)
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items),
+            "check_links": False}
+    html = o_html if isinstance(o_html, str) else (_render_html(items, o) if rendered else None)
+    r = validate_build.run_validation(items, o, {"contributing": 3, "expected": 5, "failed": []},
+                                      meta, build, rendered_html=html)
+    return {i.code for i in r.issues}
+
+
+def test_mut_missing_id():
+    assert "E01_missing_field" in _codes_after(lambda it: it[0].__setitem__("id", ""))
+
+
+def test_mut_duplicate_url():
+    assert "E04_duplicate_url" in _codes_after(lambda it: it[1].__setitem__("url", it[0]["url"]))
+
+
+def test_mut_future_date():
+    assert "E05_future_date" in _codes_after(lambda it: it[0].__setitem__("date", "2099-01-01"))
+
+
+def test_mut_bad_stage():
+    assert "E06_bad_stage" in _codes_after(lambda it: it[0].__setitem__("layer", "nonsense"))
+
+
+def test_mut_inject_drug_approval():
+    def m(it):
+        it[2]["title"] = "MedPal AI Highlights MHRA Approval of Orforglipron GLP-1 Weight Loss Pill"
+    assert "S01_drug_approval_leak" in _codes_after(m)
+
+
+def test_mut_bad_facet_value():
+    assert "F01_strength_vocab" in _codes_after(lambda it: it[0].__setitem__("strength", "Totally Made Up"))
+
+
+def test_mut_homepage_count_altered():
+    """H05 fires when the derived regulatory tile disagrees with the recomputed feed count."""
+    items = _clean_items()
+    o = build.overview_stats(items)
+    o["layers"]["regulation"] = 999          # corrupt the derived Home metric
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items),
+            "check_links": False}
+    codes = {i.code for i in validate_build.run_validation(
+        items, o, {"contributing": 3, "expected": 5, "failed": []}, meta, build,
+        rendered_html=_render_html(items, o)).issues}
+    assert "H05_regulatory_metric" in codes or "A01_stage_sum" in codes
+
+
+def test_mut_render_count_mismatch():
+    # the page shows a stale/incorrect item count
+    def m(it):
+        o = build.overview_stats(it)
+        html = _render_html(it, o).replace(f"· {len(it)} updates", "· 999 updates")
+        return html
+    assert "R01_item_count" in _codes_after(m)
+
+
+def test_mut_embedded_foreign_id():
+    # the embedded ITEMS payload contains an id absent from the dataset
+    def m(it):
+        o = build.overview_stats(it)
+        html = _render_html(it, o).replace('"id": "id1"', '"id": "GHOST"')
+        return html
+    codes = _codes_after(m)
+    assert "R02_embedded_ids" in codes
+
+
+def test_mut_featured_not_rendered():
+    # a build where the featured story's id is missing from the rendered payload
+    def m(it):
+        o = build.overview_stats(it)
+        feat = build.select_featured(o)
+        html = _render_html(it, o).replace(f'"id": "{feat[1]["id"]}"', '"id": "MOVED"')
+        return html
+    assert "R03_featured_rendered" in _codes_after(m)
+
+
+def test_mut_metric_tile_wrong():
+    # the rendered regulatory tile shows the wrong number
+    def m(it):
+        o = build.overview_stats(it)
+        good = f'<div class="brief-v">{o["layers"].get("regulation",0)}</div><div class="brief-l">regulatory<br>update</div>'
+        html = _render_html(it, o).replace(good, good.replace(f'>{o["layers"].get("regulation",0)}<', '>77<'))
+        return html
+    assert "R05_metric_tile" in _codes_after(m)
+
+
+def test_mut_false_empty_state():
+    # a featured story exists but the page renders the 'A quiet day' empty state
+    def m(it):
+        o = build.overview_stats(it)
+        html = _render_html(it, o) + '<div class="topstory quiet">A quiet day</div>'
+        return html
+    assert "Z01_false_empty" in _codes_after(m)
+
+
+def test_mut_embedded_shape_not_count():
+    """R02 shape guard: a parseable-but-malformed ITEMS (list of non-objects) is flagged as a SHAPE
+    error, not misreported as a count mismatch."""
+    def m(it):
+        import re as _re
+        o = build.overview_stats(it)
+        html = _render_html(it, o)
+        return _re.sub(r"const ITEMS=\[.*?\];const TOPIC_LABELS=",
+                       "const ITEMS=[1,2,3];const TOPIC_LABELS=", html, flags=_re.S)
+    codes = _codes_after(m)
+    assert "R02_embedded_shape" in codes
+    assert "R02_embedded_count" not in codes, "shape failure must not masquerade as a count mismatch"
+
+
+def test_mut_integrity_shortcircuits_downstream():
+    """An item-integrity error (E04) skips H/A/R/Z/X — skipped ≠ passed — and records canonical codes."""
+    items = _clean_items()
+    items[1]["url"] = items[0]["url"]          # duplicate URL → E04
+    o = build.overview_stats(items)
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items),
+            "check_links": False}
+    r = validate_build.run_validation(items, o, {"contributing": 3, "expected": 5, "failed": []},
+                                      meta, build, rendered_html=_render_html(items, o))
+    codes = {i.code for i in r.issues}
+    assert "E04_duplicate_url" in codes
+    assert r.layers_skipped == ["H", "A", "R", "Z", "X"]
+    assert not any(c[0] in "HARZX" and c[1].isdigit() for c in codes), "no downstream codes should fire"
+
+
+def test_mut_topic_tag_drift():
+    # a tag is present that the topic rule does not actually justify
+    def m(it):
+        it[3]["topics"] = list(it[3].get("topics", [])) + ["oncology-ai"]  # industry item, not oncology
+    assert "X01_topic_tag_drift" in _codes_after(m)
+
+
+def test_mut_trial_denominator_and_auth_undercount():
+    """A06/A04 fire when o is corrupted (a non-clinical trial in the denominator; an authorisation
+    dropped from the gate)."""
+    items = _clean_items() + [_vmk(9, title="FDA Grants De Novo Authorization for an AI ECG algorithm",
+                                   layer="regulation", source="AI-enabled device clearances",
+                                   url="https://news.google.com/rss/z")]
+    o = build.overview_stats(items)
+    o["trials"].append(items[1])          # inject a HEOR item into the trial denominator
+    o["authorisations"] = []              # drop the genuine authorisation from the gate
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items),
+            "check_links": False}
+    codes = {i.code for i in validate_build.run_validation(
+        items, o, {"contributing": 3, "expected": 5, "failed": []}, meta, build,
+        rendered_html=_render_html(items, o)).issues}
+    assert "A06_trial_denominator" in codes
+    assert "A04_authorisation_undercount" in codes
 
 
 # --- standalone runner --------------------------------------------------------

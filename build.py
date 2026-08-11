@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.45"
+TAXONOMY_VERSION = "2.46"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -2165,6 +2165,29 @@ def _digest(o):
     return picks[:8]
 
 
+def select_featured(o):
+    """Pick the single featured 'top story' by rule. Returns (why, item) or None.
+    Prefers a FRESH primary-source (non-Google-News) digest item; falls back to any primary-source
+    digest item, then the freshest, then the top digest item. Shared by the Home render and the build
+    validator, so both judge the exact same pick."""
+    hpicks = _digest(o)
+    if not hpicks:
+        return None
+    _today = datetime.now(timezone.utc).date()
+
+    def _fresh(it):
+        d = _pdate(it.get("date", ""))
+        return d is not None and (_today - d).days <= 10
+
+    def _primary(it):
+        return "news.google.com" not in it.get("url", "")
+
+    fresh_picks = [(w, it) for w, it in hpicks if _fresh(it)]
+    return next(((w, it) for w, it in fresh_picks if _primary(it)),
+                next(((w, it) for w, it in hpicks if _primary(it)),
+                     (fresh_picks[0] if fresh_picks else hpicks[0])))
+
+
 # Plain-language, honest reasons for why an item is the day's top story. We state the
 # RULE that surfaced it — never an invented explanation of significance.
 WHY_TEXT = {
@@ -2518,24 +2541,9 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             _base_txt = f'~{tavg:.0f}' if tavg >= 1 else '~1'
             ln_term = f'<b>{html.escape(tterm)}</b> mentions elevated ({tnow} vs {_base_txt} typical build)'
     # single most consequential item → promoted into its own dominant card (topstory)
-    hpicks = _digest(o)
-    if hpicks:
-        # Top story prefers the most consequential RECENT item, so a weeks-old
-        # authorisation does not dominate a fresh major-regulator action. If nothing
-        # is recent, fall back to the top-ranked item (its lag is disclosed below).
-        _today = datetime.now(timezone.utc).date()
-        def _fresh(it):
-            d = _pdate(it.get("date", ""))
-            return d is not None and (_today - d).days <= 10
-        _fresh_picks = [(w, it) for w, it in hpicks if _fresh(it)]
-        # prefer a fresh pick with a PRIMARY (non-Google-News) link, so the featured card opens the
-        # actual source rather than a Google-News redirect. If the fresh pool is all Google-News, fall
-        # back to any primary-source digest item (even slightly older) before featuring a gnews link.
-        def _primary(it):
-            return "news.google.com" not in it.get("url", "")
-        why, hi = next(((w, it) for w, it in _fresh_picks if _primary(it)),
-                       next(((w, it) for w, it in hpicks if _primary(it)),
-                            (_fresh_picks[0] if _fresh_picks else hpicks[0])))
+    _featured = select_featured(o)   # shared rule (fresh + primary-source preference); validator reuses it
+    if _featured:
+        why, hi = _featured
         why_text = WHY_TEXT.get(why, why)
         _kind = _KIND.get(hi.get("layer", ""), "")
         _kind_html = f'<span class="ts-kind">{_kind}</span> · ' if _kind else ""
@@ -4691,6 +4699,31 @@ def main():
     write_topic_feeds(items)
     write_manifest(items, health)
     write_export(items)   # docs/data/feed-latest.{json,csv} — programmatic access to this build rule is in
+
+    # ---- post-build validation (deterministic, non-blocking) ----------------------------------
+    # A second, independent pass over the SAME items + figures the pages show: recompute every Home /
+    # Evidence / Analysis number, and re-run every scope/consistency check we have hit in production.
+    # It NEVER blocks publication — it writes a report + status the workflow emails on when issues show.
+    try:
+        import validate_build
+        _rendered = (DOCS / "index.html").read_text(encoding="utf-8") if (DOCS / "index.html").exists() else None
+        _vmeta = {"generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                  "taxonomy_version": TAXONOMY_VERSION, "n_items": len(items),
+                  "build_ts": now, "docs_dir": str(DOCS),
+                  "check_links": os.environ.get("VALIDATE_LINKS", "1") == "1"}
+        _report = validate_build.run_validation(items, o, health, _vmeta, sys.modules[__name__],
+                                                rendered_html=_rendered)
+        # Detailed report (may name items) stays uncommitted — it is only the email body.
+        (ROOT / "validation_report.md").write_text(_report.to_markdown(), encoding="utf-8")
+        (ROOT / "validation_report.html").write_text(_report.to_html(), encoding="utf-8")
+        (ROOT / "validation_status.json").write_text(json.dumps(_report.status_dict(), indent=2), encoding="utf-8")
+        # Public, item-free summary (counts + codes) — committed so each build's QA result is observable.
+        (DOCS / "validation.json").write_text(json.dumps(_report.status_dict(), indent=2), encoding="utf-8")
+        print("  " + _report.console_summary())
+        for _i in _report.errors[:8]:
+            print(f"::warning title=Validation::[{_i.page}] {_i.title} ({_i.code})")
+    except Exception as _e:   # a validator bug must never take down a good build
+        print(f"! validation harness error: {type(_e).__name__}: {_e}", file=sys.stderr)
 
     # output guard: the page and feed must be well-formed before this run is allowed to
     # publish. A non-zero exit here makes CI skip the commit, so the previous site stays.
