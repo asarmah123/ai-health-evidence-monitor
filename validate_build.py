@@ -134,6 +134,8 @@ class Report:
         out = [f"# Build validation — {m.get('taxonomy_version','?')}",
                f"_{m.get('generated_at','')} · {m.get('n_items','?')} items · "
                f"{len(self.errors)} error(s), {len(self.warnings)} warning(s)_", ""]
+        if self.meta.get("selftest_banner"):
+            out.insert(2, f"> 🧪 **{self.meta['selftest_banner']}**\n")
         out += self._snapshot_lines()
         if not self.issues:
             out.append("✅ **All checks passed.** Home, Evidence and Analysis reconcile with the rendered "
@@ -152,7 +154,12 @@ class Report:
 
     def to_html(self):
         m = self.meta
-        head = (f'<h2 style="margin:0 0 4px">Build validation — {_html.escape(str(m.get("taxonomy_version","?")))}</h2>'
+        banner = ""
+        if m.get("selftest_banner"):
+            banner = (f'<div style="background:#fff4e5;border:1px solid #e0a300;border-radius:8px;'
+                      f'padding:10px 14px;margin:0 0 12px;font-size:14px">🧪 <b>{_html.escape(m["selftest_banner"])}</b></div>')
+        head = (banner
+                + f'<h2 style="margin:0 0 4px">Build validation — {_html.escape(str(m.get("taxonomy_version","?")))}</h2>'
                 f'<p style="margin:0 0 12px;color:#555">{_html.escape(str(m.get("generated_at","")))} · '
                 f'{m.get("n_items","?")} items · <b style="color:#b3261e">{len(self.errors)} error(s)</b>, '
                 f'{len(self.warnings)} warning(s)</p>')
@@ -572,3 +579,44 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
     # finalise the skipped-layer list in canonical order (H → A → R → Z → X)
     R.layers_skipped = [ly for ly in ("H", "A", "R", "Z", "X") if ly in R._skipped]
     return R
+
+
+# Injectable synthetic defects for the opt-in self-test. Each mutates a COPY of the items and must
+# produce EXACTLY its own code (asserted via a baseline→injected delta). Only integrity-class defects
+# are offered: they short-circuit the aggregate layers, so the delta is a single clean code with no
+# incidental downstream noise. The published dataset/feed/page are NEVER touched — this runs on a copy.
+_SELFTEST_CODES = ("E04_duplicate_url", "E05_future_date", "E06_bad_stage")
+
+
+def _inject(copy_items, code):
+    if code == "E04_duplicate_url" and len(copy_items) > 1:
+        copy_items[1] = dict(copy_items[1]); copy_items[1]["url"] = copy_items[0]["url"]
+    elif code == "E05_future_date":
+        copy_items[0] = dict(copy_items[0]); copy_items[0]["date"] = "2099-01-01"
+    elif code == "E06_bad_stage":
+        copy_items[0] = dict(copy_items[0]); copy_items[0]["layer"] = "__selftest_bad_stage__"
+
+
+def run_selftest(items, o, health, meta, B, rendered_html=None, expected_code="E04_duplicate_url"):
+    """Prove the alarm path end-to-end WITHOUT touching production. Runs validation on a clean copy
+    (baseline) and on a copy with one synthetic defect injected, then asserts the injection adds
+    EXACTLY `expected_code` and nothing else. Returns (injected_report, detected, delta, expected)."""
+    if expected_code not in _SELFTEST_CODES:
+        expected_code = "E04_duplicate_url"
+    m = dict(meta, check_links=False)
+    baseline = run_validation([dict(i) for i in items], o, health, dict(m), B, rendered_html)
+    base_codes = set(baseline.status_dict()["codes"])
+
+    copy_items = [dict(i) for i in items]
+    _inject(copy_items, expected_code)
+    o_copy = B.overview_stats(copy_items)
+    injected = run_validation(copy_items, o_copy, health, dict(m), B, rendered_html)
+    inj_codes = set(injected.status_dict()["codes"])
+
+    delta = inj_codes - base_codes
+    detected = (delta == {expected_code})
+    injected.meta["selftest_banner"] = (
+        f"SELF-TEST — injected {expected_code} into a validation-only copy; the published feed, page and "
+        f"docs/validation.json are untouched. Injection added exactly the expected code: {detected}"
+        + ("" if detected else f" (got delta {sorted(delta)})") + ".")
+    return injected, detected, delta, expected_code

@@ -1560,6 +1560,42 @@ def test_mut_integrity_shortcircuits_downstream():
     assert not any(c[0] in "HARZX" and c[1].isdigit() for c in codes), "no downstream codes should fire"
 
 
+def test_selftest_detects_exact_code_and_isolates_production():
+    """The opt-in self-test injects a defect into a COPY, asserts EXACTLY the expected code is added,
+    and never mutates the caller's items (production isolation invariant)."""
+    items = _clean_items()
+    o = build.overview_stats(items)
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items)}
+    urls_before = [i["url"] for i in items]
+    for code in ("E04_duplicate_url", "E05_future_date", "E06_bad_stage"):
+        rep, detected, delta, expected = validate_build.run_selftest(
+            items, o, {"contributing": 3, "expected": 5, "failed": []}, meta, build,
+            rendered_html=_render_html(items, o), expected_code=code)
+        assert detected, f"{code}: expected exactly that code, got delta {sorted(delta)}"
+        assert delta == {code}
+        assert rep.status_dict()["email_trigger"] is True
+    # production isolation: the caller's items are byte-for-byte unchanged
+    assert [i["url"] for i in items] == urls_before, "self-test must not mutate the real items"
+
+
+def test_selftest_flags_broken_validator():
+    """detected is False when the expected code does NOT actually appear — proving the self-test isn't
+    rigged to always pass. If a check were blinded so the injected defect produced nothing, run_selftest
+    returns detected=False, which is the signal build.py uses to fail the run and withhold publish."""
+    items = _clean_items()
+    o = build.overview_stats(items)
+    meta = {"generated_at": "now", "taxonomy_version": build.TAXONOMY_VERSION, "n_items": len(items)}
+    orig = validate_build._inject
+    try:
+        validate_build._inject = lambda copy_items, code: None   # simulate the defect not being caught
+        _, detected, delta, _ = validate_build.run_selftest(
+            items, o, {"contributing": 3, "expected": 5, "failed": []}, meta, build,
+            rendered_html=_render_html(items, o), expected_code="E04_duplicate_url")
+        assert detected is False and "E04_duplicate_url" not in delta
+    finally:
+        validate_build._inject = orig
+
+
 def test_mut_topic_tag_drift():
     # a tag is present that the topic rule does not actually justify
     def m(it):

@@ -4722,6 +4722,35 @@ def main():
         print("  " + _report.console_summary())
         for _i in _report.errors[:8]:
             print(f"::warning title=Validation::[{_i.page}] {_i.title} ({_i.code})")
+
+        # ---- opt-in self-test (VALIDATE_SELFTEST=<code>) --------------------------------------
+        # Proves the alarm path end-to-end on demand. It runs validation on a COPY with one synthetic
+        # defect injected and asserts EXACTLY the expected code fires. INVARIANT: it never touches the
+        # published dataset, rendered feed, or docs/validation.json — only the (uncommitted) EMAIL
+        # artifacts are repointed at the self-test report, so you get a demonstrative failing email while
+        # the real build publishes clean. If the validator fails to catch the injected defect, that is a
+        # genuine regression: we exit non-zero so CI goes red and withholds the publish.
+        _st = os.environ.get("VALIDATE_SELFTEST", "").strip()
+        if _st:
+            _sreport, _detected, _delta, _expected = validate_build.run_selftest(
+                items, o, health, dict(_vmeta), sys.modules[__name__], rendered_html=_rendered,
+                expected_code=_st)
+            _sd = _sreport.status_dict()
+            _sd["selftest"] = True
+            _sd["selftest_expected"] = _expected
+            _sd["selftest_detected"] = _detected
+            _sd["selftest_delta"] = sorted(_delta)
+            # repoint ONLY the email artifacts; docs/validation.json above stays the REAL clean result
+            (ROOT / "validation_report.md").write_text(_sreport.to_markdown(), encoding="utf-8")
+            (ROOT / "validation_report.html").write_text(_sreport.to_html(), encoding="utf-8")
+            (ROOT / "validation_status.json").write_text(json.dumps(_sd, indent=2), encoding="utf-8")
+            print(f"  SELF-TEST: expected={_expected} detected={_detected} delta={sorted(_delta)}")
+            if not _detected:
+                print(f"::error title=Validator self-test FAILED::injecting {_expected} did not add exactly "
+                      f"that code (delta={sorted(_delta)}) — the validator may be broken; withholding publish")
+                sys.exit(1)
+    except SystemExit:
+        raise
     except Exception as _e:   # a validator bug must never take down a good build
         print(f"! validation harness error: {type(_e).__name__}: {_e}", file=sys.stderr)
 

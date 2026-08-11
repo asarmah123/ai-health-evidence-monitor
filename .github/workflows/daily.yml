@@ -9,6 +9,15 @@ on:
         description: "Reset trend history — start the series fresh from this build (use after a taxonomy change)"
         type: boolean
         default: false
+      selftest:
+        description: "Validator self-test: inject a synthetic defect into validation ONLY (published feed untouched) to prove the alarm path"
+        type: choice
+        default: ""
+        options:
+          - ""
+          - "E04_duplicate_url"
+          - "E05_future_date"
+          - "E06_bad_stage"
 
 permissions:
   contents: write
@@ -39,6 +48,8 @@ jobs:
           FAIL_ON_DEGRADE: "1"   # fail the run (skip publish) if >20% of steady feeds go silent
           # one-shot when the "reset_history" toggle is checked on a manual run; empty otherwise
           RESET_HISTORY: ${{ github.event.inputs.reset_history == 'true' && '1' || '' }}
+          # opt-in validator self-test (blank on scheduled runs) — injects into validation only
+          VALIDATE_SELFTEST: ${{ github.event.inputs.selftest }}
         run: python build.py
 
       - name: Commit the rebuilt page
@@ -75,7 +86,9 @@ jobs:
             nerr=$(jq -r '.n_errors' validation_status.json)
             nwarn=$(jq -r '.n_warnings' validation_status.json)
             ok=$(jq -r '.ok' validation_status.json)
+            st=$(jq -r '.selftest // false' validation_status.json)
             if [ "$ok" = "true" ]; then tag="✅ PASS"; else tag="⚠️ ${nerr} error(s), ${nwarn} warning(s)"; fi
+            if [ "$st" = "true" ]; then tag="🧪 SELF-TEST · ${tag}"; fi
             echo "have=true"                       >> "$GITHUB_OUTPUT"
             echo "tag=$tag"                        >> "$GITHUB_OUTPUT"
             echo "date=$(date -u +'%Y-%m-%d')"     >> "$GITHUB_OUTPUT"
