@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.31"
+TAXONOMY_VERSION = "2.32"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -588,15 +588,20 @@ _REG_SIGNAL_RE = re.compile(
 
 def refine_regulation_layer(items):
     """Keep genuine regulatory actions/guidance in the regulatory stream; route generic policy,
-    marketing and adoption news (that merely comes from a regulation query) to industry."""
+    marketing and adoption news (that merely comes from a regulation query) to industry.
+    A named regulator's OWN feed is always kept; a Google-News item whose source *name* merely
+    carries a regulator token (e.g. an ANVISA/COFEPRIS/CDSCO query pulling a research-centre launch)
+    must still show a regulatory signal to stay (audit E4/E5a)."""
     for i in items:
         if i.get("layer") != "regulation":
             continue
-        if source_type(i) == "Regulator":
-            continue   # from a named regulator (FDA/MHRA/EMA/Health Canada…) → keep
+        native_regulator = (source_type(i) == "Regulator"
+                            and not (i.get("gnews") or "news.google.com" in i.get("url", "")))
+        if native_regulator:
+            continue   # a named regulator's own native feed (MHRA/EMA/Federal Register…) → keep
         text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
         if not _REG_SIGNAL_RE.search(text):
-            i["layer"] = "industry"
+            i["layer"] = "industry"   # launch / opinion / consumer story via a regulator-named query
     return items
 
 
@@ -1511,6 +1516,16 @@ def _classify_core(i):
     # about 'real-world' evaluation is a Preprint, not real-world evidence).
     if (i.get("stype") or source_type(i)) == "Preprint / research":
         return "Preprint", "Primary evidence"
+    # Regulatory routing precedence: a regulator's announcement is policy, not a study design — so a
+    # sandbox/guidance whose summary merely mentions 'real-world evidence' is NOT typed RWE (audit E5b).
+    if st == "Regulator" or layer == "regulation":
+        if _EV_GOV.search(t):          return "AI governance", "Policy signal"
+        if _EV_AUTH.search(t):         return "Regulatory authorisation", "Policy signal"
+        if _EV_REG_ENFORCE.search(t):  return "Enforcement / safety", "Policy signal"
+        if _EV_REG_PROGRAMME.search(t): return "Regulatory programme", "Policy signal"
+        if _EV_REG_CONSULT.search(t):  return "Consultation / policy", "Policy signal"
+        if _EV_REG_RULE.search(ti):    return "Rule / legislation", "Policy signal"
+        return "Regulatory guidance", "Policy signal"
     if _EV_META.search(t):
         return "Meta-analysis", "Secondary evidence"
     if _EV_SYS.search(t):
@@ -1530,20 +1545,6 @@ def _classify_core(i):
     if _EV_PROTO.search(t):
         return "Study protocol", "Primary evidence"
     # source-type / stage backbone
-    if st == "Regulator" or layer == "regulation":
-        if _EV_GOV.search(t):
-            return "AI governance", "Policy signal"
-        if _EV_AUTH.search(t):
-            return "Regulatory authorisation", "Policy signal"
-        if _EV_REG_ENFORCE.search(t):
-            return "Enforcement / safety", "Policy signal"
-        if _EV_REG_PROGRAMME.search(t):
-            return "Regulatory programme", "Policy signal"   # sandbox/pilot ≠ guidance (audit E5b)
-        if _EV_REG_CONSULT.search(t):
-            return "Consultation / policy", "Policy signal"
-        if _EV_REG_RULE.search(ti):
-            return "Rule / legislation", "Policy signal"
-        return "Regulatory guidance", "Policy signal"
     if layer == "access":
         # a coding/coverage/payment action is 'Payment / coverage'; procurement, payment models and
         # adoption pathways are 'Market access' (HTA value assessment is routed to HEOR upstream)

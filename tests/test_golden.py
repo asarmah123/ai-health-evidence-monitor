@@ -933,6 +933,10 @@ def test_regulatory_subtypes():
     ev = lambda title: build.classify_evidence({"title": title, "layer": "regulation",
                                                 "source": "MHRA — GOV.UK (primary)", "stype": "Regulator", "summary": ""})[0]
     assert ev("Pioneering AI health innovations regulatory sandbox launched") == "Regulatory programme"
+    # live regression: a sandbox whose summary mentions 'real-world evidence' must NOT be typed RWE
+    assert build.classify_evidence({"title": "Pioneering AI health innovations regulatory sandbox launched",
+        "layer": "regulation", "source": "MHRA — GOV.UK (primary)", "stype": "Regulator",
+        "summary": "The sandbox lets AI medical devices deploy in live clinical settings to generate real-world evidence."})[0] == "Regulatory programme"
     assert ev("MHRA issues field safety notice and recall for AI device") == "Enforcement / safety"
     assert ev("Agency opens consultation on AI medical device rules") == "Consultation / policy"
     assert ev("Parliament passes AI in healthcare legislation") == "Rule / legislation"
@@ -1013,6 +1017,28 @@ def test_filename_title_guard():
     assert junk not in build.relevance_gate([junk])
     assert build._FILENAME_TITLE_RE.search("guidance_document.pdf")
     assert not build._FILENAME_TITLE_RE.search("NICE recommends the AI diagnostic for NHS use")
+
+
+def test_regulation_gnews_query_non_regulatory():
+    """E4/E5a: a non-regulatory story from a regulator-NAMED Google-News query is routed to industry,
+    while native regulator feeds and genuinely regulatory query items stay in regulation."""
+    items = [
+        # gnews query whose name carries a regulator token (ANVISA) but the item is a launch
+        {"title": "General Hospital of Mexico Launches AI Research Center", "layer": "regulation",
+         "source": "LATAM — device authorisation (ANVISA / COFEPRIS)",
+         "url": "https://news.google.com/rss/articles/AAA", "gnews": True, "summary": ""},
+        # gnews regulator-named query, but genuinely regulatory → stays
+        {"title": "CDSCO issues guidance clarifying the regulatory pathway for AI software",
+         "layer": "regulation", "source": "India — device authorisation & AI guidance (CDSCO / ICMR)",
+         "url": "https://news.google.com/rss/articles/BBB", "gnews": True, "summary": ""},
+        # native regulator feed (not gnews) → always kept
+        {"title": "MHRA update on health tech", "layer": "regulation",
+         "source": "MHRA — GOV.UK (primary)", "url": "https://www.gov.uk/x", "summary": ""},
+    ]
+    build.refine_regulation_layer(items)
+    assert items[0]["layer"] == "industry", "non-reg launch via regulator-named query should leave regulation"
+    assert items[1]["layer"] == "regulation", "genuine regulatory guidance should stay"
+    assert items[2]["layer"] == "regulation", "native regulator feed should always stay"
 
 
 # --- standalone runner --------------------------------------------------------
