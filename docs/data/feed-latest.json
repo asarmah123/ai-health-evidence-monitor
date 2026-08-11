@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-11T13:45:05Z",
+ "generated_at": "2026-08-11T14:18:16Z",
  "taxonomy_version": "2.41",
- "count": 96,
+ "count": 97,
  "fields": [
   "id",
   "title",
@@ -1443,6 +1443,26 @@
    "date": "2026-07-27",
    "score": 0,
    "topics": "mental-health-ai"
+  },
+  {
+   "id": "15ec8d8d5ded",
+   "title": "Recon: WHO releases first interim list of medical device authorities; AstraZeneca using AI to hedge late-stage risks",
+   "url": "https://news.google.com/rss/articles/CBMi4wFBVV95cUxPY0lEMGRHSFY3aU5fM2Z3ZHZHSDUxbnNUbFNmdzdnTnN3OGNRY1Y1NmJQU3hmanQ2TGZmbXA4Z2dJQUpPRnZXUF9OaDlRdTA3MEhuYi02T1J1WTdYb3NQLXV3VE02T0x2TE9LazFra1pvaDlQYzE0alRkTW4wVnJuQll6ZW5oalVJV05GblFQY1c2ekV2T2hNeTBrUnRUWFBnbXhOT3NxN0lHRTVWYkt0d3BuLW5tSWk4YnFqc3pXdHFCS0NWTDFQMl9FTW1uTjRWYWVSOUF1UC1IOXZIbUZFWHkwaw?oc=5",
+   "source": "RAPS Regulatory Focus",
+   "source_type": "Other",
+   "stage": "regulation",
+   "evidence_type": "Regulatory guidance",
+   "evidence_strength": "Policy signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "",
+   "decision_type": "",
+   "payer_type": "",
+   "region": "Asia-Pacific",
+   "country": "South Korea",
+   "date": "2026-07-27",
+   "score": 2,
+   "topics": "regulatory-activity"
   },
   {
    "id": "055349b2f1ec",
