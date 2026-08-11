@@ -1220,6 +1220,32 @@ def test_workforce_advocacy_excluded():
     assert keep == "Funding round", keep
 
 
+def test_event_cluster_collapse():
+    """Synonym-worded duplicates of one MHRA event collapse to the primary source; unrelated stays."""
+    items = [
+        {"title": "MHRA clarifies how existing medical device law applies to AVT", "source": "MHRA (UK)",
+         "url": "https://news.google.com/rss/a", "date": "2026-08-10", "layer": "regulation"},
+        {"title": "AI scribes used to take notes are not medical devices, MHRA says", "source": "MHRA (UK)",
+         "url": "https://news.google.com/rss/b", "date": "2026-08-10", "layer": "regulation"},
+        {"title": "MHRA clarifies regulatory status of ambient voice technologies used in the NHS",
+         "source": "MHRA — GOV.UK (primary)", "url": "https://www.gov.uk/x", "date": "2026-08-10", "layer": "regulation"},
+        # unrelated MHRA item (different topic) must NOT be merged
+        {"title": "MHRA calls for regulation of AI in healthcare", "source": "MHRA (UK)",
+         "url": "https://news.google.com/rss/c", "date": "2026-08-10", "layer": "regulation"},
+        # AVT topic but different body (NHS CLEAR pilot, not MHRA) must NOT be merged
+        {"title": "National CLEAR Programme launches NHS pilot to evaluate AVT", "source": "NIST AI risk",
+         "url": "https://news.google.com/rss/d", "date": "2026-08-10", "layer": "regulation"},
+    ]
+    out = build.collapse_event_clusters(items)
+    titles = [i["title"] for i in out]
+    assert len(out) == 3, titles   # 3 MHRA-AVT items → 1, plus the 2 unrelated
+    # the kept representative is the GOV.UK primary source
+    assert any("ambient voice technologies used in the NHS" in t for t in titles)
+    assert not any("existing medical device law applies to AVT" in t for t in titles)
+    assert any("calls for regulation of AI" in t for t in titles)     # unrelated MHRA kept
+    assert any("National CLEAR" in t for t in titles)                 # different body kept
+
+
 # --- standalone runner --------------------------------------------------------
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.40"
+TAXONOMY_VERSION = "2.41"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -4398,6 +4398,48 @@ def collapse_near_duplicates(items):
     return [it for _, it in keep]
 
 
+# Curated event clusters — the SAME event where outlets use SYNONYMS the token-overlap collapse can't
+# match (e.g. MHRA's ruling on ambient voice technology ≡ AVT ≡ AI scribes, which share almost no
+# tokens). Each entry is (body_regex, topic_regex): only items matching BOTH collapse, so — unlike a
+# looser global threshold — this can never over-merge unrelated stories. Extend the list as needed.
+_EVENT_CLUSTERS = [
+    (re.compile(r"\bmhra\b", re.I), re.compile(r"ambient voice|\bavt\b|ai scribe|voice technolog", re.I)),
+]
+
+
+def collapse_event_clusters(items):
+    """Collapse known event clusters (body + topic) that the token-overlap collapse misses because the
+    outlets use synonyms. Keeps the primary-source representative (publisher/regulator over Google-News),
+    then highest rank, then fullest title. Targeted and deterministic — cannot merge unrelated events."""
+    def cluster_of(i):
+        blob = (i.get("title", "") + " " + i.get("source", "")).lower()
+        ti = i.get("title", "").lower()
+        for n, (body, topic) in enumerate(_EVENT_CLUSTERS):
+            if body.search(blob) and topic.search(ti):
+                return n
+        return None
+    groups, passthru = {}, []
+    for i in items:
+        c = cluster_of(i)
+        if c is None:
+            passthru.append(i)
+        else:
+            groups.setdefault(c, []).append(i)
+    keep = list(passthru)
+    dropped = 0
+    for members in groups.values():
+        def _primary(k):
+            return 0 if "news.google.com" in k.get("url", "") else 1
+        best = max(members, key=lambda k: (_primary(k), rank_score(k)[0], len(k.get("title", ""))))
+        keep.append(best)
+        dropped += len(members) - 1
+    if dropped:
+        print(f"  event-cluster duplicates collapsed: {dropped}")
+    pos = {id(i): n for n, i in enumerate(items)}
+    keep.sort(key=lambda i: pos[id(i)])
+    return keep
+
+
 def validate_or_abort(items):
     """Pre-publish QA gate. Drops items that cannot be shown or cited (missing title/
     source/layer, or a non-http(s) URL), blanks impossible future dates, and ABORTS the
@@ -4517,6 +4559,7 @@ def main():
     uniq = {i["id"]: i for i in items}
     items = list(uniq.values())
     items = collapse_near_duplicates(items)
+    items = collapse_event_clusters(items)   # merge synonym-worded duplicates of a known event (e.g. MHRA AVT)
     items = validate_or_abort(items)   # QA gate: drop unusable items; abort on systemic corruption
     items = tag_topics(items)   # attach Follow-topic slugs to each item
     # HEOR lens removed: it was LLM-generated, which conflicts with the site's
