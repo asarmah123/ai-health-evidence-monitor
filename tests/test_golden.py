@@ -1246,6 +1246,39 @@ def test_event_cluster_collapse():
     assert any("National CLEAR" in t for t in titles)                 # different body kept
 
 
+def test_event_cluster_sandbox():
+    """The UK/NHS AI-health regulatory sandbox, reported two ways, collapses to the GOV.UK primary."""
+    items = [
+        {"title": "Pioneering AI health innovations regulatory sandbox launched", "source": "MHRA — GOV.UK (primary)",
+         "url": "https://www.gov.uk/government/news/pioneering", "date": "2026-08-10", "layer": "regulation"},
+        {"title": "London launches AI health regulatory sandbox for NHS innovation", "source": "AI health funding programmes",
+         "url": "https://news.google.com/rss/x", "date": "2026-08-10", "layer": "industry"},
+        {"title": "National CLEAR Programme launches NHS pilot to evaluate AVT", "source": "NIST AI risk",
+         "url": "https://news.google.com/rss/y", "date": "2026-08-10", "layer": "regulation"},
+    ]
+    out = build.collapse_event_clusters(items)
+    titles = [i["title"] for i in out]
+    assert len(out) == 2, titles   # 2 sandbox items → 1 (GOV.UK), plus the unrelated CLEAR pilot
+    assert any("Pioneering" in t for t in titles)          # GOV.UK primary kept
+    assert not any("London launches" in t for t in titles) # syndicated dropped
+    assert any("National CLEAR" in t for t in titles)      # different topic kept
+
+
+def test_digest_demotes_litigation():
+    """Featured-story digest: genuine regulatory/coverage actions rank ABOVE litigation."""
+    reg = {"id": "r1", "title": "MHRA clarifies medical device status of AI scribes", "summary": "",
+           "layer": "regulation", "source": "MHRA (UK)"}
+    lit = {"id": "l1", "title": "Court examines AI discovery in Medicare Advantage coverage case",
+           "summary": "", "layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI"}
+    o = {"clears": [], "econ": [], "reg": [lit, reg]}   # litigation listed FIRST in the source data
+    picks = build._digest(o)
+    ids = [it["id"] for _, it in picks]
+    why = {it["id"]: w for w, it in picks}
+    assert ids.index("r1") < ids.index("l1"), "regulatory action must be featured before litigation"
+    assert why["l1"] == "Legal / litigation"
+    assert why["r1"] == "Regulatory actions"
+
+
 # --- standalone runner --------------------------------------------------------
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]

@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.41"
+TAXONOMY_VERSION = "2.43"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -2076,14 +2076,15 @@ def _digest(o):
             seen.add(i["id"])
             picks.append((why, i))
 
+    def _islit(i):
+        return bool(_LITIGATION_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()))
     add(o["clears"], "Device authorisations")
     add(o["econ"], "Trials · economic endpoint")
-    # litigation before regulatory actions, so a coverage/regulatory court case is framed as a legal
-    # development rather than a regulator's decision.
-    add([i for i in o["reg"] if _LITIGATION_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower())],
-        "Legal / litigation")
-    add([i for i in o["reg"] if any(b in i["source"] for b in ("FDA", "CMS", "EMA", "NICE"))],
-        "Regulatory actions")
+    # genuine regulatory and coverage ACTIONS lead; litigation is demoted BELOW them — a court case is
+    # not itself an authorisation, coverage or regulatory decision, so it must not lead the featured card.
+    add([i for i in o["reg"] if i["layer"] == "regulation" and not _islit(i)], "Regulatory actions")
+    add([i for i in o["reg"] if i["layer"] == "access" and not _islit(i)], "Coverage / access")
+    add([i for i in o["reg"] if _islit(i)], "Legal / litigation")
     return picks[:8]
 
 
@@ -2096,6 +2097,8 @@ WHY_TEXT = {
                                   "reimbursement case, not just clinical validation.",
     "Regulatory actions": "A move by a major regulator or HTA body — the decisions that shape whether, "
                           "and how, an AI product reaches patients.",
+    "Coverage / access": "A coverage, reimbursement or procurement move — how an AI product actually "
+                         "reaches routine clinical use.",
     "Legal / litigation": "A legal or court case bearing on how AI is regulated, covered or used — an "
                           "emerging signal to watch, not a settled decision.",
 }
@@ -2447,7 +2450,11 @@ def overview_html(items, cov_pub, o, history=None, take=""):
         def _fresh(it):
             d = _pdate(it.get("date", ""))
             return d is not None and (_today - d).days <= 10
-        why, hi = next(((w, it) for w, it in hpicks if _fresh(it)), hpicks[0])
+        _fresh_picks = [(w, it) for w, it in hpicks if _fresh(it)]
+        # prefer a fresh pick with a PRIMARY (non-Google-News) link, so the featured card opens the
+        # actual source rather than a Google-News redirect.
+        why, hi = next(((w, it) for w, it in _fresh_picks if "news.google.com" not in it.get("url", "")),
+                       (_fresh_picks[0] if _fresh_picks else hpicks[0]))
         why_text = WHY_TEXT.get(why, why)
         _kind = _KIND.get(hi.get("layer", ""), "")
         _kind_html = f'<span class="ts-kind">{_kind}</span> · ' if _kind else ""
@@ -3324,7 +3331,7 @@ function render(){
   list.sort(cmp);
   const layerHas = ITEMS.filter(i=>(tier==='all'||i.tier===tier)&&(layer==='all'||i.layer===layer)).length;
   const emptyMsg = layerHas>0 ? 'Nothing matches — try another filter.'
-    : layer==='access' ? 'No new coverage or reimbursement signals in this build’s window — AI-specific payment and HTA decisions are infrequent, and translate into this stage only when a payer or HTA body acts. The curated clearance-to-coverage dataset is on the Home page.'
+    : layer==='access' ? 'No new coverage or reimbursement signals in this build’s window — AI-specific payment and HTA decisions are infrequent, and translate into this stage only when a payer or HTA body acts.'
     : layer==='all' ? 'No updates in the latest build.'
     : 'No updates in this category in the latest build’s window.';
   $('#feed').innerHTML = list.map(i=>`
@@ -3337,7 +3344,7 @@ function render(){
         ${i.modality?`<span class="mod">${esc(i.modality)}</span>`:''}
         ${i.relevance&&i.relevance!=='Direct clinical'?`<span class="rel">${esc(i.relevance)}</span>`:''}</div>
       <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
-      ${i.summary?`<div class="summ">${esc(i.summary)}</div>`:''}
+      ${i.summary?`<div class="summ">${esc(i.summary.length>200?i.summary.slice(0,200).replace(/\\s+\\S*$/,'')+'…':i.summary)}</div>`:''}
       <div class="acts">
         <button data-i="${i.id}">${read.has(i.id)?'Mark unread':'Mark read'}</button>
         ${(i.why&&i.why.length)?`<details class="whyrank"><summary>Why ranked · ${i.score}</summary><ul>${i.why.map(w=>`<li>${esc(w)}</li>`).join('')}</ul></details>`:''}
@@ -4404,6 +4411,9 @@ def collapse_near_duplicates(items):
 # looser global threshold — this can never over-merge unrelated stories. Extend the list as needed.
 _EVENT_CLUSTERS = [
     (re.compile(r"\bmhra\b", re.I), re.compile(r"ambient voice|\bavt\b|ai scribe|voice technolog", re.I)),
+    # UK/NHS AI-health regulatory sandbox — reported as "Pioneering… sandbox launched" (GOV.UK) and
+    # "London launches AI health regulatory sandbox" (syndicated); 'regulatory sandbox' is distinctive.
+    (re.compile(r"mhra|\bnhs\b|london|gov\.uk", re.I), re.compile(r"regulatory sandbox", re.I)),
 ]
 
 

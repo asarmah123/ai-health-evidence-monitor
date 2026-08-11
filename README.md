@@ -31,7 +31,7 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 - **Explore and filter** — search and filter the feed by stage, region, source type and date.
 - **Follow topics** — subscribe to curated evidence streams (FDA authorisations, CMS coverage, NICE evaluations, oncology AI, digital therapeutics…) via a shareable link and a per-topic RSS feed.
 - **Subscribe via RSS** — the top-ranked items as a standard feed, plus a feed per Follow topic.
-- **Download the data** — each build exported as CSV and JSON.
+- **Export the daily feed** — each build is available as CSV and JSON.
 - **Private by design** — a static site with no server, no tracking and no cookies.
 
 ---
@@ -44,7 +44,7 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 - **Methodology** — pipeline, sources, limitations, privacy and FAQ.
 - **About** — purpose, audience and credibility principles.
 
-An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site, together with a feed per Follow topic and a CSV/JSON export of each build.
+An **[RSS feed](https://asarmah123.github.io/ai-health-evidence-monitor/feed.xml)** of the top-ranked items is published alongside the site, together with a feed per Follow topic. CSV/JSON exports are provided for transparency and reuse.
 
 ---
 
@@ -94,7 +94,7 @@ Everything runs on a schedule and renders to a single static page, so there is n
 - **Dates are never estimated** — read from the source, or recorded as `unknown` and excluded from any date-based figure.
 - **No causal or predictive claims** are made beyond what the counts support; medtech and pharma vendor press releases are excluded to keep the feed independent.
 
-Full definitions are in **[TAXONOMY.md](TAXONOMY.md)**. A separate clearance-to-coverage dataset is under development — see **[docs/DATASETS.md](docs/DATASETS.md)**.
+Full definitions are in **[TAXONOMY.md](TAXONOMY.md)**.
 
 ---
 
