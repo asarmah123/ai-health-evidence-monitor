@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-11T13:34:36Z",
- "taxonomy_version": "2.40",
- "count": 98,
+ "generated_at": "2026-08-11T13:45:05Z",
+ "taxonomy_version": "2.41",
+ "count": 96,
  "fields": [
   "id",
   "title",
@@ -1125,26 +1125,6 @@
    "topics": "ai-clinical-studies"
   },
   {
-   "id": "40bc7f9e8e38",
-   "title": "MHRA clarifies how existing medical device law applies to AVT",
-   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxPN1pVem54UnkzVWxUYXJ4Q2lWdlFuNjZUTEtaY2pBZ1VnTXhZMXQ3a3hwaGJ6X3BuVjFkQVVZTTN4OWx0RkpucmRNTDVsVWpFN0NJRWEtMWhHaVVMa3NJQjcyTlhBdE5zTnZhbjl5TXktMEpMcVFxekVQbi03SzVyOTlMM19CZGh4V3hFdVE3RWx2VFU?oc=5",
-   "source": "MHRA (UK)",
-   "source_type": "Regulator",
-   "stage": "regulation",
-   "evidence_type": "Regulatory guidance",
-   "evidence_strength": "Policy signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "Europe",
-   "country": "United Kingdom",
-   "date": "2026-08-04",
-   "score": 6,
-   "topics": "mhra-updates;regulatory-activity"
-  },
-  {
    "id": "ab6f40e5b873",
    "title": "General Hospital of Mexico Launches AI Research Center",
    "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxNY2dXRjR4RU5CZndPeVBOMXk3WnZYQ0hUaVFFdEdLSDJxeXZLbDFhbXdsajZGUUUtN3lvS200dVN3eVJ1ZUViZUpoYWhoNkpiNFlUb3lfal9LTFJXc3hCd3FNTWxxNGJ6bEljdzdVZ2lEd3JFaDhKZ2pLbUh0M2FaTmJCVmZkSGlFQUphNVUyTHJJdnJ4Y2c?oc=5",
@@ -1203,26 +1183,6 @@
    "date": "2026-08-03",
    "score": 0,
    "topics": "ai-clinical-studies"
-  },
-  {
-   "id": "90a1a21dd6b1",
-   "title": "AI scribes used to take notes are not medical devices, MHRA says",
-   "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxPTy1HRmxjTHUzRVQwNzVQYmtWSldma21EazRrdnBpNkFFVnFSd01GeFhQZjg5ZnRCS2pVM1VkNFpEUzBHb0tSTnBJYUNEWkVNQ2oxX0J0UUtMX2pNV0l1MWFOYVVmNGRTd2p1N0dQNjBmYmYtUF85Z2J4a2pUZjVFS2tsazU2VHlMN21iaDBJV2pxbzFZNnhYSlh0OA?oc=5",
-   "source": "MHRA (UK)",
-   "source_type": "Regulator",
-   "stage": "regulation",
-   "evidence_type": "Regulatory guidance",
-   "evidence_strength": "Policy signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Healthcare operations",
-   "ai_modality": "Generative AI / LLM",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "Europe",
-   "country": "United Kingdom",
-   "date": "2026-07-31",
-   "score": 5,
-   "topics": "mhra-updates;regulatory-activity"
   },
   {
    "id": "546453a73a1b",
