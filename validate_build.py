@@ -505,15 +505,17 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                     if data_vals != emb_vals:
                         R.err("Render", "R04_facet_values", f"Rendered {field} values ≠ dataset values",
                               f"data={sorted(map(str,data_vals))} vs rendered={sorted(map(str,emb_vals))}")
-        # R05 — rendered Home metric tiles equal the recomputed numbers
-        for label, expect in (("regulatory<br>update", o["layers"].get("regulation", 0)),
-                              ("coverage<br>decision", len(o.get("coverage_actions", []))),
-                              ("clinical<br>study", o["layers"].get("clinical", 0))):
-            m = re.search(r'brief-v[^"]*">(\d+)</div><div class="brief-l">' + re.escape(label), h)
+        # R05 — rendered Home metric tiles equal the recomputed numbers. The label is capitalised and
+        # pluralised by value ("regulatory<br>update" -> "Regulatory<br>updates"), so match on the stable
+        # capitalised STEM before <br> and ignore the singular/plural suffix.
+        for stem, expect in (("Regulatory", o["layers"].get("regulation", 0)),
+                             ("Coverage", len(o.get("coverage_actions", []))),
+                             ("Clinical", o["layers"].get("clinical", 0))):
+            m = re.search(r'brief-v[^"]*">(\d+)</div><div class="brief-l">' + stem + r'<br>', h)
             if not m:
-                R.warn("Render", "R00_parse", f"could not read the '{label}' metric tile")
+                R.warn("Render", "R00_parse", f"could not read the '{stem}' metric tile")
             elif int(m.group(1)) != expect:
-                R.err("Render", "R05_metric_tile", f"Rendered '{label}' tile ≠ recomputed",
+                R.err("Render", "R05_metric_tile", f"Rendered '{stem}' tile ≠ recomputed",
                       f"rendered={m.group(1)} vs expected={expect}")
 
     # ================= LAYER Z — empty-state invariants =================
@@ -530,12 +532,13 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                   feat[1].get("title", "")[:70])
         if not feat and not quiet:
             R.err("Empty-state", "Z02_missing_empty", "No featured story and no 'A quiet day' empty-state rendered")
-        # Z02 — Home metric tiles render '0' (not a blank/omission) for genuinely empty sections
-        for label, val in (("regulatory<br>update", o["layers"].get("regulation", 0)),
-                          ("coverage<br>decision", len(o.get("coverage_actions", []))),
-                          ("clinical<br>study", o["layers"].get("clinical", 0))):
-            if val == 0 and not re.search(r'brief-v[^"]*">0</div><div class="brief-l">' + re.escape(label), h):
-                R.warn("Empty-state", "Z02_zero_tile", f"'{label}' is 0 but the tile does not clearly render 0")
+        # Z02 — Home metric tiles render '0' (not a blank/omission) for genuinely empty sections. Match
+        # the capitalised stem before <br> (label is pluralised by value; see R05).
+        for stem, val in (("Regulatory", o["layers"].get("regulation", 0)),
+                         ("Coverage", len(o.get("coverage_actions", []))),
+                         ("Clinical", o["layers"].get("clinical", 0))):
+            if val == 0 and not re.search(r'brief-v[^"]*">0</div><div class="brief-l">' + stem + r'<br>', h):
+                R.warn("Empty-state", "Z02_zero_tile", f"'{stem}' is 0 but the tile does not clearly render 0")
 
     # ================= LAYER X — cross-page invariants =================
     def check_topic_tags():

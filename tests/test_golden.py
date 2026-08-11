@@ -1397,11 +1397,12 @@ def _render_html(items, o):
     """Minimal stand-in for docs/index.html carrying the exact anchors the R/Z layers parse."""
     import json as _j
     n = len(items)
+    # mirror build.py _bm(): capitalised stem, value-pluralised suffix after <br>
     tiles = "".join(
-        f'<div class="brief-m"><div class="brief-v">{v}</div><div class="brief-l">{lbl}</div></div>'
-        for v, lbl in ((o["layers"].get("regulation", 0), "regulatory<br>update"),
-                       (len(o["coverage_actions"]), "coverage<br>decision"),
-                       (o["layers"].get("clinical", 0), "clinical<br>study")))
+        f'<div class="brief-m"><div class="brief-v">{v}</div><div class="brief-l">{stem}<br>{suf}</div></div>'
+        for v, stem, suf in ((o["layers"].get("regulation", 0), "Regulatory", "updates"),
+                             (len(o["coverage_actions"]), "Coverage", "decisions"),
+                             (o["layers"].get("clinical", 0), "Clinical", "studies")))
     feat = build.select_featured(o)
     topstory = (f'<div class="topstory" data-open="{feat[1]["url"]}">{feat[1]["title"]}</div>'
                 if feat else '<div class="topstory quiet">A quiet day</div>')
@@ -1513,10 +1514,11 @@ def test_mut_featured_not_rendered():
 def test_mut_metric_tile_wrong():
     # the rendered regulatory tile shows the wrong number
     def m(it):
+        import re as _re
         o = build.overview_stats(it)
-        good = f'<div class="brief-v">{o["layers"].get("regulation",0)}</div><div class="brief-l">regulatory<br>update</div>'
-        html = _render_html(it, o).replace(good, good.replace(f'>{o["layers"].get("regulation",0)}<', '>77<'))
-        return html
+        html = _render_html(it, o)
+        return _re.sub(r'(<div class="brief-v">)\d+(</div><div class="brief-l">Regulatory<br>)',
+                       r'\g<1>77\g<2>', html)
     assert "R05_metric_tile" in _codes_after(m)
 
 

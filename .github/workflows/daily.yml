@@ -46,11 +46,22 @@ jobs:
           git config user.name  "feed-bot"
           git config user.email "feed-bot@users.noreply.github.com"
           git add docs/index.html docs/feed.xml docs/feed.xsl docs/feed-*.xml docs/build.json docs/validation.json docs/data/
-          git diff --staged --quiet || git commit -m "feed: $(date -u +'%Y-%m-%d')"
-          # Rebase onto any commits that landed during the run (e.g. a manual code push),
-          # then push — so a race with main advancing doesn't fail the publish. Retry once.
-          git pull --rebase --autostash origin main || true
-          git push || (git pull --rebase --autostash origin main && git push)
+          if git diff --staged --quiet; then echo "no changes to publish"; exit 0; fi
+          git commit -m "feed: $(date -u +'%Y-%m-%d')"
+          # docs/* are fully regenerated every build, so on ANY conflict with an advanced main we keep
+          # THIS build's output. `git rebase -X theirs` favours the commits being replayed (our fresh
+          # build); the loop absorbs a race where main moves between fetch and push.
+          published=0
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            if git rebase -X theirs origin/main; then
+              if git push origin HEAD:main; then published=1; break; fi
+            else
+              git rebase --abort || true
+            fi
+            sleep $((RANDOM % 6 + 2))
+          done
+          if [ "$published" != "1" ]; then echo "::error title=Publish failed::could not push after 5 attempts"; exit 1; fi
 
       # ---- post-publish validation (never blocks the publish above) --------------------------------
       # build.py has already written validation_status.json + validation_report.{md,html}. We read the
@@ -77,6 +88,7 @@ jobs:
       # that the build was checked — silence is never assumed to mean 'clean'.
       - name: Email validation report
         if: always() && steps.val.outputs.have == 'true'
+        continue-on-error: true   # a mail hiccup must not mark a successfully-published build as failed
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
