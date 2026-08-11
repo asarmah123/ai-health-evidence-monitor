@@ -9,6 +9,7 @@ Run:  python build.py            (full build)
 """
 
 import argparse, hashlib, html, json, os, re, sys, time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urljoin
@@ -157,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.30"
+TAXONOMY_VERSION = "2.31"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -405,6 +406,10 @@ _PR_JUNK_RE = re.compile(r"market size|\bcagr\b|forecast period|market research 
 # and is filterable as Commentary). Matched at title position to avoid catching real studies.
 _ADMIN_RE = re.compile(r"\bauthor correction\b|\bcorrection to\b|\bcorrection:|\bretraction\b"
                        r"|\berratum\b|\bcorrigend|expression of concern|\breply to\b")
+# Filename-like / non-article titles (audit E10): ingestion artefacts such as INAHTA's
+# 'ListS_SFOPH-...' download entries — a raw filename, not a human-readable publication title.
+_FILENAME_TITLE_RE = re.compile(r"^\s*lists?_|^\s*download\b|^\s*file[_\s]"
+                                r"|\.(pdf|docx?|xlsx?|pptx?|zip|csv)\s*$", re.I)
 # Out-of-scope: veterinary / agriculture / plant-science papers slip in via broad PubMed AI queries
 # ("machine learning … crop yield", "abiotic stress in plants", "milk yield in dairy cows"). Not
 # human-health evidence — dropped globally, including for otherwise AI-native journal sources.
@@ -414,7 +419,14 @@ _OUT_OF_SCOPE_RE = re.compile(
     r"|\bcanine\b|\bfeline\b|\bporcine\b|\bequine\b|transcription factor"
     # insect farming / aquaculture / animal feed, and non-health domains (sport) that slip broad queries
     r"|black soldier fly|\blarvae\b|crude protein|aquaculture|fishmeal|insect (protein|meal|farming|rearing)"
-    r"|\bgolf\b|\bpga\b|premier league|\bnba\b|\bnfl\b")
+    r"|\bgolf\b|\bpga\b|premier league|\bnba\b|\bnfl\b"
+    # materials science / energy / environmental engineering — non-health science that trips broad
+    # AI×HEOR queries on generic words (e.g. 'resource utilization', 'machine learning'). Now that
+    # PubMed abstracts flow into the gate, these backstop terms catch the paper on its content.
+    r"|sodium.ion|lithium.ion|\bcathode\b|\banode\b|polyanion|supercapacitor|perovskite|photovoltaic"
+    r"|electrocatal|battery (cathode|anode|electrolyte|cell|material|storage|technolog)"
+    r"|high.entropy (alloy|engineering|material|oxide)"
+    r"|river sediment|dredg(e|ed|ing)|wastewater|sewage sludge|\beffluent\b|geopolymer")
 
 
 def relevance_gate(items):
@@ -426,6 +438,8 @@ def relevance_gate(items):
     for i in items:
         if _ADMIN_RE.search(i.get("title", "").lower()):
             continue   # correction / retraction / erratum / reply — administrative notice, not evidence
+        if _FILENAME_TITLE_RE.search(i.get("title", "")):
+            continue   # filename-like / non-article title (e.g. 'ListS_SFOPH-…') — ingestion artefact
         if _OUT_OF_SCOPE_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()):
             continue   # veterinary / agriculture / plant-science — not human-health evidence
         t, s = i.get("title", ""), i.get("summary", "")
@@ -586,6 +600,20 @@ def refine_regulation_layer(items):
     return items
 
 
+def refine_commentary_layer(items):
+    """Opinion/commentary is not clinical evidence (audit E3). Move clinical-stage commentary to
+    'research' (Research/Policy commentary) — NOT industry, which is a market/news catch-all.
+    Detected as elsewhere: the _EV_COMMENT keyword net plus NLM comment/editorial publication types."""
+    for i in items:
+        if i.get("layer") != "clinical":
+            continue
+        text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+        pt = " ".join(str(x) for x in (i.get("pubtype") or [])).lower()
+        if _EV_COMMENT.search(text) or any(x in pt for x in ("comment", "editorial", "letter")):
+            i["layer"] = "research"
+    return items
+
+
 def apply_source_caps(items, caps):
     """Cap each whole-feed source (RSS / Google-News) to N items — but AFTER the relevance
     gate, so the N slots go to AI-relevant items instead of being consumed by newer noise
@@ -737,6 +765,12 @@ def _scrape_date(a):
     return ""
 
 
+# Navigation / topic / index / listing pages are not individual items (audit E8): an ISPOR
+# 'HEOR by Topic' landing page is a menu, not a study. Reject these hrefs even when they match.
+_SCRAPE_NAV_RE = re.compile(r"/heor-by-topic|/by-topic|/topics?/|/categor(y|ies)/|/tags?/|/search"
+                            r"|/archive|/page/\d+")
+
+
 def fetch_scrape(sources):
     items, dead = [], []
     for s in sources:
@@ -754,6 +788,8 @@ def fetch_scrape(sources):
             href, text = a["href"], clean(a.get_text(), 200)
             if s["match"] not in href or len(text) < 25:
                 continue
+            if _SCRAPE_NAV_RE.search(href.lower()):
+                continue   # navigation / topic / index page, not an individual study or report
             full = urljoin(s["url"], href)
             if full in seen:
                 continue
@@ -769,9 +805,30 @@ def fetch_scrape(sources):
     return items, dead
 
 
+def _parse_pubmed_xml(xml_bytes):
+    """efetch XML → {pmid: {abstract, pubtype, mesh}}. Best-effort; returns {} on any parse error."""
+    out = {}
+    try:
+        root = ET.fromstring(xml_bytes)
+    except Exception:
+        return out
+    for art in root.findall(".//PubmedArticle"):
+        pmid_el = art.find(".//MedlineCitation/PMID")
+        if pmid_el is None or not (pmid_el.text or "").strip():
+            continue
+        pmid = pmid_el.text.strip()
+        abstract = " ".join((t.text or "") for t in art.findall(".//Abstract/AbstractText")).strip()
+        pubtype = [pt.text for pt in art.findall(".//PublicationTypeList/PublicationType") if pt.text]
+        mesh = [d.text for d in art.findall(".//MeshHeadingList/MeshHeading/DescriptorName") if d.text]
+        out[pmid] = {"abstract": abstract, "pubtype": pubtype, "mesh": mesh}
+    return out
+
+
 def fetch_pubmed(sources, default_days):
     """Pull journal records from PubMed's E-utilities API. Monthly journals get a wider
-    reldate window (via _source_days) so an issue's papers aren't lost on a 10-day window."""
+    reldate window (via _source_days) so an issue's papers aren't lost on a 10-day window.
+    esummary gives title/date/pubtype; efetch adds the ABSTRACT + MeSH, so classification reads
+    the study's content — not just its title (fixes out-of-scope + weak evidence typing)."""
     base = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     items, dead = [], []
     for s in sources:
@@ -795,6 +852,18 @@ def fetch_pubmed(sources, default_days):
             dead.append(f"{s['name']}: {type(e).__name__}: {str(e)[:120]} [PubMed E-utilities]")
             continue
 
+        # efetch: abstracts + MeSH the esummary lacks. Best-effort — a failure falls back to authors.
+        details = {}
+        try:
+            time.sleep(0.4)
+            fr = requests.get(f"{base}/efetch.fcgi", timeout=30, headers=UA, params={
+                "db": "pubmed", "id": ",".join(pmids), "rettype": "abstract", "retmode": "xml",
+            })
+            fr.raise_for_status()
+            details = _parse_pubmed_xml(fr.content)
+        except Exception:
+            details = {}
+
         for pmid in pmids:
             rec = res.get(pmid)
             if not rec:
@@ -803,10 +872,17 @@ def fetch_pubmed(sources, default_days):
             raw = (rec.get("sortpubdate") or rec.get("pubdate") or "")[:10].replace("/", "-")
             date = raw if re.match(r"^\d{4}-\d{2}-\d{2}$", raw) else ""
             authors = ", ".join(a["name"] for a in rec.get("authors", [])[:4])
+            det = details.get(pmid, {})
+            # publication type: esummary list first, else efetch
+            pubtype = [str(p) for p in (rec.get("pubtype") or [])] or det.get("pubtype", [])
             items.append({
                 "id": uid(url), "title": clean(rec.get("title", ""), 220), "url": url,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": date, "summary": clean(authors, 160),
+                "date": date,
+                "summary": clean(det.get("abstract") or authors, 380),
+                "pubtype": pubtype,
+                "mesh": det.get("mesh", []),
+                "journal": rec.get("fulljournalname") or rec.get("source", ""),
             })
         time.sleep(0.4)
     return items, dead
@@ -829,13 +905,16 @@ def fetch_gnews(sources, now, default_days):
             when = when_from(e)
             if when is not None and when < cutoff:
                 continue
-            title = clean(e.get("title", ""), 200)
-            title = re.sub(r"\s+-\s+[^-]+$", "", title)   # strip the trailing " - Publisher"
+            raw_title = clean(e.get("title", ""), 200)
+            m = re.search(r"\s-\s([^-]+)$", raw_title)          # trailing " - Publisher"
+            publisher = ((e.get("source") or {}).get("title", "") or (m.group(1).strip() if m else ""))
+            title = re.sub(r"\s+-\s+[^-]+$", "", raw_title)
             items.append({
                 "id": uid(e.link), "title": title, "url": e.link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when.strftime("%Y-%m-%d") if when else "", "summary": "",
                 "gnews": True,   # health-gated in relevance_gate (loose query → non-health noise)
+                "publisher": publisher,   # resolved underlying source, for the primary-evidence gate
             })
     return items, dead
 
@@ -1175,9 +1254,16 @@ _ST_REGULATOR = ("FDA", "EMA", "MHRA", "Federal Register", "PMDA", "NMPA", "TGA"
 _ST_PAYER = ("CMS", "NICE", "G-BA", "IQWiG", "HAS", "BfArM", "CADTH", "PBAC", "MSAC",
              "HIRA", "NECA", "AIFA", "TLV", "Zorginstituut", "HITAP", "ACE", "ICER", "NHSA",
              "KCE", "NCPE", "HIQA", "AOTMiT", "RedETS", "Amgros", "NoMA", "Fimea", "CONITEC")
-_ST_JOURNAL = ("PubMed", "NEJM", "Lancet", "Nature", "JAMIA", "JAMA", "BMJ",
-               "Value in Health", "PharmacoEconomics", "Ground Truths")
+_ST_JOURNAL = ("PubMed", "NEJM", "Lancet", "Nature", "npj", "JAMIA", "JAMA", "BMJ",
+               "Cochrane", "Health Affairs", "Value in Health", "PharmacoEconomics", "Ground Truths")
 _ST_INDUSTRY = ("STAT", "Endpoints", "Fierce", "MedTech", "MassDevice", "MobiHealth")
+# Canonical journal/preprint publisher domains — the reliable half of the source registry: a
+# journal is identified by its domain even when the source *name* doesn't carry a journal token
+# (e.g. npj Digital Medicine served from nature.com). Repairs the source_type→eligibility gate.
+_JOURNAL_DOMAINS = ("nature.com", "thelancet.com", "jamanetwork.com", "bmj.com", "nejm.org",
+                    "academic.oup.com", "sciencedirect.com", "link.springer.com", "onlinelibrary.wiley.com",
+                    "cochranelibrary.com", "pubmed.ncbi.nlm.nih.gov", "doi.org", "jamia")
+_PREPRINT_DOMAINS = ("arxiv.org", "medrxiv.org", "biorxiv.org")
 
 
 def source_type(i):
@@ -1185,7 +1271,7 @@ def source_type(i):
     u = i.get("url", "").lower()
     if "clinicaltrials" in u:
         return "Trial registry"
-    if "arxiv" in u or "arxiv" in s.lower() or "medrxiv" in u or "medrxiv" in s.lower():
+    if any(d in u for d in _PREPRINT_DOMAINS) or "arxiv" in s.lower() or "medrxiv" in s.lower():
         return "Preprint / research"
     if any(k in s for k in _ST_REGULATOR):
         return "Regulator"
@@ -1195,6 +1281,11 @@ def source_type(i):
         return "Journal / evidence"
     if any(k in s for k in _ST_INDUSTRY):
         return "Industry press"
+    # domain backstop (source registry): a journal is a journal by its canonical domain even when
+    # the source *name* carries no journal token. Google-News items sit on news.google.com and are
+    # unaffected — they must be resolved by publisher, not treated as journal evidence.
+    if any(d in u for d in _JOURNAL_DOMAINS):
+        return "Journal / evidence"
     return "Other"
 
 
@@ -1331,13 +1422,70 @@ def access_facets(i):
     return _access_decision_type(text), _payer_type(i.get("source", "").lower(), text)
 
 
+# --- source registry: which sources may carry 'Primary evidence' -------------
+# Provenance gate. Google News / plain RSS is a TRANSPORT layer, not an evidence source: an item
+# only carries 'Primary evidence' if it resolves to a genuine evidence source — a peer-reviewed
+# journal, a preprint server, a trial registry, a regulator/HTA primary document, or an official
+# study repository / RWE network. For a transport item, the underlying publisher is resolved first.
+_PRIMARY_ELIGIBLE_ST = {"Journal / evidence", "Preprint / research", "Trial registry",
+                        "Regulator", "HTA / payer"}
+_ST_STUDY_REPO = ("PCORnet", "Sentinel", "OHDSI", "EHDEN", "DARWIN")
+
+def _primary_eligible(i):
+    st = i.get("stype") or source_type(i)
+    if st in _PRIMARY_ELIGIBLE_ST:
+        return True
+    if any(k in i.get("source", "") for k in _ST_STUDY_REPO):
+        return True
+    pub = (i.get("publisher", "") or "").lower()   # resolved underlying publisher (Google News)
+    if pub and (any(k.lower() in pub for k in _ST_JOURNAL) or any(d in pub for d in _JOURNAL_DOMAINS)):
+        return True
+    return False
+
+
+# regulatory sub-types (per audit v3.1): a sandbox/programme is not 'Guidance'.
+_EV_REG_RULE = re.compile(r"\brule(s)?\b|legislation|statut|decree|final rule|regulations? (20\d\d|come into|enter into)")
+_EV_REG_ENFORCE = re.compile(r"recall|safety (alert|notice|communication)|field safety|enforcement"
+                             r"|warning letter|suspend|withdrawn from market|market withdrawal")
+_EV_REG_PROGRAMME = re.compile(r"sandbox|pilot (programme|program|scheme)|regulatory (programme|initiative)"
+                               r"|innovation (pathway|programme|program)")
+_EV_REG_CONSULT = re.compile(r"consultation|call for (evidence|input|comment)|request for (comment|information)"
+                             r"|\brfi\b|for comment|seeks views|invites? comment")
+
+
 def classify_evidence(i):
+    """Return (etype, strength). Wraps the core rules with the source-registry gate: a transport
+    layer (Google News / unresolved 'Other') can never carry 'Primary evidence'."""
+    et, strn = _classify_core(i)
+    if strn == "Primary evidence" and not _primary_eligible(i):
+        return "News", "Market signal"
+    return et, strn
+
+
+def _classify_core(i):
     """Return (etype, strength). Order matters: overrides (commentary, deals) first, then
     study designs, then a source-type / stage backbone."""
     st = i.get("stype") or source_type(i)
     layer = i.get("layer", "")
     t = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
     ti = i.get("title", "").lower().replace("-", " ")   # title only — summaries are promo teasers
+    if _LITIGATION_RE.search(ti):
+        # cross-cutting signal — a court case about coverage/regulation is NOT itself a coverage or
+        # regulatory decision (audit E7). Typed distinctly and excluded from the access ranking boost.
+        return "Legal / litigation", "Policy signal"
+    pt = i.get("pubtype") or []
+    pt = " ".join(str(x) for x in pt).lower() if isinstance(pt, list) else str(pt).lower()
+    if pt:   # NLM publication type — the most reliable evidence-type signal (PubMed items only)
+        if any(x in pt for x in ("comment", "editorial", "letter")):
+            return "Commentary", "Commentary"
+        if "meta-analysis" in pt:
+            return "Meta-analysis", "Secondary evidence"
+        if "systematic review" in pt:
+            return "Systematic review", "Secondary evidence"
+        if "randomized controlled trial" in pt:
+            return "RCT", "Primary evidence"
+        if "review" in pt:
+            return "Review", "Secondary evidence"
     if _EV_COMMENT.search(t):
         return "Commentary", "Commentary"
     if layer == "industry" or st == "Industry press":
@@ -1359,6 +1507,10 @@ def classify_evidence(i):
         if _EV_ANALYSIS.search(ti):
             return "Industry analysis", "Market signal"
         # else fall through to the backbone → "Industry news"
+    # Preprint precedence: a preprint's provenance overrides RWE/RCT/title keywords (an arXiv paper
+    # about 'real-world' evaluation is a Preprint, not real-world evidence).
+    if (i.get("stype") or source_type(i)) == "Preprint / research":
+        return "Preprint", "Primary evidence"
     if _EV_META.search(t):
         return "Meta-analysis", "Secondary evidence"
     if _EV_SYS.search(t):
@@ -1383,6 +1535,14 @@ def classify_evidence(i):
             return "AI governance", "Policy signal"
         if _EV_AUTH.search(t):
             return "Regulatory authorisation", "Policy signal"
+        if _EV_REG_ENFORCE.search(t):
+            return "Enforcement / safety", "Policy signal"
+        if _EV_REG_PROGRAMME.search(t):
+            return "Regulatory programme", "Policy signal"   # sandbox/pilot ≠ guidance (audit E5b)
+        if _EV_REG_CONSULT.search(t):
+            return "Consultation / policy", "Policy signal"
+        if _EV_REG_RULE.search(ti):
+            return "Rule / legislation", "Policy signal"
         return "Regulatory guidance", "Policy signal"
     if layer == "access":
         # a coding/coverage/payment action is 'Payment / coverage'; procurement, payment models and
@@ -1588,8 +1748,16 @@ def country_of(i):
             if any(k in text for k in keys):
                 return label
         return None
-    # content wins; source name only fills genuinely unplaced items
-    return _match((i.get("title", "") + " " + i.get("summary", "")).lower()) or _match(src.lower())
+    # content wins. Source-name geography is a *native-feed* convenience only (a body's own feed
+    # encodes its jurisdiction). It is NEVER applied to Google-News items: a query's country is
+    # query_geography, not content_geography — a WHO/global story found via an APAC query is not
+    # Asian, and a generic story found via the China query is not Chinese. (audit E9)
+    content = _match((i.get("title", "") + " " + i.get("summary", "")).lower())
+    if content:
+        return content
+    if i.get("gnews") or "news.google.com" in i.get("url", ""):
+        return None
+    return _match(src.lower())
 
 
 def _body_role_counts(items):
@@ -1822,13 +1990,16 @@ def rank_score(i):
     if any(b in src for b in MAJOR_BODIES):
         s += 3; reasons.append("Major regulator / HTA body")
 
-    if layer == "access":
+    # litigation is a cross-cutting legal signal, not a coverage/regulatory decision — it does not
+    # earn the access/regulation decision boost (audit E7), so a court case can't top the feed.
+    _litig = bool(_LITIGATION_RE.search(i.get("title", "").lower()))
+    if layer == "access" and not _litig:
         s += 3; reasons.append("Reimbursement / coverage")
         # within market access, a formal payer/coverage decision outranks a procurement/tender
         # announcement — so reimbursement decisions surface above purchasing news.
         if _PAY_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")):
             s += 1; reasons.append("Formal payer / coverage decision")
-    elif layer == "regulation":
+    elif layer == "regulation" and not _litig:
         s += 2; reasons.append("Regulatory / authorisation")
 
     if _econ_endpoint(i):
@@ -4174,6 +4345,7 @@ def main():
     items = refine_research_layer(items) # research precision: newsletters/product news → industry
     items = refine_method_papers(items)  # method vs clinical: pure model-dev papers → research
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
+    items = refine_commentary_layer(items) # commentary/opinion is not clinical evidence → research
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)

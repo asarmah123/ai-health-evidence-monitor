@@ -888,6 +888,133 @@ def test_history_row_shape():
     assert row["qa"]["published"] == 6 and row["qa"]["dropped"] == 0 and row["qa"]["passed"] is True
 
 
+# --- P0 remediation (audit v3.1) ---------------------------------------------
+def test_source_registry_npj_and_domains():
+    """P0-3: npj (name) and journal domains resolve to 'Journal / evidence', not 'Other'."""
+    assert build.source_type({"source": "npj Digital Medicine", "url": "https://www.nature.com/articles/s41746-x"}) == "Journal / evidence"
+    assert build.source_type({"source": "Cochrane — AI & digital health reviews", "url": "https://pubmed.ncbi.nlm.nih.gov/1/"}) == "Journal / evidence"
+    # a journal by domain even when the name has no journal token
+    assert build.source_type({"source": "Some Feed", "url": "https://www.thelancet.com/journals/x"}) == "Journal / evidence"
+    # Google-News transport is NOT a journal
+    assert build.source_type({"source": "AI in HTA & market access", "url": "https://news.google.com/rss/articles/ABC"}) == "Other"
+
+
+def test_primary_evidence_gate():
+    """P0-2: transport (Google News) can't be 'Primary evidence'; real journals/preprints/RWE can."""
+    ev = build.classify_evidence
+    # gnews clinical item, non-journal publisher → downgraded from primary
+    et, strn = ev({"title": "Digital health VC hits $7.4B in H1 2026", "layer": "clinical",
+                   "source": "AI in HTA & market access", "url": "https://news.google.com/rss/articles/ABC",
+                   "gnews": True, "publisher": "Fierce Healthcare", "summary": ""})
+    assert strn != "Primary evidence", (et, strn)
+    # gnews item whose underlying publisher IS a journal → eligible
+    et, strn = ev({"title": "New AI triage study", "layer": "clinical",
+                   "source": "AI in HTA & market access", "url": "https://news.google.com/rss/articles/XYZ",
+                   "gnews": True, "publisher": "Nature Medicine", "summary": ""})
+    assert strn == "Primary evidence", (et, strn)
+    # real journal item stays primary
+    assert ev({"title": "An AI model for sepsis detection", "layer": "clinical",
+               "source": "npj Digital Medicine", "url": "https://www.nature.com/articles/x", "summary": ""})[1] == "Primary evidence"
+    # RWE repository (PCORnet) stays primary despite 'Other' source_type
+    assert ev({"title": "Deriving real world insights using EHR and machine learning", "layer": "heor",
+               "source": "PCORnet (real-world evidence)", "url": "https://pcornet.org/news/x", "summary": ""})[1] == "Primary evidence"
+
+
+def test_preprint_precedence():
+    """P0-4: a preprint's provenance overrides RWE/RCT title keywords."""
+    et, strn = build.classify_evidence({"title": "A real-world evaluation of a video language model",
+                                        "layer": "research", "source": "arXiv",
+                                        "url": "https://arxiv.org/abs/2608.06361", "summary": ""})
+    assert et == "Preprint", (et, strn)
+
+
+def test_regulatory_subtypes():
+    """P0-5: sandbox/programme, enforcement, consultation, rule ≠ generic 'Regulatory guidance'."""
+    ev = lambda title: build.classify_evidence({"title": title, "layer": "regulation",
+                                                "source": "MHRA — GOV.UK (primary)", "stype": "Regulator", "summary": ""})[0]
+    assert ev("Pioneering AI health innovations regulatory sandbox launched") == "Regulatory programme"
+    assert ev("MHRA issues field safety notice and recall for AI device") == "Enforcement / safety"
+    assert ev("Agency opens consultation on AI medical device rules") == "Consultation / policy"
+    assert ev("Parliament passes AI in healthcare legislation") == "Rule / legislation"
+    assert ev("MHRA clarifies regulatory status of ambient voice technologies") == "Regulatory guidance"
+
+
+def test_geography_no_gnews_query_fallback():
+    """P0-6: never infer content-country from a Google-News query's country."""
+    # gnews China query, no China token in content → NOT tagged China
+    assert build.country_of({"source": "China — reimbursement & payment (NHSA)", "gnews": True,
+                             "url": "https://news.google.com/rss/articles/ABC",
+                             "title": "Young workers skip cancer screenings as AI replaces the doctor visit",
+                             "summary": ""}) is None
+    # but explicit in-content geography still wins
+    assert build.country_of({"source": "China — reimbursement & payment (NHSA)", "gnews": True,
+                             "url": "https://news.google.com/rss/articles/XYZ",
+                             "title": "NMPA approves new AI diagnostic in China", "summary": ""}) == "China"
+
+
+def test_pubmed_pubtype_typing():
+    """P0-1: NLM publication type drives evidence typing for PubMed items."""
+    ev = lambda pubtype, title="A study": build.classify_evidence(
+        {"title": title, "layer": "clinical", "source": "JAMA Network — AI in medicine",
+         "stype": "Journal / evidence", "summary": "", "pubtype": pubtype})
+    assert ev(["Randomized Controlled Trial", "Journal Article"]) == ("RCT", "Primary evidence")
+    assert ev(["Editorial"]) == ("Commentary", "Commentary")
+    assert ev(["Systematic Review"]) == ("Systematic review", "Secondary evidence")
+    assert ev(["Meta-Analysis"]) == ("Meta-analysis", "Secondary evidence")
+
+
+def test_pubmed_abstract_out_of_scope():
+    """P0-1: with the abstract in summary, an out-of-scope paper is dropped by the relevance gate."""
+    battery = {"title": "High-Entropy Engineering of Phosphate Based Polyanion Cathode Materials",
+               "summary": "We report a sodium-ion battery cathode with improved cycling using machine learning to optimise composition.",
+               "layer": "heor", "source": "PubMed — AI × HTA/HEOR", "url": "https://pubmed.ncbi.nlm.nih.gov/1/"}
+    kept = build.relevance_gate([battery])
+    assert battery not in kept, "battery/materials paper should be gated out via its abstract"
+
+
+# --- P1 remediation (audit v3.1) ---------------------------------------------
+def test_litigation_type_and_ranking():
+    """P1-7: a court case is 'Legal / litigation', not a coverage decision, and gets no access boost."""
+    court = {"title": "Court Examines AI Discovery in Medicare Advantage Coverage Decision Case",
+             "layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI",
+             "url": "https://news.google.com/rss/articles/ABC", "summary": "", "date": ""}
+    assert build.classify_evidence(court)[0] == "Legal / litigation"
+    _, reasons = build.rank_score(court)
+    assert "Reimbursement / coverage" not in reasons, reasons
+    # a genuine coverage decision DOES get the boost
+    cov = {"title": "CMS finalises NCD covering the AI diagnostic", "layer": "access",
+           "source": "CMS coverage determinations (NCD/LCD) — AI", "url": "https://cms.gov/x", "summary": "", "date": ""}
+    assert "Reimbursement / coverage" in build.rank_score(cov)[1]
+
+
+def test_commentary_moved_out_of_clinical():
+    """P1-8: clinical-stage commentary is routed to research (Research/Policy), never industry."""
+    items = [{"title": "Artificial intelligence as a new commercial determinant of health",
+              "layer": "clinical", "source": "BMJ — AI in medicine", "summary": "", "pubtype": []},
+             {"title": "A randomized controlled trial of an AI sepsis alert", "layer": "clinical",
+              "source": "npj Digital Medicine", "summary": "", "pubtype": ["Randomized Controlled Trial"]}]
+    build.refine_commentary_layer(items)
+    assert items[0]["layer"] == "research", "commentary should leave clinical"
+    assert items[1]["layer"] == "clinical", "a real RCT should stay clinical"
+
+
+def test_scrape_nav_rejected():
+    """P1-9: navigation/topic/index hrefs are rejected by the scrape guard."""
+    assert build._SCRAPE_NAV_RE.search("/heor-resources/heor-by-topic-new/digital-health-devices-and-diagnostics")
+    assert build._SCRAPE_NAV_RE.search("/strategic-initiatives/topics/artificial-intelligence")
+    # a genuine article/report slug is NOT rejected
+    assert not build._SCRAPE_NAV_RE.search("/heor-resources/good-practices/article/quantitative-benefit-risk")
+
+
+def test_filename_title_guard():
+    """P1-10: filename-like / non-article titles are dropped by the relevance gate."""
+    junk = {"title": "ListS_SFOPH-AI use for skin cancer", "summary": "", "layer": "heor",
+            "source": "INAHTA (HTA network)", "url": "https://www.inahta.org/download/lists_sfoph/"}
+    assert junk not in build.relevance_gate([junk])
+    assert build._FILENAME_TITLE_RE.search("guidance_document.pdf")
+    assert not build._FILENAME_TITLE_RE.search("NICE recommends the AI diagnostic for NHS use")
+
+
 # --- standalone runner --------------------------------------------------------
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
