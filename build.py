@@ -219,21 +219,31 @@ def _gh_headers(token, raw=True):
 
 
 def private_get(path, token):
-    """Fetch a file from the private repo. Returns (text, sha) or (None, None)."""
+    """Fetch a file from the private repo. Returns (text, sha) or (None, None).
+
+    Transient network failures (SSL resets, connection drops, timeouts) are retried with backoff —
+    the private config/history fetch is on the build's critical path, so a single blip must not
+    abort the whole run. A real 404 (file absent) returns immediately; it is not a transient error."""
     if not token:
         return None, None
-    try:
-        r = requests.get(f"https://api.github.com/repos/{PRIVATE_REPO}/contents/{path}",
-                         headers=_gh_headers(token, raw=False), timeout=25)
-        if r.status_code == 404:
-            return None, None
-        r.raise_for_status()
-        meta = r.json()
-        import base64
-        return base64.b64decode(meta["content"]).decode("utf-8"), meta["sha"]
-    except Exception as e:
-        print(f"! private_get {path}: {type(e).__name__}", file=sys.stderr)
-        return None, None
+    import base64
+    last = None
+    for attempt in range(4):   # ~0 + 2 + 4 + 8s of backoff across 4 tries
+        try:
+            r = requests.get(f"https://api.github.com/repos/{PRIVATE_REPO}/contents/{path}",
+                             headers=_gh_headers(token, raw=False), timeout=25)
+            if r.status_code == 404:
+                return None, None
+            r.raise_for_status()
+            meta = r.json()
+            return base64.b64decode(meta["content"]).decode("utf-8"), meta["sha"]
+        except Exception as e:   # noqa: BLE001 — network layer raises many types (SSLError, ConnectionError…)
+            last = e
+            if attempt < 3:
+                print(f"! private_get {path}: {type(e).__name__} — retry {attempt + 1}/3", file=sys.stderr)
+                time.sleep(2 * (attempt + 1))
+    print(f"! private_get {path}: {type(last).__name__} (gave up after 4 tries)", file=sys.stderr)
+    return None, None
 
 
 def private_put(path, text, token, sha=None, msg=None):
