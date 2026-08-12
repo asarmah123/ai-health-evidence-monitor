@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-12T18:34:51Z",
+ "generated_at": "2026-08-12T18:46:22Z",
  "taxonomy_version": "2.52",
  "count": 89,
  "fields": [
@@ -509,9 +509,9 @@
    "topics": ""
   },
   {
-   "id": "725cf31b019f",
+   "id": "4e816a227bd6",
    "title": "Harnessing the potential of AI to bring real benefits for patients - Wired-GOV",
-   "url": "https://news.google.com/rss/articles/CBMizgFBVV95cUxQZWFfSXk5VHI5eW9UTXBPaklpX1pLN0MzUFNGSWgzN2xwOFRnXzRxcFNHMEZLR2QzcDhxMGFIN0dwUk5ZQ2NHajRDVmwxTWN6WmUyc0lzSVZyLTRwWmszdm1MQkoydHJmVTBITDktTGItSlhIak90ZXNZQXpTNXVvREt1VTdCVWxRWlQycHpGTDdrRzQ1RWFabFIxbkxaSm9Mb3VQaXpoM3JkMTFjSHFpWjE5cnhhV01ZcGhFTW42TExtYVVoX0JYVXo2RjRyZw?oc=5",
+   "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxPcktoZlhPUUY0dlRXeE5YMHNfdEJqZWZabEVXM2FBMFM5aXl0bDJhUll4eFRBNlNqWFpLMnJITTVjTjZrVnMzV1d5QkYzTjJOSDh3WjhQcDNsLTZad09aYUpXWEdsYUhuTG16Vk1QWXdKRmg4TlR3SkJTaHNqVGl6Q213RExNWkFhNlZCOVA1anlhUXZRWElMTi15RnRpc2RDX3BhZTFvdHk1ajdhdzQ1dDdyRjEwa01heVl0QjZvWDQyR28?oc=5",
    "source": "Wired-GOV",
    "feed": "AI in HTA & market access",
    "source_type": "Other",
@@ -1247,7 +1247,7 @@
    "id": "4d93f616a5a8",
    "title": "AI in healthcare should not replace human judgement – HIQA",
    "url": "https://news.google.com/rss/articles/CBMilwFBVV95cUxPUmxNQVI5bnhVZTZJQnJwbDBlTDltaV9jWXZiZjVpYlUxczlud29TT2JGSDJ6M3NnWkFoMkNEYmtqLVN3R0RtbXV0UmcxNzlJRlM1V0lzenJpNmlwaUxqenVtMnRGcmNHNmtrTHprOThGMFhoeHdZeDhNcjFDUTRSLWQ5dlJuMXotb1ZFT3ZfR3pHUE1oOW1R?oc=5",
-   "source": "imt.ie",
+   "source": "Irish Medical Times",
    "feed": "Additional European HTA (BE/IE/PL/ES/Nordics/CH)",
    "source_type": "Other",
    "stage": "regulation",
