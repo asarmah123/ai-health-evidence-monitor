@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.51"
+TAXONOMY_VERSION = "2.52"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -887,7 +887,8 @@ def fetch_rss(sources, now, default_days):
             items.append({
                 "id": uid(link), "title": title, "url": link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": when.strftime("%Y-%m-%d") if when else "",
+                # feed date if present; else backfill from the article page (dateless feeds)
+                "date": when.strftime("%Y-%m-%d") if when else _article_date(link),
                 "summary": clean(e.get("summary", "")),
             })
     return items, dead
@@ -976,6 +977,36 @@ def _scrape_date(a):
     return ""
 
 
+# Article-page date backfill: scraped index pages and dateless RSS feeds (e.g. Fierce Healthcare)
+# yield undated items. Rather than leave them dateless, read the publication date from the ARTICLE'S
+# own structured metadata — still a real date read from the source, never invented.
+_ART_DATE_RES = (
+    re.compile(r'<meta[^>]+(?:property|name)=["\'](?:article:published_time|og:published_time'
+               r'|datePublished|publication_date|publish-date|sailthru\.date|date)["\'][^>]*?'
+               r'content=["\'](\d{4}-\d{2}-\d{2}[^"\']*)', re.I),
+    re.compile(r'content=["\'](\d{4}-\d{2}-\d{2}[^"\']*)["\'][^>]*?(?:property|name)='
+               r'["\'](?:article:published_time|datePublished)["\']', re.I),
+    re.compile(r'"datePublished"\s*:\s*"(\d{4}-\d{2}-\d{2}[^"]*)"', re.I),
+    re.compile(r'<time[^>]+datetime=["\'](\d{4}-\d{2}-\d{2})[^"\']*["\']', re.I),
+)
+
+
+def _article_date(url):
+    """Best-effort 'YYYY-MM-DD' from an article page's metadata (read from source, never invented).
+    Returns '' on any failure — an undated item stays honestly undated."""
+    if not url or not url.startswith("http") or "news.google.com" in url:
+        return ""   # gnews URLs are redirects, not the article — no usable metadata
+    try:
+        head = get(url).text[:40000]   # publication metadata lives in the <head>
+    except Exception:
+        return ""
+    for rx in _ART_DATE_RES:
+        m = rx.search(head)
+        if m:
+            return m.group(1)[:10]
+    return ""
+
+
 # Navigation / topic / index / listing pages are not individual items (audit E8): an ISPOR
 # 'HEOR by Topic' landing page is a menu, not a study. Reject these hrefs even when they match.
 _SCRAPE_NAV_RE = re.compile(r"/heor-by-topic|/by-topic|/topics?/|/categor(y|ies)/|/tags?/|/search"
@@ -1008,7 +1039,8 @@ def fetch_scrape(sources):
             items.append({
                 "id": uid(full), "title": text, "url": full,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
-                "date": _scrape_date(a),   # read a visible date if present; '' otherwise (never invented)
+                # visible listing date if present; else read the article page's own metadata date
+                "date": _scrape_date(a) or _article_date(full),
                 "summary": "",
             })
             if len(seen) >= 8:

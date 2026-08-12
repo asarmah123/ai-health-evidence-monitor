@@ -1622,6 +1622,30 @@ def test_coherence_check_flags_news_in_evidence():
     assert "C01_news_in_evidence" not in codes2
 
 
+def test_article_date_backfill():
+    """2.52 (A14 fix): an undated scraped/RSS item's date is backfilled from the article page's own
+    metadata (article:published_time / JSON-LD datePublished / <time datetime>), read from source."""
+    class _Resp:
+        def __init__(self, t): self.text = t
+    samples = {
+        "https://a/1": '<head><meta property="article:published_time" content="2026-08-09T10:00:00Z"></head>',
+        "https://a/2": '<script type="application/ld+json">{"datePublished":"2026-08-07"}</script>',
+        "https://a/3": '<time datetime="2026-08-05T08:00:00-04:00">Aug 5</time>',
+        "https://a/4": '<html>no date here</html>',
+        "https://news.google.com/x": '<meta property="article:published_time" content="2026-08-09">',
+    }
+    orig = build.get
+    try:
+        build.get = lambda url, **k: _Resp(samples[url])
+        assert build._article_date("https://a/1") == "2026-08-09"
+        assert build._article_date("https://a/2") == "2026-08-07"
+        assert build._article_date("https://a/3") == "2026-08-05"
+        assert build._article_date("https://a/4") == ""              # honest: no date found
+        assert build._article_date("https://news.google.com/x") == ""  # gnews redirect, skipped
+    finally:
+        build.get = orig
+
+
 def test_gnews_title_strips_pipe_source_tag():
     """2.49 audit: a trailing ' | Journal' or ' - Publisher' tag is stripped from Google-News titles."""
     import re
