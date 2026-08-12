@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.47"
+TAXONOMY_VERSION = "2.49"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -747,7 +747,13 @@ _REG_EVENT_RE = re.compile(
     r"regulatory sandbox|regulatory (pathway|clearance|approval|status|framework|classification)"
     r"|medical device (status|classification|licen[sc]e|regulation)|are .{0,25}medical devices"
     r"|classif\w+ as (a )?medical device|510\(k\)|de novo|\bce mark\b|marketing authoris"
-    r"|premarket|notified body|issues? (draft )?guidance|weighs in")
+    r"|premarket|notified body|issues? (draft )?guidance|weighs in"
+    # HTA/regulator governance: a body setting out a plan/framework/principles for SAFE/responsible AI
+    # adoption or governance is a regulatory action, not industry news (e.g. NICE's AI-adoption plan).
+    r"|(plan|framework|approach|roadmap|principles|standards?|strateg\w+) (to|for|on) .{0,45}"
+    r"(safe|responsible|trustworthy|ethical|scalable|assured) .{0,20}(ai|artificial intelligence)"
+    r"|(safe|responsible|trustworthy|assured|scalable) (and \w+ )?(ai|artificial intelligence) adoption"
+    r"|governance (framework|principles|of ai)")
 _ACCESS_OVERRIDE_RE = re.compile(
     r"coverage (decision|determination|polic|recommend)|\bncd\b|\blcd\b|reimburs"
     r"|will (cover|reimburse|pay)|prior authoriz|formulary|fee schedule|\bntap\b|\bdrg\b|\bcpt\b|\bhcpcs\b"
@@ -1520,7 +1526,9 @@ _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective
                          # workforce / adoption advocacy opinion — not an industry/commercial signal
                          r"|seek a seat at the table|fight(ing)? (expanding|the rise of|against)"
                          r"|won.?t (fix|solve) .* burnout|will not (fix|solve) .* burnout"
-                         r"|(nurses|physicians|clinicians|doctors|workers) (fight|resist|revolt|push back|demand)")
+                         r"|(nurses|physicians|clinicians|doctors|workers) (fight|resist|revolt|push back|demand)"
+                         # rhetorical-question opinion pieces ("…are scribes part of the solution?")
+                         r"|part of the (solution|answer|problem)|the (solution|answer) to .{0,25}burnout")
 _EV_DEAL = re.compile(r"\braises?\b|funding round|series [a-e]\b|acquisition|acquires|\bmerger\b|\bipo\b"
                       r"|\binvest|partnership|\bpartners\b|\bpact\b|\brevenue\b|\blaunch|rolls? out|\bdeal\b")
 _EV_META = re.compile(r"meta.analysis")
@@ -1550,8 +1558,17 @@ _EV_FUND = re.compile(r"raises? (\$|€|£|us\$|[\d]|funding|capital|seed|series
 _EV_PARTN = re.compile(r"partnership|\bpartners\b|\bpact\b|collaborat|alliance|licensing|\bink(s|ed)?\b|joins? forces")
 _EV_LAUNCH = re.compile(r"launch|unveil|introduc|debut|\breleases?\b|rolls? out|white label")
 _EV_DEPLOY = re.compile(r"\bdeploy|go(es)? live|now live|enterprise (contract|agreement|rollout)")
-_EV_EXEC = re.compile(r"\bceo\b|\bcfo\b|\bcoo\b|\bcto\b|\bcmo\b|chief \w+ officer|\bchief\b|appoints?"
-                      r"|\bhires?\b|names? (new|its)|joins? as|steps? down|\bretire|departs?|new (ceo|chief|head)")
+# A genuine leadership CHANGE needs a move ACTION, not merely a C-suite title in the headline —
+# "Cigna's CMO on AI" (a Q&A) and "plan for AI's retirement" (retiring systems) are not exec moves.
+# Branch 1: an appointment verb WITHIN ~30 chars of a leadership role. Branch 2: a departure. Branch 3:
+# a change-qualified role ("new/first/interim CEO"). Operates on the lowercased title (`ti`).
+_EV_ROLE = (r"(ceo|cfo|coo|cto|cmo|ciso|chief|head of|president|\bdirector\b|officer|\bvp\b|svp|evp"
+            r"|executive)")
+_EV_EXEC = re.compile(
+    r"(appoints?|hires?|names?|selects?|picks?|taps?|elects?|installs?|promotes?|recruits?|welcomes?"
+    r"|elevat\w+)\b.{0,30}" + _EV_ROLE
+    + r"|joins? as\b|steps? down|\bdeparts?\b|resigns?|\bexits? as\b|retires? as\b"
+    + r"|\b(new|first|incoming|interim|next) " + _EV_ROLE)
 _EV_STRAT = re.compile(r"\bstrategy\b|strategic (plan|shift|pivot)|restructur|\bpivots?\b|expands? into"
                        r"|enters? the .* market|\broadmap\b|repositions?")
 _EV_ANALYSIS = re.compile(r"\banalysis\b|\boutlook\b|\btrends?\b|state of|the future of|explainer|deep dive"
@@ -1702,6 +1719,10 @@ def _classify_core(i):
         if "randomized controlled trial" in pt:
             return "RCT", "Primary evidence"
         if "review" in pt:
+            # a policy/opinion piece indexed as a generic 'review' (e.g. a narrative review of digital-
+            # health adoption / infrastructure) is commentary, not clinical evidence — defer to _EV_COMMENT.
+            if _EV_COMMENT.search(t):
+                return "Commentary", "Commentary"
             return "Review", "Secondary evidence"
     if _EV_COMMENT.search(t):
         return "Commentary", "Commentary"
@@ -1781,9 +1802,11 @@ def _classify_core(i):
         if re.search(r"methodolog|reporting (completeness|standard|guideline)|\btripod\b|\bchecklist\b", t):
             return "Methodology", "Secondary evidence"
         return "HEOR / value", "Secondary evidence"
-    if st == "Preprint / research" or layer == "research":
-        return "Preprint", "Primary evidence"
-    if st == "Journal / evidence" or layer == "clinical":
+    # Genuine preprints (arXiv/medRxiv/bioRxiv) were already typed 'Preprint' by the preprint-precedence
+    # rule above. A research- or clinical-stage paper reaching here came from a JOURNAL (or other
+    # non-preprint source), so it is a journal study — do NOT label Lancet/npj/NEJM/JAMIA articles
+    # 'Preprint' merely because they sit in the research stage.
+    if st == "Journal / evidence" or layer in ("research", "clinical"):
         return "Journal study", "Primary evidence"
     return "Industry news", "Market signal"
 
@@ -2464,7 +2487,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             grows = "".join(
                 f'<a class="dig" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
-                f'<span class="dsrc">{html.escape(i["source"])} · {i["date"] or "date unknown"}</span></a>'
+                f'<span class="dsrc">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}</span></a>'
                 for i in gitems)
             wm = WHY_MATTERS.get(why, "")
             wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
@@ -2571,7 +2594,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
         _kind_html = f'<span class="ts-kind">{_kind}</span> · ' if _kind else ""
         topstory = (f'<div class="topstory" data-open="{html.escape(safe_url(hi["url"]))}"><div class="topstory-l">Featured story</div>'
                     f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
-                    f'<div class="topstory-m">{_kind_html}<span class="ts-src">{html.escape(hi["source"])}</span> · '
+                    f'<div class="topstory-m">{_kind_html}<span class="ts-src">{html.escape(hi.get("publisher") or hi["source"])}</span> · '
                     f'<span class="ts-date">{_fmt_date(hi["date"])}</span></div>'
                     f'<div class="topstory-why"><b>Why it matters:</b> {html.escape(why_text)}</div></div>')
     else:
@@ -2634,7 +2657,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             f'<a class="tbrow" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
             f'<span class="tbn">{n}</span>'
             f'<span class="tbc"><span class="tbt">{html.escape(i["title"])}</span>'
-            f'<span class="tbs">{html.escape(i["source"])} · {i["date"] or "date unknown"}</span></span></a>'
+            f'<span class="tbs">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}</span></span></a>'
             for n, i in enumerate(_ranked, 1))
         top_updates = ('<div class="sec">Top updates</div>'
                        '<div class="seccap">Ranked automatically by transparent rule. <span class="lnk" data-goto="sources">How ranking works</span></div>'
@@ -3437,7 +3460,7 @@ function render(){
     importance:(a,b)=>((b.score||0)-(a.score||0))||byDateDesc(a,b),
     newest:byDateDesc,
     geography:(a,b)=>(a.country||'zzz').localeCompare(b.country||'zzz')||((b.score||0)-(a.score||0)),
-    source:(a,b)=>a.source.localeCompare(b.source)||byDateDesc(a,b),
+    source:(a,b)=>(a.publisher||a.source).localeCompare(b.publisher||b.source)||byDateDesc(a,b),
   }[sort]||((a,b)=>(b.score||0)-(a.score||0));
   list.sort(cmp);
   const layerHas = ITEMS.filter(i=>(tier==='all'||i.tier===tier)&&(layer==='all'||i.layer===layer)).length;
@@ -3450,7 +3473,7 @@ function render(){
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
         ${(i.maturity!=null)?`<span class="mat" title="Evidence maturity ${i.maturity} of 4">${esc(i.maturity_lab||'')}</span>`:''}
-        <span class="src">${esc(i.source)} · ${i.date||'date unknown'}</span>
+        <span class="src">${esc(i.publisher||i.source)} · ${i.date||'date unknown'}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}
         ${i.modality?`<span class="mod">${esc(i.modality)}</span>`:''}
         ${i.relevance&&i.relevance!=='Direct clinical'?`<span class="rel">${esc(i.relevance)}</span>`:''}</div>
@@ -3781,7 +3804,7 @@ def write_export(items):
     import csv, io
     data_dir = DOCS / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    cols = ["id", "title", "url", "source", "source_type", "stage",
+    cols = ["id", "title", "url", "source", "feed", "source_type", "stage",
             "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
             "decision_type", "payer_type", "region", "country", "date", "score", "topics"]
 
@@ -3793,7 +3816,8 @@ def write_export(items):
             "id": i.get("id", ""),
             "title": i.get("title", ""),
             "url": i.get("url", ""),
-            "source": i.get("source", ""),
+            "source": i.get("publisher") or i.get("source", ""),   # accurate attribution (real outlet)
+            "feed": i.get("source", ""),                            # the curated query/feed it came from
             "source_type": i.get("stype") or source_type(i),
             "stage": i.get("layer", ""),
             "evidence_type": _et,

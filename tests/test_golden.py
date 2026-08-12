@@ -157,7 +157,7 @@ def test_export_schema():
     and 'date unknown' preserved as empty (never guessed) — downstream consumers rely on it."""
     import tempfile, json, csv, io
     from pathlib import Path
-    cols = ["id", "title", "url", "source", "source_type", "stage",
+    cols = ["id", "title", "url", "source", "feed", "source_type", "stage",
             "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
             "decision_type", "payer_type", "region", "country", "date", "score", "topics"]
     items = [
@@ -1008,9 +1008,9 @@ def test_research_precision_reviews_to_clinical():
     items = [
         {"title": "MedPixel: a unified pixel-language model for medical imaging", "layer": "research",
          "source": "arXiv", "url": "https://arxiv.org/abs/1", "summary": ""},
-        {"title": "The state of digital health adoption in Nevada: a narrative review", "layer": "research",
+        {"title": "Deep learning for diabetic retinopathy screening: a systematic review", "layer": "research",
          "source": "PubMed — AI × HTA/HEOR", "url": "https://pubmed.ncbi.nlm.nih.gov/2/", "summary": "",
-         "pubtype": ["Review"]}]
+         "pubtype": ["Systematic Review"]}]
     build.refine_research_precision(items)
     assert items[0]["layer"] == "research", "a model preprint stays in research"
     assert items[1]["layer"] == "clinical", "an evidence-synthesis review leaves research"
@@ -1620,6 +1620,85 @@ def test_coherence_check_flags_news_in_evidence():
     good = dict(bad); good["layer"] = "industry"
     codes2 = {i.code for i in _vbuild([good] + _clean_items()).issues}
     assert "C01_news_in_evidence" not in codes2
+
+
+def test_hta_governance_plan_to_regulation():
+    """2.49 (#3): an HTA/regulator body's plan/framework for SAFE AI adoption routes from industry to
+    regulation; an ordinary company adoption story stays in industry."""
+    nice = {"title": "NICE Sets Out Evidence-led Plan to Support Safe and Scalable AI Adoption in the NHS",
+            "layer": "industry", "source": "AI in HTA & market access", "url": "https://x", "summary": ""}
+    plain = {"title": "Hospital rolls out an AI scheduling tool", "layer": "industry",
+             "source": "MedTech Dive", "url": "https://y", "summary": ""}
+    build.refine_industry_to_regulation([nice, plain])
+    assert nice["layer"] == "regulation"
+    assert plain["layer"] == "industry"
+
+
+def test_opinion_review_to_commentary():
+    """2.49 (#5): a policy/opinion piece indexed as a generic 'review' is Commentary (dropped), while a
+    genuine clinical review is kept."""
+    def et(title, pubtype):
+        return build.classify_evidence({"title": title, "layer": "clinical", "source": "PubMed — AI × HTA/HEOR",
+                                        "url": "u", "summary": "", "stype": "Journal / evidence", "pubtype": pubtype})[0]
+    assert et("Physician burnout in rheumatology: are medical scribes part of the solution?", ["Review"]) == "Commentary"
+    assert et("The state of digital health adoption in Nevada: a narrative review", ["Review"]) == "Commentary"
+    assert et("Deep learning for diabetic retinopathy: a review of validation studies", ["Review"]) == "Review"
+
+
+def test_export_uses_publisher_as_source():
+    """2.49 (#1): the export/display 'source' is the resolved publisher (accurate attribution); the
+    curated query it came from is preserved in 'feed'."""
+    import tempfile, json
+    from pathlib import Path
+    it = {"id": "g1", "title": "Some AI story", "url": "https://news.google.com/x", "layer": "industry",
+          "source": "LATAM — device authorisation (ANVISA)", "publisher": "El Universal", "date": "2026-08-10",
+          "topics": [], "score": 1}
+    tmp = Path(tempfile.mkdtemp()); orig = build.DOCS
+    try:
+        build.DOCS = tmp
+        build.write_export([it])
+        row = json.loads((tmp / "data" / "feed-latest.json").read_text())["items"][0]
+        assert row["source"] == "El Universal"                       # publisher shown
+        assert row["feed"] == "LATAM — device authorisation (ANVISA)"  # curation context preserved
+    finally:
+        build.DOCS = orig
+
+
+def test_exec_move_requires_action():
+    """2.48 (#2): 'Executive move' requires a real appointment/departure — a Q&A with a CMO or an
+    'AI retirement' opinion piece is NOT an exec move; a genuine appointment still is."""
+    def et(title):
+        return build.classify_evidence({"title": title, "layer": "industry", "source": "MobiHealthNews",
+                                        "url": "https://x", "summary": "", "stype": "Industry press"})[0]
+    assert et("Q&A: Cigna Healthcare's CMO on how AI transforms lives") != "Executive move"
+    assert et("Health systems must plan for AI's retirement") != "Executive move"
+    assert et("Omada Health appoints new CEO and more digital health hires") == "Executive move"
+
+
+def test_journal_research_not_preprint():
+    """2.48 (#4): a research/clinical paper from a JOURNAL is a 'Journal study'; only preprint-server
+    papers (arXiv/medRxiv) are typed 'Preprint'."""
+    lancet = {"title": "MerMED-FM: Multimodal Medical Imaging Foundation Model", "layer": "research",
+              "source": "Lancet Digital Health", "url": "https://www.thelancet.com/x", "summary": "",
+              "stype": "Journal / evidence"}
+    arxiv = {"title": "CARE: Confidence-Aware Reasoning for Medical VQA", "layer": "research",
+             "source": "arXiv", "url": "https://arxiv.org/abs/1", "summary": "", "stype": "Preprint / research"}
+    assert build.classify_evidence(lancet)[0] == "Journal study"
+    assert build.classify_evidence(arxiv)[0] == "Preprint"
+
+
+def test_coherence_guards_exec_and_preprint():
+    """2.48 (a): validator WARNs on a mislabelled 'Executive move' (no action) and a 'Preprint' from a
+    journal source — the safety net for #2/#4."""
+    bad_exec = _vmk(7, title="Cigna CMO on the future of AI", layer="industry", source="MobiHealthNews",
+                    url="https://ex.org/7")
+    bad_exec["etype"] = "Executive move"
+    bad_pre = _vmk(8, title="A journal-published imaging model", layer="research", source="Lancet Digital Health",
+                   url="https://ex.org/8")
+    bad_pre["etype"] = "Preprint"; bad_pre["stype"] = "Journal / evidence"
+    codes = {i.code for i in _vbuild([bad_exec, bad_pre] + _clean_items()).issues}
+    assert "C06_exec_move_no_action" in codes
+    assert "C07_preprint_wrong_source" in codes
 
 
 def test_mut_topic_tag_drift():

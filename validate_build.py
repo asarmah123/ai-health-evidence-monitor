@@ -587,6 +587,13 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                 if et in etset and stg in bad_stages:
                     R.warn("Analysis", code, msg, f"[{stg}] {et}: {i.get('title','')[:70]}")
                     break
+            # type↔content guards for the two etypes tightened in the classifier (audit 2026-08-12)
+            if et == "Executive move" and not B._EV_EXEC.search(i.get("title", "").lower().replace("-", " ")):
+                R.warn("Evidence", "C06_exec_move_no_action",
+                       "'Executive move' type without an appointment/departure signal", i.get("title", "")[:70])
+            if et == "Preprint" and (i.get("stype") or "") != "Preprint / research":
+                R.warn("Evidence", "C07_preprint_wrong_source",
+                       "'Preprint' type on a non-preprint source", f"{i.get('title','')[:55]} <{i.get('stype')}>")
 
     # ================= LAYER X — cross-page invariants =================
     def check_topic_tags():
