@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.50"
+TAXONOMY_VERSION = "2.51"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1119,9 +1119,11 @@ def fetch_gnews(sources, now, default_days):
             raw_title = clean(e.get("title", ""), 200)
             m = re.search(r"\s[-|]\s([^-|]+)$", raw_title)      # trailing " - Publisher" or " | Journal"
             publisher = ((e.get("source") or {}).get("title", "") or (m.group(1).strip() if m else ""))
-            # strip a trailing source/journal tag Google News appends with a dash OR a pipe (e.g.
-            # "… WHO African Region: a l | JHL" -> the "| JHL" journal tag is removed).
-            title = re.sub(r"\s+[-|]\s+[^-|]+$", "", raw_title)
+            # Google News can append BOTH a journal tag and a publisher tag, in either order
+            # (e.g. "… a l | JHL - Dove Medical Press"). Strip a trailing " - X" and a trailing " | X"
+            # (each a short source/journal name) so neither tag survives.
+            title = re.sub(r"\s+-\s+[^-|]{1,60}$", "", raw_title)   # " - Publisher"
+            title = re.sub(r"\s+\|\s+[^-|]{1,60}$", "", title)     # " | Journal"
             items.append({
                 "id": uid(e.link), "title": title, "url": e.link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],

@@ -1625,10 +1625,14 @@ def test_coherence_check_flags_news_in_evidence():
 def test_gnews_title_strips_pipe_source_tag():
     """2.49 audit: a trailing ' | Journal' or ' - Publisher' tag is stripped from Google-News titles."""
     import re
-    strip = lambda t: re.sub(r"\s+[-|]\s+[^-|]+$", "", t)
-    assert strip("State of digital health in the WHO African Region: a review | JHL") \
-        == "State of digital health in the WHO African Region: a review"
+    def strip(t):
+        t = re.sub(r"\s+-\s+[^-|]{1,60}$", "", t)
+        return re.sub(r"\s+\|\s+[^-|]{1,60}$", "", t)
+    # BOTH tags stripped, in either order (the real Google-News case)
+    assert strip("Digital health in the WHO African Region: a review | JHL - Dove Medical Press") \
+        == "Digital health in the WHO African Region: a review"
     assert strip("Some AI story - MobiHealthNews") == "Some AI story"
+    assert strip("AI study | Nature Medicine") == "AI study"
     assert strip("AI in imaging: advances and challenges") == "AI in imaging: advances and challenges"  # no tag
 
 
