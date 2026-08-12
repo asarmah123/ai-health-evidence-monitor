@@ -1622,6 +1622,43 @@ def test_coherence_check_flags_news_in_evidence():
     assert "C01_news_in_evidence" not in codes2
 
 
+def test_gnews_title_strips_pipe_source_tag():
+    """2.49 audit: a trailing ' | Journal' or ' - Publisher' tag is stripped from Google-News titles."""
+    import re
+    strip = lambda t: re.sub(r"\s+[-|]\s+[^-|]+$", "", t)
+    assert strip("State of digital health in the WHO African Region: a review | JHL") \
+        == "State of digital health in the WHO African Region: a review"
+    assert strip("Some AI story - MobiHealthNews") == "Some AI story"
+    assert strip("AI in imaging: advances and challenges") == "AI in imaging: advances and challenges"  # no tag
+
+
+def test_validator_flags_title_tag_and_all_undated_source():
+    """2.49 audit: E11 flags a residual ' | source' tag; A14 flags a source that is entirely undated."""
+    tag = _vmk(7, title="Digital health in Africa: a review | JHL", url="https://ex.org/7")
+    codes = {i.code for i in _vbuild([tag] + _clean_items()).issues}
+    assert "E11_title_source_tag" in codes
+    # A14: 3 items from one source, all undated (distinct source not present in _clean_items)
+    und = [_vmk(20 + k, source="Undated Trade Feed", url=f"https://ex.org/f{k}", date="") for k in range(3)]
+    for u in und:
+        u["date"] = ""
+    codes2 = {i.code for i in _vbuild(und + _clean_items()).issues}
+    assert "A14_source_all_undated" in codes2
+
+
+def test_geography_country_maps_to_region():
+    """2.49 audit: Egypt/Turkey now map to a region (no country silently drops from 'By region');
+    and the A13 guard WARNs if any country lacks a region mapping."""
+    assert build.MACRO.get("Egypt") == "Middle East & Africa"
+    assert build.MACRO.get("Turkey") == "Europe"
+    assert build._CTGOV_GEO.get("Turkey (Türkiye)") == "Turkey"   # malformed label normalised
+    # A13 fires when an item has a country but no region
+    bad = _vmk(7, layer="clinical", source="AI/ML intervention trials",
+               url="https://clinicaltrials.gov/ct2/show/NCTX")
+    bad["country"] = "Atlantis"; bad["region"] = ""
+    codes = {i.code for i in _vbuild([bad] + _clean_items()).issues}
+    assert "A13_country_no_region" in codes
+
+
 def test_hta_governance_plan_to_regulation():
     """2.49 (#3): an HTA/regulator body's plan/framework for SAFE AI adoption routes from industry to
     regulation; an ordinary company adoption story stays in industry."""

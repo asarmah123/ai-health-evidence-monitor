@@ -303,6 +303,10 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
             if B._FILENAME_TITLE_RE.search(i.get("title", "")):
                 R.err("Evidence", "E08_filename_title", "Item title looks like an ingestion artefact",
                       i.get("title", "")[:80])
+            # E11: a leftover " | Journal/Source" tag is a title-cleaning miss (should have been stripped)
+            if " | " in i.get("title", ""):
+                R.warn("Evidence", "E11_title_source_tag", "Title still carries a ' | source' tag",
+                       i.get("title", "")[:80])
 
     def check_routes():
         # E10: internal assets the page links must exist on disk.
@@ -421,6 +425,21 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
         if sum(cc.values()) != placed:
             R.err("Analysis", "A03_country_sum", "Country tally does not reconcile with placed items",
                   f"sum={sum(cc.values())} vs placed={placed}")
+        # A13: an item with a country must also map to a region — otherwise it drops out of the 'By
+        # region' breakdown, making the region total silently undercount vs 'By country'.
+        no_region = {i.get("country") for i in items if i.get("country") and not i.get("region")}
+        if no_region:
+            R.warn("Analysis", "A13_country_no_region", "Country present but no region mapping",
+                   f"{len(no_region)} unmapped: {sorted(no_region)[:6]}")
+        # A14: a source contributing several items where EVERY one is undated is a systematic date-
+        # extraction gap for that feed (e.g. a publisher whose RSS omits pubDate) — surface it.
+        by_src = {}
+        for i in items:
+            by_src.setdefault(i.get("source", "?"), []).append(i)
+        for src, group in by_src.items():
+            if len(group) >= 3 and all(not i.get("date") for i in group):
+                R.warn("Analysis", "A14_source_all_undated",
+                       f"Every item from '{src}' is undated (systematic date gap)", f"{len(group)} items")
         gate_ids = {id(x) for x in o.get("authorisations", [])}
         for i in items:
             if B._is_device_authorisation(i) and id(i) not in gate_ids:

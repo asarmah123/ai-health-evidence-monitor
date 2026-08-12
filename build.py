@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.49"
+TAXONOMY_VERSION = "2.50"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -1117,9 +1117,11 @@ def fetch_gnews(sources, now, default_days):
             if when is not None and when < cutoff:
                 continue
             raw_title = clean(e.get("title", ""), 200)
-            m = re.search(r"\s-\s([^-]+)$", raw_title)          # trailing " - Publisher"
+            m = re.search(r"\s[-|]\s([^-|]+)$", raw_title)      # trailing " - Publisher" or " | Journal"
             publisher = ((e.get("source") or {}).get("title", "") or (m.group(1).strip() if m else ""))
-            title = re.sub(r"\s+-\s+[^-]+$", "", raw_title)
+            # strip a trailing source/journal tag Google News appends with a dash OR a pipe (e.g.
+            # "… WHO African Region: a l | JHL" -> the "| JHL" journal tag is removed).
+            title = re.sub(r"\s+[-|]\s+[^-|]+$", "", raw_title)
             items.append({
                 "id": uid(e.link), "title": title, "url": e.link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
@@ -1420,7 +1422,10 @@ MACRO = {
     "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe",
     "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
     "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
+    "Egypt": "Middle East & Africa", "Turkey": "Europe", "Nigeria": "Middle East & Africa",
+    "Kenya": "Middle East & Africa", "Qatar": "Middle East & Africa",
     "Brazil": "Latin America", "Mexico": "Latin America", "Argentina": "Latin America",
+    "Colombia": "Latin America", "Chile": "Latin America",
 }
 
 # body -> role. Regulators gate market authorisation; HTA/payers gate reimbursement;
@@ -1926,6 +1931,7 @@ def evidence_maturity(i):
 # ClinicalTrials.gov country names → the canonical labels used in MACRO / the checks below.
 _CTGOV_GEO = {"Korea, Republic of": "South Korea", "Iran, Islamic Republic of": "Iran",
               "Russian Federation": "Russia", "Viet Nam": "Vietnam", "Türkiye": "Turkey",
+              "Turkey (Türkiye)": "Turkey", "Türkiye (Turkey)": "Turkey",
               "Czechia": "Czech Republic", "Taiwan": "Taiwan", "Hong Kong": "Hong Kong"}
 
 
