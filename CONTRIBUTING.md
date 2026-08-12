@@ -2,11 +2,12 @@
 
 Corrections and suggestions are welcome — especially on the data.
 
-## Corrections to the clearance → coverage taxonomy or dataset
-The definitions in [TAXONOMY.md](TAXONOMY.md) are meant to be argued with. If you think a status
-mapping is wrong (e.g. how a particular reimbursement mechanism should be classified), or you have
-a **sourced** correction to a date, open an issue with the primary source. Dates are never
-estimated — an issue without a verifiable source can't be actioned.
+## Corrections to the classification taxonomy
+The rules in [TAXONOMY.md](TAXONOMY.md) are meant to be argued with. If you think an item is in the
+wrong **stage**, has the wrong **evidence type**, or a **country/body** attribution is off, open an
+issue naming the item and the right→wrong mapping. If you have a **sourced** correction to a date,
+include the primary source — dates are never estimated, so an issue without a verifiable source
+can't be actioned.
 
 ## Adding or fixing a source
 Sources are configured declaratively. If a feed has moved or a new body starts publishing a
@@ -18,7 +19,7 @@ a single static page with no backend, so most issues are either a source that ch
 or a classification rule that needs refining.
 
 ## Maintainer routine — weekly spot-check
-Automated classification can drift silently, so the dataset is audited by hand on a cadence, not
+Automated classification can drift silently, so the feed is audited by hand on a cadence, not
 assumed correct. Once a week:
 
 1. **Read the build health.** Open the latest GitHub Actions run → **Summary**. It lists sources

@@ -90,8 +90,10 @@ Everything runs on a schedule and renders to a single static page, so there is n
 
 - **Deduplication** by exact URL, then near-duplicate collapsing — the same event reported by several outlets is reduced to one, deterministically by shared distinctive tokens.
 - **Classification** into stage, jurisdiction and body is rule-based and auditable.
+- **Attribution** — each item shows its real publisher, and every row links to its primary source.
 - **Ranking** follows explicit, additive rules (device authorisations, economic-endpoint trials, major-regulator actions, recency); it reflects priority, not confidence, and every item exposes its own "why ranked" breakdown.
-- **Dates are never estimated** — read from the source, or recorded as `unknown` and excluded from any date-based figure.
+- **Dates are never estimated** — read from the source (the feed, or the article's own publication metadata), or recorded as `unknown` and excluded from any date-based figure.
+- **Every build is independently checked** — after each rebuild, an automated, rule-based pass recomputes every figure from the underlying items and reconciles it against the published page; discrepancies are flagged so they are corrected proactively.
 - **No causal or predictive claims** are made beyond what the counts support; medtech and pharma vendor press releases are excluded to keep the feed independent.
 
 Full definitions are in **[TAXONOMY.md](TAXONOMY.md)**.

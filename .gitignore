@@ -16,6 +16,8 @@ SOURCE_AUDIT.md
 # Phase-3 clearance→coverage dataset — schema + curation workflow (private).
 COVERAGE_DATASET_SPEC.md
 CURATION_PROTOCOL.md
+# Coverage-direction docs kept out of the public repo (moved into coverage-pipeline/).
+docs/DATASETS.md
 # Owner-only utilities (historical export / verification) — not a public feature yet.
 private-tools/
 history-wide.csv

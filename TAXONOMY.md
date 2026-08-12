@@ -1,166 +1,116 @@
-# Clearance → Coverage: definitions
+# Classification taxonomy
 
-*Version 0.1 — AI in Health, Clinical and Market Access Evidence Monitor*
+*AI in Health — Clinical, Regulatory & Market Access Evidence Monitor. Taxonomy version **2.52**
+(stamped in `build.json` and every export). Every label below is assigned by explicit,
+deterministic rules over source, terminology and lifecycle signals — **no machine-learning model** —
+so identical inputs always produce identical output and historical comparisons stay valid.*
 
-"Coverage" is not one thing. A provisional DiGA listing, a three-year NTAP, a Category III
-CPT code that often pays nothing, and an LCD in a single MAC region are all called "reimbursed"
-in press releases, and they mean entirely different things to a manufacturer.
-
-This document fixes the definitions used in the tracker. It is published openly and may be
-cited or adopted. If you disagree with a rule, say so — the rules improve by being argued
-with, and a shared vocabulary is worth more than a private one.
+Definitions are published openly and may be cited or adopted. If you disagree with a rule, open an
+issue — the rules improve by being argued with.
 
 ---
 
-## The clock
+## 1. Evidence stage (`stage`)
 
-**T₀ (start) = first market authorisation in the jurisdiction's regulatory system.**
+The six-stage lifecycle an AI technology moves through. Each item is assigned exactly one stage.
 
-| Market | T₀ is | Source |
+| Stage | Question it answers | What belongs here |
 |---|---|---|
-| US | FDA decision date (510(k), De Novo, or PMA) | openFDA |
-| EU/DE/FR | CE mark issue date under MDR | Manufacturer disclosure; EUDAMED where available |
-| UK | UKCA mark, or CE mark under current recognition | Manufacturer disclosure |
+| **Research & evidence** (`research`) | *Can AI do this?* | Frontier AI models, methods, benchmarks and evaluation techniques directly relevant to healthcare/biomedical AI. Generic AI with no material biomedical focus is excluded. |
+| **Clinical evidence & trials** (`clinical`) | *Does it work in patients?* | Clinical studies, trials and real-world evaluations of AI performance, safety or effectiveness in healthcare. |
+| **Regulatory, safety & authorisation** (`regulation`) | *Can it be safely deployed and authorised?* | Regulatory guidance, AI-governance and safety expectations, and AI-enabled medical-device authorisations. |
+| **HEOR, HTA & value** (`heor`) | *How is the value assessed?* | Health technology assessment, health economics, cost-effectiveness, budget impact and value frameworks. |
+| **Market access, reimbursement & coverage** (`access`) | *How does it reach practice?* | Coverage decisions, reimbursement policy, procurement/commissioning and payer guidance. |
+| **Industry, investment & partnerships** (`industry`) | *Who is doing business?* | Commercial strategy, investment/M&A, partnerships, product launches and enterprise adoption involving a commercial actor. |
 
-**T₁ (stop) = the date a payer first becomes obliged, or explicitly permitted, to pay.**
-Not the date a code exists. Not the date a pilot starts. Payment must be *obtainable*.
-
-**Days-to-coverage = T₁ − T₀**, per market, per device.
-
-Where T₀ is unknown or undisclosed, the device is recorded but excluded from median
-calculations. **An unknown date is never estimated.**
-
----
-
-## What counts as coverage — by market
-
-### United States
-
-| Status | Counts as covered? | Why |
-|---|---|---|
-| **NTAP granted** | **Yes** | Payment is obtainable, though time-limited (typically 2–3 years). Recorded with its expiry. |
-| **CPT Category I + assigned RVUs** | **Yes** | Routine payment pathway. |
-| **CPT Category III** | **No** | Tracking code. Payment is discretionary and frequently zero. Recorded as `code_only`. |
-| **NCD (positive)** | **Yes** | National obligation. |
-| **LCD (positive)** | **Partial** | Recorded with the MAC region. Counts as covered *for that region only*; excluded from national medians. |
-| **Commercial policy only** | **Partial** | Recorded with the payer named. Not counted in Medicare medians. |
-
-### Germany
-
-| Status | Counts as covered? | Why |
-|---|---|---|
-| **DiGA — permanent listing** | **Yes** | Evidence accepted; statutory reimbursement. |
-| **DiGA — provisional listing** | **Yes, flagged** | Payment is real during the trial period, but conditional. Recorded as `provisional`; reported separately. |
-| **DiGA — delisted** | **No** | Recorded as `failed`, with the date. **Failures are as informative as successes and are not deleted.** |
-| **NUB Status 1** | **Yes** | Hospital may negotiate payment. |
-| **NUB Status 2/3** | **No** | No additional-payment route. |
-| **NUB Status 4** | **No** | No *additional* NUB payment — the method is already reflected within the DRG. |
-
-### France
-
-| Status | Counts as covered? | Why |
-|---|---|---|
-| **PECAN early access** | **Yes, flagged** | Payment obtainable ahead of full assessment. Recorded as `early_access`. |
-| **LPPR listing** | **Yes** | Definitive reimbursement. |
-| **HAS/CNEDiMTS favourable opinion, not yet listed** | **No** | Opinion is not payment. Recorded as `assessed_not_paid`. |
-
-### United Kingdom
-
-| Status | Counts as covered? | Why |
-|---|---|---|
-| **MedTech Funding Mandate** | **Yes** | Commissioners obliged to fund. |
-| **NICE EVA — recommended for use with evidence generation** | **No** | Conditional use, no funding obligation. Recorded as `conditional_use`. |
-| **NICE guidance (positive), no funding mandate** | **Partial** | Recorded; excluded from medians. |
+A precision-refinement pipeline corrects boundary cases after the first-pass stage — e.g. a
+News/VC/commercial item never sits in an evidence stage; a regulator/HTA body's *safe-AI-adoption*
+plan routes to Regulation; a policy/opinion "review" is treated as commentary and excluded; and
+out-of-scope items (pharmaceutical drug approvals, veterinary/agriculture/materials science) are dropped.
 
 ---
 
-## Rules that keep the series honest
+## 2. Evidence type (`evidence_type`)
 
-1. **Failures stay in.** Delisting, withdrawal, expiry, and negative decisions are recorded
-   with dates, alongside successes.
-2. **No backfilled estimates.** If a date can't be sourced, the cell is `unknown`, not a guess.
-3. **Every row carries its source.** URL or document reference, captured at logging time,
-   because these pages get rewritten in place.
-4. **Provisional ≠ permanent.** They are separate statuses and are never merged in a median.
-5. **The tracker records what a payer *would* pay, not what anyone was actually paid.**
-   Utilisation is a different question and is out of scope.
+The kind of item, from NLM publication type (most reliable, PubMed only), then preprint provenance,
+then study-design / regulatory / commercial signals.
 
----
+- **Study / evidence:** `Journal study` · `Preprint` (arXiv/medRxiv/bioRxiv provenance only) · `Review` · `Systematic review` · `Meta-analysis` · `RCT` · `Trial registry` · `Real-world evidence` · `Study protocol`
+- **Value / HEOR:** `Economic evaluation` · `HEOR / value` · `HTA report` · `HTA perspective` · `Value framework` · `Budget impact` · `Methodology`
+- **Regulatory:** `Regulatory authorisation` · `Regulatory guidance` · `Regulatory programme` · `Rule / legislation` · `Enforcement / safety` · `Consultation / policy` · `AI governance`
+- **Access:** `Payment / coverage` · `Market access`
+- **Industry:** `Deployment` · `Product launch` · `Partnership` · `Executive move` · `Acquisition` · `Funding round` · `Company strategy` · `Industry news` · `Industry analysis`
+- **Cross-cutting:** `News` · `Legal / litigation` · `Commentary` (commentary is excluded from the feed)
 
-## Status vocabulary
-
-`covered` · `covered_provisional` · `covered_early_access` · `covered_regional` ·
-`code_only` · `assessed_not_paid` · `conditional_use` · `pending` · `refused` ·
-`withdrawn` · `expired` · `unknown`
+*Type rules of note:* `Executive move` requires a genuine appointment/departure (not a C-suite title
+in an interview); a journal-published paper is a `Journal study`, never a `Preprint`.
 
 ---
 
-Corrections and disagreements are welcome — open an issue.
+## 3. Evidence strength (`evidence_strength`)
+
+How much weight the item's content carries.
+
+`Primary evidence` · `Secondary evidence` · `Policy signal` · `Market signal` · `Commentary`
 
 ---
 
-## Evidence that won coverage (the `evidence` block)
+## 4. Facets
 
-Time-to-coverage records *how long*. The `evidence` block records *what evidence
-supported the decision*. Attach it to any **covered** decision. Aggregates (share by design, endpoint mix, RCT rate, accuracy-only
-count) are published; the row-level detail stays private.
-
-```yaml
-coverage:
-  us:
-    - status: covered
-      mechanism: NTAP
-      date: 2025-10-01
-      evidence:
-        design: rct
-        endpoint: clinical_outcome
-        comparator: standard_of_care
-        n: 1240
-        source: https://doi.org/...
-```
-
-### `design` — the study behind the winning dossier
-
-| Value | Meaning |
+| Facet | Values |
 |---|---|
-| `rct` | Randomised controlled trial. |
-| `prospective_obs` | Prospective observational / registry / real-world cohort. |
-| `retrospective` | Retrospective analysis of existing data. |
-| `modelling` | Economic model or simulation only; no primary clinical study. |
-| `none` | Cleared/covered without a study of the device itself (e.g. predicate reliance). |
-| `unknown` | Not disclosed. Recorded, never guessed. |
+| **Healthcare relevance** (`healthcare_relevance`) | `Direct clinical` · `Healthcare operations` · `Biomedical research` · `Adjacent AI` · `General AI` |
+| **AI modality** (`ai_modality`) | `Imaging AI` · `Generative AI / LLM` · `Clinical decision support` · `Digital therapeutic` · `Predictive ML` · `Remote monitoring` · `Robotics` · `Drug discovery AI` |
+| **Evidence maturity** (`evidence_maturity`) | `Discovery` → `Retrospective` → `Prospective` → `Randomised` → `Real-world` → `Synthesis` → `Economic model` → `HTA` → `Value evidence` |
 
-### `endpoint` — the argument that convinced the payer
+Facets are automated triage signals, not authoritative determinations, and may contain errors.
 
-This field records whether the decision rested on a diagnostic-accuracy measure or on a
-downstream clinical, economic, or workflow outcome.
+---
 
-| Value | Meaning |
-|---|---|
-| `clinical_outcome` | A patient outcome changed (mortality, morbidity, detection→treatment). |
-| `diagnostic_accuracy` | Sensitivity / specificity / AUC only — no downstream outcome shown. |
-| `economic` | Cost, cost-effectiveness, utilisation, or length-of-stay. |
-| `workflow` | Time saved, throughput, or read-burden reduction. |
-| `composite` | A bundle spanning more than one of the above. |
-| `unknown` | Not disclosed. |
+## 5. Jurisdiction (`country`, `region`)
 
-### `comparator` — what it was measured against
+Country read from structured metadata (a trial's location, a regulator's jurisdiction) or a
+distinctive body/geography term — never inferred from a news query's target country. Country maps to
+a macro-region:
 
-| Value | Meaning |
-|---|---|
-| `standard_of_care` | Compared to current clinical practice. |
-| `no_ai` | Clinician with vs without the AI. |
-| `placebo` | Sham / placebo control (rare, mostly digital therapeutics). |
-| `none` | Single-arm; no comparator. |
-| `unknown` | Not disclosed. |
+**North America · Europe · Asia-Pacific · Latin America · Middle East & Africa**
 
-### Rules
+---
 
-1. **Only on `covered*` decisions.** Evidence that won a *provisional* or *early-access*
-   listing counts, and is flagged by that status — a lower bar than permanent listing.
-2. **`n` and `source` are optional but strongly encouraged** — the citation is what makes
-   a row defensible and reusable.
-3. **`unknown` over a guess, always.** A fabricated endpoint quietly corrupts the one
-   statistic that makes this dataset worth citing.
-4. The public site shows only shares and counts. No device, date, `n`, or `source` is
-   ever rendered.
+## 6. Body role
+
+Named bodies are split by the decision they make: **regulator** (gates market authorisation) ·
+**HTA / payer** (gates reimbursement) · **professional society** (sets standards, no binding
+decision). Matched by source and, for distinctive acronyms only, free text.
+
+---
+
+## 7. Clinical area
+
+Specialty tagged by keyword: Radiology & imaging · Cardiology · Oncology · Ophthalmology ·
+Pathology · Neurology · Gastroenterology · Dermatology · Mental health · Endocrine / diabetes ·
+Pulmonology.
+
+---
+
+## 8. Reimbursement pathway
+
+The access route a coverage-relevant item concerns (keyword-tagged): NTAP · CPT / coding · DiGA ·
+PECAN · NICE EVA · LCD / MAC · Reimbursement (general).
+
+---
+
+## 9. Ranking & trends
+
+- **Ranking** is additive and self-explaining — explicit signals (device authorisations,
+  economic-endpoint trials, major-regulator actions, recency) sum to a score, and each item exposes
+  its own "why ranked" breakdown. Ranking reflects **priority, not confidence**.
+- **Trends** compare each tracked term to its own trailing 28-day baseline, framed as **attention,
+  not importance**; term counts use a leading word-boundary match so "agent" isn't inflated by "reagent".
+- **No causal or predictive claims** — the monitor reports *what changed and how unusual it is versus
+  a baseline*, never *why* or *what's next*.
+
+---
+
+*When a classification or ranking rule changes, `TAXONOMY_VERSION` is bumped and this document is
+updated. Every published build stamps the version so the past is never silently reclassified.*

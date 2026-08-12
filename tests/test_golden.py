@@ -808,20 +808,12 @@ def test_source_caps_after_gate():
     assert len(ct) == 9                                  # uncapped source untouched
 
 
-def test_coverage_public_render():
-    """The Coverage tab renders from the verified pipeline teaser (coverage_public.json):
-    populated → stats + specialty maturity; empty/None → 'in preparation'."""
-    pub = {"generated": "2026-07-27", "devices_verified": 5, "headline_median_days": None,
-           "headline_note": "N=4 (<5) — median suppressed", "authorised_no_coverage": 1,
-           "covered_total": 4, "disclaimer": "Descriptive only.",
-           "maturity_labels": [{"specialty": "cardiology", "furthest_stage": "Commercial maturity"}]}
-    tab = build.coverage_public_html(pub)
-    assert ">5<" in tab and ">4<" in tab            # verified + covered counts rendered
-    assert "Cardiology" in tab and "Commercial maturity" in tab
-    assert "median suppressed" in tab               # N<5 note used when no median
-    assert 'data-goto="coverage"' in build.coverage_mini_html(pub)   # Home teaser links to tab
-    assert "in preparation" in build.coverage_public_html(None)      # graceful empty state
-    assert build.coverage_mini_html(None) == ""
+def test_coverage_stub_is_inert():
+    """Public build ships coverage-tab STUBS only (the real rendering is private) — they must return
+    nothing so no coverage direction is advertised and no tab renders."""
+    assert build.load_coverage_public() is None
+    assert build.coverage_public_html({"devices_verified": 5}) == ""
+    assert build.coverage_mini_html({"devices_verified": 5}) == ""
 
 
 def test_overtime_section():
