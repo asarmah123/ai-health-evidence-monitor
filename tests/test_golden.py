@@ -808,6 +808,17 @@ def test_source_caps_after_gate():
     assert len(ct) == 9                                  # uncapped source untouched
 
 
+def test_trends_html_renders():
+    """Guard: trends_html must be defined in build.py and render without error (regression guard —
+    it was once accidentally moved out during a refactor and only CI caught it)."""
+    hist = [{"date": f"2026-08-0{d}", "layers": {k: d for k in build.LAYERS},
+             "terms": {"large language model": d}, "total": 6 * d} for d in range(1, 9)]
+    items = [{"id": str(i), "title": "An AI clinical study", "url": f"https://e/{i}", "source": "NEJM AI",
+              "layer": "clinical", "date": "2026-08-10", "summary": "", "score": 1} for i in range(3)]
+    out = build.trends_html(items, hist)
+    assert isinstance(out, str) and len(out) > 0
+
+
 def test_coverage_stub_is_inert():
     """Public build ships coverage-tab STUBS only (the real rendering is private) — they must return
     nothing so no coverage direction is advertised and no tab renders."""

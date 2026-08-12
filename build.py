@@ -2775,6 +2775,81 @@ def coverage_mini_html(pub):
     return ""
 
 
+def _vol_level(now, lo, hi, n):
+    if hi == lo:
+        return "in line with its recent range"
+    if now == hi and n >= 5:
+        return f"the highest across the last {n} builds"
+    pos = (now - lo) / (hi - lo)
+    if pos >= 0.75:
+        return "elevated versus its recent range"
+    if pos <= 0.25:
+        return "quiet versus its recent range"
+    return "typical for its recent range"
+
+
+def trends_html(items, history):
+    """Trends TAB: top trend (count-led) + build volume + biggest term shifts (classified) + orgs."""
+    if not history:
+        return ''   # first-build notice is surfaced at the top of the Analysis view instead
+    today = history[-1]
+    prior = history[:-1]
+
+    movers = []
+    if len(prior) >= 3:
+        for term, now in today.get("terms", {}).items():
+            base = [h["terms"].get(term, 0) for h in prior[-28:]]
+            avg = sum(base) / len(base) if base else 0
+            if now == 0 and avg < 0.5:
+                continue
+            pct = (100 if now else 0) if avg == 0 else ((now - avg) / avg) * 100
+            movers.append((pct, term, now, avg))
+        movers.sort(key=lambda r: -r[0])
+
+    # highlight the single top mover as a card (leads the Trending topics section)
+    highlight = ""
+    if movers and movers[0][0] > 0:
+        pct, term, now, avg = movers[0]
+        avg_txt = f"~{avg:.0f}" if avg >= 1 else "under 1"
+        cls = TERM_CLASS.get(term, "")
+        cls_tag = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
+        highlight = (f'<div class="tmcard"><div class="tmcard-l">Top mover</div>'
+                     f'<div class="tmcard-t">{html.escape(TERM_DISPLAY.get(term, term))} {cls_tag}</div>'
+                     f'<div class="tmcard-s">{now} in this build · {avg_txt} typical · '
+                     f'<b class="tmcard-pct">{"+" if pct >= 0 else ""}{pct:.0f}%</b></div></div>')
+
+    # the rest of the movers, listed below the highlight
+    if len(prior) >= 3 and movers and movers[0][0] > 0:
+        peak = max((abs(r[0]) for r in movers), default=1) or 1
+        bars = ""
+        for r in movers[1:7]:
+            pct, term, now, avg = r
+            cls = TERM_CLASS.get(term, "")
+            cls_html = f'<span class="tclass">{html.escape(cls)}</span>' if cls else ""
+            if now == 0:
+                bl = f"~{avg:.0f}" if avg >= 1 else "under 1"
+                bars += (f'<div class="trow"><div class="tn dim">'
+                         f'<span class="tnm">{html.escape(TERM_DISPLAY.get(term, term))}</span>{cls_html}</div>'
+                         f'<div class="tzero">no mentions this build (typical {bl}/build)</div></div>')
+                continue
+            up = pct >= 0
+            bars += (f'<div class="trow"><div class="tn{"" if up else " dim"}">'
+                     f'<span class="tnm">{html.escape(TERM_DISPLAY.get(term, term))}</span>{cls_html}</div>'
+                     f'<div class="tb"><div class="tf{"" if up else " down"}" style="width:{min(abs(pct) / peak * 100, 100):.0f}%"></div></div>'
+                     f'<div class="tp{"" if up else " dim"}">{"+" if up else ""}{pct:.0f}%</div>'
+                     f'<div class="tcount">{now} vs {("~%.0f" % avg) if avg >= 1 else "under 1"}</div></div>')
+        rest = f'<div class="panel" style="margin-top:10px">{bars}</div>' if bars else ""
+        trending = ('<div class="sec">Trending topics</div>'
+                    '<div class="seccap">Terms with the largest increase vs their 28-day baseline. Small bases can produce large percentage changes.</div>'
+                    f'{highlight}{rest}')
+    else:
+        need = max(4 - len(history), 1)
+        trending = ('<div class="sec">Trending topics</div>'
+                    f'<div class="seccap">Accruing — term trends need a few days of history. ~{need} more to go.</div>')
+
+    return trending
+
+
 # ------------------------------------------------------------------- render
 CSS = """
 :root{color-scheme:light;--line:#e8e8e8;--mute:#767676;--ink:#1a1a1a;--accent:#9c2c2c}
