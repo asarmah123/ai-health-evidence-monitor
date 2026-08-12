@@ -158,7 +158,7 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.46"
+TAXONOMY_VERSION = "2.47"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -769,6 +769,28 @@ def refine_research_precision(items):
             continue
         if classify_evidence(i)[0] in ("Review", "Systematic review", "Meta-analysis"):
             i["layer"] = "clinical"
+    return items
+
+
+# Commercial/news evidence types that are NOT clinical/research/HEOR evidence. A broad market-access
+# news query can drop a plain news, VC-funding or policy story into an evidence stage; a News-typed item
+# is not a clinical study, so route it to Industry, where the industry→regulation / industry→access
+# refiners (which run next) can re-home genuine policy or coverage stories. Guarded so a real
+# trial/journal/RWE item (primary-eligible, or a ClinicalTrials record) is never moved.
+_NONEVIDENCE_ETYPES = {"News", "Industry news", "Industry analysis", "Funding round", "Product launch",
+                       "Partnership", "Executive move", "Acquisition", "Company strategy"}
+
+
+def refine_news_out_of_evidence(items):
+    """Category coherence: a News/commercial-typed item must not sit in an evidence stage
+    (clinical / research / heor). Move it to industry; genuine studies are left untouched."""
+    for i in items:
+        if i.get("layer") not in ("clinical", "research", "heor"):
+            continue
+        if "clinicaltrials" in i.get("url", "") or _primary_eligible(i):
+            continue   # a real trial / primary-eligible study — never reclassify as news
+        if classify_evidence(i)[0] in _NONEVIDENCE_ETYPES:
+            i["layer"] = "industry"
     return items
 
 
@@ -4651,6 +4673,7 @@ def main():
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
     items = refine_commentary_layer(items) # general commentary is excluded (not evidence)
     items = refine_research_precision(items) # research = models/methods only; reviews → clinical
+    items = refine_news_out_of_evidence(items) # coherence: News/VC/commercial items leave evidence stages
     items = refine_industry_to_regulation(items) # canonical: regulatory-event stories → regulation
     items = refine_industry_to_access(items)     # canonical: coverage/procurement/funding → access
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")

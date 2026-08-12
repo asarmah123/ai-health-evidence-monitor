@@ -50,6 +50,26 @@ _SPECIALTY_TOPIC = {
     "Oncology": "oncology-ai", "Cardiology": "cardiology-ai",
     "Radiology & imaging": "radiology-imaging-ai", "Mental health": "mental-health-ai",
 }
+# Stage ↔ evidence-type coherence (audit finding, 2026-08-12): News/VC/commercial items must not sit in
+# an evidence stage; studies must not sit in commercial/regulatory/access stages; regulatory/coverage
+# types must be in their own stage. Each rule = (etype-set, forbidden-stage-set, code, message).
+_EVIDENCE_STAGES = {"clinical", "research", "heor"}
+_COHERENCE_RULES = (
+    ({"News", "Industry news", "Industry analysis", "Funding round", "Product launch", "Partnership",
+      "Executive move", "Acquisition", "Company strategy"}, _EVIDENCE_STAGES,
+     "C01_news_in_evidence", "News/commercial item in an evidence stage"),
+    ({"Trial registry", "RCT", "Journal study", "Systematic review", "Meta-analysis",
+      "Real-world evidence", "Study protocol"}, {"industry", "regulation", "access"},
+     "C02_study_outside_evidence", "Study/trial item outside an evidence stage"),
+    ({"Regulatory authorisation", "Regulatory guidance", "Regulatory programme", "Rule / legislation",
+      "Enforcement / safety"}, {"clinical", "research", "heor", "industry"},
+     "C03_regulatory_misplaced", "Regulatory item outside the regulation stage"),
+    ({"Payment / coverage"}, {"clinical", "research", "heor", "industry"},
+     "C04_coverage_misplaced", "Coverage item outside the access stage"),
+    ({"HEOR / value", "HTA perspective", "Value framework", "Budget impact"},
+     {"clinical", "research", "industry", "regulation", "access"},
+     "C05_heor_misplaced", "HEOR/value item outside the HEOR stage"),
+)
 _STRENGTH_VOCAB = {"Primary evidence", "Secondary evidence", "Policy signal", "Market signal", "Commentary"}
 _RELEVANCE_VOCAB = {"Direct clinical", "Healthcare operations", "Biomedical research", "Adjacent AI", "General AI"}
 _MODALITY_VOCAB = {"", "Imaging AI", "Generative AI / LLM", "Clinical decision support", "Digital therapeutic",
@@ -558,6 +578,16 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
             if val == 0 and not re.search(r'brief-v[^"]*">0</div><div class="brief-l">' + stem + r'<br>', h):
                 R.warn("Empty-state", "Z02_zero_tile", f"'{stem}' is 0 but the tile does not clearly render 0")
 
+    # ================= LAYER A (coherence) — stage ↔ evidence-type =================
+    def check_coherence():
+        for i in items:
+            et = i.get("etype") or B.classify_evidence(i)[0]
+            stg = i.get("layer")
+            for etset, bad_stages, code, msg in _COHERENCE_RULES:
+                if et in etset and stg in bad_stages:
+                    R.warn("Analysis", code, msg, f"[{stg}] {et}: {i.get('title','')[:70]}")
+                    break
+
     # ================= LAYER X — cross-page invariants =================
     def check_topic_tags():
         for t in B.TOPICS:
@@ -575,7 +605,7 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
     # ---- layered execution with dependency short-circuit ----
     integrity = (check_fields, check_routes)
     scope_facets = (check_scope, check_facets)
-    aggregates = (check_home, check_analysis, check_render, check_empty_states, check_topic_tags)
+    aggregates = (check_home, check_analysis, check_coherence, check_render, check_empty_states, check_topic_tags)
 
     for fn in integrity + scope_facets:
         _safe(fn)

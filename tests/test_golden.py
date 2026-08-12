@@ -1596,6 +1596,32 @@ def test_selftest_flags_broken_validator():
         validate_build._inject = orig
 
 
+def test_news_routed_out_of_clinical():
+    """2.47 (b): a News/VC/policy item that landed in an evidence stage is routed to industry; a real
+    trial and a real journal study are left in clinical."""
+    news = {"title": "Digital health VC hits $7.4B in H1 2026 as AI agents capture funding",
+            "layer": "clinical", "source": "AI in HTA & market access",
+            "url": "https://news.google.com/rss/x", "summary": ""}
+    trial = {"title": "AI-assisted MRI trial for stroke triage", "layer": "clinical",
+             "source": "AI/ML intervention trials", "url": "https://clinicaltrials.gov/ct2/show/NCT9", "summary": ""}
+    build.refine_news_out_of_evidence([news, trial])
+    assert news["layer"] == "industry", "a VC/news item must leave the clinical stage"
+    assert trial["layer"] == "clinical", "a real trial stays clinical"
+
+
+def test_coherence_check_flags_news_in_evidence():
+    """2.47 (a): the validator's coherence check WARNs on a News item sitting in an evidence stage,
+    and is silent once it's in industry."""
+    bad = _vmk(9, title="Digital health VC hits $7.4B", layer="clinical", source="AI in HTA & market access",
+               url="https://news.google.com/rss/9")
+    bad["etype"] = "News"
+    codes = {i.code for i in _vbuild([bad] + _clean_items()).issues}
+    assert "C01_news_in_evidence" in codes
+    good = dict(bad); good["layer"] = "industry"
+    codes2 = {i.code for i in _vbuild([good] + _clean_items()).issues}
+    assert "C01_news_in_evidence" not in codes2
+
+
 def test_mut_topic_tag_drift():
     # a tag is present that the topic rule does not actually justify
     def m(it):
