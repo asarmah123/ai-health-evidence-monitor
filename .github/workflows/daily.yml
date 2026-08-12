@@ -91,7 +91,7 @@ jobs:
             if [ "$st" = "true" ]; then tag="🧪 SELF-TEST · ${tag}"; fi
             echo "have=true"                       >> "$GITHUB_OUTPUT"
             echo "tag=$tag"                        >> "$GITHUB_OUTPUT"
-            echo "date=$(date -u +'%Y-%m-%d')"     >> "$GITHUB_OUTPUT"
+            echo "date=$(date -u +'%Y-%m-%d %H:%M') UTC" >> "$GITHUB_OUTPUT"
           else
             echo "have=false"       >> "$GITHUB_OUTPUT"
             echo "tag=❓ no report"  >> "$GITHUB_OUTPUT"

@@ -132,7 +132,7 @@ class Report:
     def to_markdown(self):
         m = self.meta
         out = [f"# Build validation — {m.get('taxonomy_version','?')}",
-               f"_{m.get('generated_at','')} · {m.get('n_items','?')} items · "
+               f"_🕒 Built {_fmt_ts(m.get('generated_at',''))} · {m.get('n_items','?')} items · "
                f"{len(self.errors)} error(s), {len(self.warnings)} warning(s)_", ""]
         if self.meta.get("selftest_banner"):
             out.insert(2, f"> 🧪 **{self.meta['selftest_banner']}**\n")
@@ -158,11 +158,13 @@ class Report:
         if m.get("selftest_banner"):
             banner = (f'<div style="background:#fff4e5;border:1px solid #e0a300;border-radius:8px;'
                       f'padding:10px 14px;margin:0 0 12px;font-size:14px">🧪 <b>{_html.escape(m["selftest_banner"])}</b></div>')
+        _err_color = "#137333" if not self.errors else "#b3261e"          # green at 0, red otherwise
+        _warn_color = "#8a6d00" if self.warnings else "#137333"           # amber when present, else green
         head = (banner
                 + f'<h2 style="margin:0 0 4px">Build validation — {_html.escape(str(m.get("taxonomy_version","?")))}</h2>'
-                f'<p style="margin:0 0 12px;color:#555">{_html.escape(str(m.get("generated_at","")))} · '
-                f'{m.get("n_items","?")} items · <b style="color:#b3261e">{len(self.errors)} error(s)</b>, '
-                f'{len(self.warnings)} warning(s)</p>')
+                f'<p style="margin:0 0 12px;color:#555">🕒 Built {_html.escape(_fmt_ts(m.get("generated_at","")))} · '
+                f'{m.get("n_items","?")} items · <b style="color:{_err_color}">{len(self.errors)} error(s)</b>, '
+                f'<b style="color:{_warn_color}">{len(self.warnings)} warning(s)</b></p>')
         s = self.snapshot
         if s:
             st = s.get("stages", {})
@@ -193,6 +195,15 @@ class Report:
                        '<th style="padding:6px 10px;text-align:left">Issue</th>'
                        '<th style="padding:6px 10px;text-align:left">Code</th></tr></thead><tbody>'
                        + "".join(rows) + '</tbody></table>')
+
+
+def _fmt_ts(ts):
+    """'2026-08-11T20:01:12Z' -> '2026-08-11 20:01 UTC' for human-readable headers."""
+    ts = str(ts or "")
+    if "T" in ts:
+        d, t = ts.split("T", 1)
+        return f"{d} {t[:5]} UTC"
+    return ts
 
 
 def _text(i):
