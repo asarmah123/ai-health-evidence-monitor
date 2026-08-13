@@ -820,11 +820,11 @@ def test_trends_html_renders():
 
 
 def test_coverage_stub_is_inert():
-    """Public build ships coverage-tab STUBS only (the real rendering is private) — they must return
-    nothing so no coverage direction is advertised and no tab renders."""
+    """The optional panel is disabled: its placeholder functions return nothing, so no extra tab
+    renders and the main build is unaffected."""
     assert build.load_coverage_public() is None
-    assert build.coverage_public_html({"devices_verified": 5}) == ""
-    assert build.coverage_mini_html({"devices_verified": 5}) == ""
+    assert build.coverage_public_html({"n": 5}) == ""
+    assert build.coverage_mini_html({"n": 5}) == ""
 
 
 def test_overtime_section():

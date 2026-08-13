@@ -2759,9 +2759,9 @@ def overview_html(items, cov_pub, o, history=None, take=""):
     return home, analysis
 
 
-# --------------------------------------------------------- coverage tracker
-# Inert stubs. The public engine renders no coverage tab; these keep the call sites in
-# main()/overview_html working (they return empty/None so nothing is emitted).
+# --------------------------------------------------------- optional panel (disabled)
+# Disabled placeholders. They return empty/None so nothing extra is emitted; they exist only to
+# keep the call sites in main()/overview_html working when the optional panel is turned off.
 def load_coverage_public():
     return None
 
@@ -4536,7 +4536,7 @@ def main():
 
     # Optional private-only panel; the public engine ships stubs (returns None) so nothing renders.
     cov_pub = load_coverage_public()
-    have_cov = bool(cov_pub and cov_pub.get("devices_verified"))
+    have_cov = bool(cov_pub)   # disabled panel → always None → False
 
     health = diagnostics(items, cfg, dead)
 
