@@ -205,8 +205,8 @@ def get(url, timeout=25):
 
 # ------------------------------------------------------------- private store
 # The public repo holds code and the rendered site. Everything that represents
-# curation or accumulated work — the source list, the lens commentary cache, the
-# trend history, the coverage dataset — lives in a PRIVATE repo and is pulled in
+# curation or accumulated work — the source list, the commentary cache, the
+# trend history and other private data — lives in a PRIVATE repo and is pulled in
 # at build time. With no token, the build falls back to local files so you can
 # still develop and test offline.
 
@@ -2760,9 +2760,8 @@ def overview_html(items, cov_pub, o, history=None, take=""):
 
 
 # --------------------------------------------------------- coverage tracker
-# Phase-3 (private). The public engine ships STUBS only, so the coverage direction is not advertised;
-# the full rendering + aggregation lives in the private coverage-pipeline patch and is reintegrated in
-# private builds. These stubs keep the call sites in main()/overview_html working (no tab renders).
+# Inert stubs. The public engine renders no coverage tab; these keep the call sites in
+# main()/overview_html working (they return empty/None so nothing is emitted).
 def load_coverage_public():
     return None
 
@@ -4445,7 +4444,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.parse_args()
 
-    token = os.environ.get("COVERAGE_TOKEN")
+    token = os.environ.get("PRIVATE_DATA_TOKEN")  # private-repo access (source config + history)
 
     cfg_text, _ = private_get("feeds.yaml", token)      # curated source list = your work
     if cfg_text:

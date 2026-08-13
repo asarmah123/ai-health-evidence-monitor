@@ -43,7 +43,7 @@ jobs:
 
       - name: Build the feed
         env:
-          COVERAGE_TOKEN: ${{ secrets.COVERAGE_TOKEN }}
+          PRIVATE_DATA_TOKEN: ${{ secrets.COVERAGE_TOKEN }}   # existing secret → neutral env var
           PRIVATE_REPO: ${{ secrets.PRIVATE_REPO }}
           FAIL_ON_DEGRADE: "1"   # fail the run (skip publish) if >20% of steady feeds go silent
           # one-shot when the "reset_history" toggle is checked on a manual run; empty otherwise
