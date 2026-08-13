@@ -2,12 +2,11 @@
 
 Directions under consideration. The core monitor stays focused on transparent, rule-based evidence tracking — nothing here changes that.
 
-The underlying dataset could support future analytics such as:
+Possible enhancements to the monitor over time:
 
-- regulatory landscape tracking
-- reimbursement pathway monitoring
-- evidence-gap analysis
-- historical adoption trends
-- enterprise alerts and API access
+- activity summaries by lifecycle stage and region
+- regulatory and reimbursement landscape views
+- richer trend and topic tracking
+- additional feeds and alerting options
 
 These are exploratory. The daily evidence monitor remains the product.

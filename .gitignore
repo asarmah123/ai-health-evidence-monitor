@@ -1,22 +1,17 @@
 __pycache__/
 .venv/
 
-# Private data — lives in the separate private repo, never in this public one.
-# Listed here so a local copy for testing can never be committed by accident.
+# Private data & internal notes — pulled from the private repo or kept local; never public.
 feeds.yaml
 coverage.yaml
 lens_prompt.txt
-# Commercial strategy & personal notes — keep private, not for the public repo.
 PRODUCT_ROADMAP.md
 ENGINEERING_NOTES.md
 TECHNICAL.md
 ANALYTICS_SPEC.md
 FILE_INVENTORY.md
 SOURCE_AUDIT.md
-# Phase-3 clearance→coverage dataset — schema + curation workflow (private).
-COVERAGE_DATASET_SPEC.md
 CURATION_PROTOCOL.md
-# Coverage-direction docs kept out of the public repo (moved into coverage-pipeline/).
 docs/DATASETS.md
 # Owner-only utilities (historical export / verification) — not a public feature yet.
 private-tools/
