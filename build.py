@@ -1433,6 +1433,42 @@ def log_history(items, terms, token=None, health=None, o=None):
     return row, hist
 
 
+def log_detections(items, token=None):
+    """Lightweight, append-only item-level detection log for the (external) recall/timeliness eval.
+    Records the FIRST appearance of each published item — {id, url, title, source, date,
+    first_detected} — once, keyed by url (else id); re-published items are not re-logged. So
+    detection = "first_detected", enabling prospective recall (detected vs a gold set) and timeliness
+    (first_detected − event published date) WITHOUT retaining the full historical feed. Persisted to
+    the private repo (local `data/` fallback); never published (publish adds only docs/). Never fatal."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    path = ROOT / "data" / "feed-log.jsonl"
+    text, sha = private_get("feed-log.jsonl", token)
+    if not text and path.exists():
+        text = path.read_text(encoding="utf-8")
+    lines = [l for l in (text or "").splitlines() if l.strip()]
+    seen = set()
+    for l in lines:
+        try:
+            r = json.loads(l); seen.add(r.get("url") or r.get("id"))
+        except json.JSONDecodeError:
+            continue
+    new = 0
+    for i in items:
+        key = i.get("url") or i.get("id")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        lines.append(json.dumps({"id": i.get("id"), "url": i.get("url"), "title": i.get("title"),
+                                 "source": i.get("source"), "date": i.get("date"),
+                                 "first_detected": today}, ensure_ascii=False))
+        new += 1
+    out = "\n".join(lines) + "\n"
+    if not private_put("feed-log.jsonl", out, token, sha, f"feed-log {today} (+{new})"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(out, encoding="utf-8")
+    return new
+
+
 # No language model is used anywhere in this build. Classification, ranking, dating
 # and every count are rule-based and reproducible. (Earlier revisions carried an
 # LLM "editor's take" and per-item "HEOR lens"; both were removed to keep the
@@ -4548,6 +4584,11 @@ def main():
 
     row, history = log_history(items, cfg.get("trend_terms", []), token, health, o)
     print(f"  history: {row['total']} items logged for {row['date']} ({len(history)} builds on record)")
+    try:                                     # item-level detection log — never blocks the build
+        _newlog = log_detections(items, token)
+        print(f"  feed-log: +{_newlog} newly-detected item(s) logged")
+    except Exception as e:
+        print(f"  feed-log: skipped ({type(e).__name__})", file=sys.stderr)
 
     home_html, analysis_extra = overview_html(items, cov_pub, o, history, take)
     render(items, cfg["hubs"], dead, now.strftime("%d %b %Y %H:%M UTC"),
