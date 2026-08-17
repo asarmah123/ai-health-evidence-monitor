@@ -1,10 +1,12 @@
 {
-  "ok": true,
+  "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 0,
-  "generated_at": "2026-08-16T13:28:09Z",
+  "n_warnings": 1,
+  "generated_at": "2026-08-17T13:37:04Z",
   "taxonomy_version": "2.52",
-  "codes": [],
+  "codes": [
+    "A13_country_no_region"
+  ],
   "layers_skipped": []
 }
