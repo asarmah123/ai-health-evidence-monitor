@@ -1,13 +1,10 @@
 {
-  "ok": false,
+  "ok": true,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 2,
-  "generated_at": "2026-08-18T13:40:04Z",
+  "n_warnings": 0,
+  "generated_at": "2026-08-19T13:41:20Z",
   "taxonomy_version": "2.52",
-  "codes": [
-    "A08_specialty_divergence",
-    "A13_country_no_region"
-  ],
+  "codes": [],
   "layers_skipped": []
 }
