@@ -1,21 +1,21 @@
 {
-  "build_id": "32259344759",
-  "generated_at": "2026-08-19T13:41:24Z",
+  "build_id": "32375680555",
+  "generated_at": "2026-08-20T13:43:29Z",
   "taxonomy_version": "2.52",
-  "git_commit": "bc2b7022fb9299832754950ee038c0c59fe92716",
-  "items_published": 86,
+  "git_commit": "66c7041fe13ad9143f363b27d31e99d8d304449a",
+  "items_published": 90,
   "sources_contributing": 37,
   "sources_expected": 91,
   "silent_sources": 0,
-  "errored_sources": 0,
-  "undated_items": 0,
-  "geography_placed": 26,
-  "geography_completeness_pct": 30.2,
+  "errored_sources": 1,
+  "undated_items": 1,
+  "geography_placed": 25,
+  "geography_completeness_pct": 27.8,
   "qa": {
-    "input": 86,
-    "published": 86,
+    "input": 90,
+    "published": 90,
     "dropped": 0,
-    "future_dates_blanked": 0
+    "future_dates_blanked": 1
   },
   "qa_passed": true
 }
