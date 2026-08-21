@@ -1,12 +1,10 @@
 {
-  "ok": false,
+  "ok": true,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 1,
-  "generated_at": "2026-08-20T13:43:23Z",
+  "n_warnings": 0,
+  "generated_at": "2026-08-21T13:41:56Z",
   "taxonomy_version": "2.52",
-  "codes": [
-    "A08_specialty_divergence"
-  ],
+  "codes": [],
   "layers_skipped": []
 }
