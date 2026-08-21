@@ -458,6 +458,146 @@ def test_litigation_digest_bucket():
     assert "Legal / litigation" in build.WHY_TEXT and "Legal / litigation" in build.WHY_MATTERS
 
 
+# --- prospective evidence corpus (feed-log schema 2) --------------------------
+# A durable, item-level dataset: each item retained once with its contemporaneous classification
+# and provenance; write-once + append-only; the epistemic Build A/B boundary is enforced.
+import json as _json
+
+
+def _corpus_item(**over):
+    """A fully-classified item as it exists when log_detections runs (fields already attached)."""
+    base = {"id": "p1", "url": "https://www.cms.gov/ntap-ai-2026", "title": "Medicare NTAP for AI ECG tool",
+            "source": "CMS — coverage & payment notices", "date": "2026-08-01",
+            "summary": "coverage decision; cardiology", "layer": "access",
+            "etype": "Regulatory guidance", "strength": "Policy signal", "relevance": "Direct clinical",
+            "modality": "Predictive ML", "maturity": "HTA", "country": "United States",
+            "region": "North America", "stype": "HTA / payer", "decision_type": "Coverage",
+            "payer_type": "Public", "topics": ["cms-coverage", "ntap-activity"], "score": 8}
+    base.update(over)
+    return base
+
+
+def test_persistent_record_schema():
+    """A newly published item becomes a full schema-2 record: identity + THREE distinct dates
+    (publication `date`, `first_detected`, `retrieved_at`) + provenance + a frozen first_classification
+    that carries the full Build-A verdict (stage, modality, reimbursement_pathway, topics, score …)."""
+    out, new, recl = build.build_detection_records("", [_corpus_item()], "2026-08-21", "2026-08-21T09:00:00Z")
+    assert (new, recl) == (1, 0)
+    rec = _json.loads(out.strip())
+    assert rec["schema"] == build.SCHEMA_VERSION
+    # six original top-level fields preserved (recall/timeliness consumers keep working)
+    for k in ("id", "url", "title", "source", "date", "first_detected"):
+        assert k in rec
+    # three distinct dates
+    assert rec["date"] == "2026-08-01" and rec["first_detected"] == "2026-08-21"
+    assert rec["retrieved_at"] == "2026-08-21T09:00:00Z"
+    assert rec["date"] != rec["first_detected"] != rec["retrieved_at"]
+    # provenance
+    assert rec["content_hash"] and rec["canonical_url"] == "https://www.cms.gov/ntap-ai-2026"
+    assert rec["snapshot_ref"] is None            # Build A anchors identity; raw capture is Build B's job
+    # full contemporaneous classification, frozen and mirrored into history[0]
+    assert rec["historical_classification_available"] is True
+    fc = rec["first_classification"]
+    assert fc["stage"] == "access" and fc["modality"] == "Predictive ML"
+    assert fc["reimbursement_pathway"] == ["NTAP", "Reimbursement (general)"]  # per-item, from title+summary
+    assert fc["clinical_area"] == ["Cardiology"] and fc["topics"] == ["cms-coverage", "ntap-activity"]
+    assert fc["rank_score"] == 8 and fc["taxonomy_version"] == build.TAXONOMY_VERSION
+    assert rec["classification_history"] == [fc]
+    # NO Build-B conclusion fields leak into Build A
+    assert not ({"coverage_status", "verified_event_type", "payment_established", "trajectory_state"}
+                & set(rec) & set(fc))
+
+
+def test_legacy_record_preserved_not_fabricated():
+    """A pre-schema (flat, 6-field) line is upgraded once to schema 2 but its classification is NOT
+    invented: historical_classification_available:false, first_classification:None, history:[] —
+    we never rerun today's classifier and mislabel it 'historical'. Original fields are preserved."""
+    legacy = _json.dumps({"id": "old1", "url": "https://x/old", "title": "Old item",
+                          "source": "STAT News", "date": "2026-08-10", "first_detected": "2026-08-15"})
+    out, new, recl = build.build_detection_records(legacy + "\n", [], "2026-08-21")
+    assert (new, recl) == (0, 0)
+    rec = _json.loads(out.strip())
+    assert rec["schema"] == build.SCHEMA_VERSION
+    assert rec["historical_classification_available"] is False
+    assert rec["first_classification"] is None and rec["classification_history"] == []
+    assert rec["id"] == "old1" and rec["date"] == "2026-08-10" and rec["first_detected"] == "2026-08-15"
+    # idempotent: upgrading again changes nothing
+    out2, _, _ = build.build_detection_records(out, [], "2026-08-22")
+    assert _json.loads(out2.strip()) == rec
+
+
+def test_no_silent_overwrite_append_only():
+    """A later build can NEVER overwrite an item's original verdict. A genuine reclassification APPENDS
+    a dated snapshot; first_classification and every prior snapshot stay byte-identical; re-seeing an
+    unchanged item appends nothing."""
+    out1, _, _ = build.build_detection_records("", [_corpus_item()], "2026-08-21", "2026-08-21T09:00:00Z")
+    original_fc = _json.loads(out1.strip())["first_classification"]
+    # re-seen, UNCHANGED classification → no new snapshot
+    out2, new2, recl2 = build.build_detection_records(out1, [_corpus_item()], "2026-08-22", "2026-08-22T09:00:00Z")
+    rec2 = _json.loads(out2.strip())
+    assert (new2, recl2) == (0, 0) and len(rec2["classification_history"]) == 1
+    # re-seen, CHANGED classification (stage/score/topics drift) → append, never overwrite
+    changed = _corpus_item(layer="regulation", score=10, topics=["fda-ai-authorisations"])
+    out3, new3, recl3 = build.build_detection_records(out2, [changed], "2026-08-23", "2026-08-23T09:00:00Z")
+    rec3 = _json.loads(out3.strip())
+    assert (new3, recl3) == (0, 1)
+    assert rec3["first_classification"] == original_fc              # frozen
+    assert len(rec3["classification_history"]) == 2
+    assert rec3["classification_history"][0] == original_fc         # prior snapshot untouched
+    assert rec3["classification_history"][1]["stage"] == "regulation" and rec3["classification_history"][1]["rank_score"] == 10
+
+
+def test_ab_bridge_discovery_input():
+    """Integration: source item → Build A → persistent record → a valid Build B DISCOVERY input.
+    The record must expose everything B's discovery layer needs to stage a candidate (identity,
+    canonical link, publication date, detection date, content hash, and the Build-A classification),
+    while carrying NO verified-event conclusion — B still runs its own primary-source verification."""
+    out, _, _ = build.build_detection_records("", [_corpus_item()], "2026-08-21", "2026-08-21T09:00:00Z")
+    rec = _json.loads(out.strip())
+    for field in ("id", "canonical_url", "date", "first_detected", "content_hash", "first_classification"):
+        assert rec.get(field) is not None, f"discovery input missing {field}"
+    assert rec["first_classification"]["stage"] and rec["first_classification"]["topics"]
+    # boundary held: Build A asserts detection+classification only, not a verified event
+    assert "verified_event_type" not in rec and "trajectory_state" not in rec
+
+
+def test_first_classification_immutable():
+    """LOCKED INVARIANT: first_classification is immutable once written. No sequence of later builds —
+    reclassification, taxonomy bump, or plain re-observation — may change it. Only classification_history
+    grows. This preserves the prospective-study answer: what did the monitor classify at first sight?"""
+    out, _, _ = build.build_detection_records("", [_corpus_item()], "2026-08-21", "2026-08-21T09:00:00Z")
+    frozen = _json.loads(out.strip())["first_classification"]
+    # apply a chain of divergent reclassifications across successive builds
+    for day, over in (("2026-08-22", dict(layer="regulation", score=10)),
+                      ("2026-08-23", dict(layer="clinical", score=5, topics=["ai-clinical-studies"])),
+                      ("2026-08-24", dict(modality="Imaging AI"))):
+        out, _, _ = build.build_detection_records(out, [_corpus_item(**over)], day, day + "T09:00:00Z")
+    rec = _json.loads(out.strip())
+    assert rec["first_classification"] == frozen                       # never mutated
+    assert rec["classification_history"][0] == frozen                  # original snapshot preserved
+    assert len(rec["classification_history"]) == 4                     # 1 original + 3 appended
+    assert [s["stage"] for s in rec["classification_history"]] == ["access", "regulation", "clinical", "access"]
+
+
+def test_taxonomy_version_mandatory():
+    """LOCKED INVARIANT: every non-legacy classification snapshot carries taxonomy_version, so verdicts
+    produced under different rule sets are never mistaken for comparable. Legacy records have no
+    classification at all (unavailable), which is the honest alternative — not a version-less snapshot."""
+    # new + reclassified record: every snapshot stamped
+    out, _, _ = build.build_detection_records("", [_corpus_item()], "2026-08-21")
+    out, _, _ = build.build_detection_records(out, [_corpus_item(layer="regulation", score=10)], "2026-08-22")
+    rec = _json.loads(out.strip())
+    assert rec["first_classification"]["taxonomy_version"] == build.TAXONOMY_VERSION
+    for snap in rec["classification_history"]:
+        assert snap.get("taxonomy_version"), "every snapshot must carry taxonomy_version"
+    # legacy: no fabricated version-less classification
+    legacy = _json.dumps({"id": "old", "url": "https://x/old", "title": "Old", "source": "STAT",
+                         "date": "2026-08-10", "first_detected": "2026-08-15"})
+    lout, _, _ = build.build_detection_records(legacy + "\n", [], "2026-08-21")
+    lrec = _json.loads(lout.strip())
+    assert lrec["first_classification"] is None and lrec["classification_history"] == []
+
+
 def test_coverage_litigation_not_a_decision():
     """A court case about a coverage decision is not itself a coverage decision — decision_type Unknown."""
     dt, pt = build.access_facets({"layer": "access", "source": "CMS coverage determinations (NCD/LCD) — AI",

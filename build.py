@@ -1433,37 +1433,171 @@ def log_history(items, terms, token=None, health=None, o=None):
     return row, hist
 
 
+# ── Prospective evidence corpus (schema 2) ───────────────────────────────────────────────────────
+# feed-log.jsonl is the DURABLE, item-level Build-A dataset — not a rolling view. Each published item
+# is retained once with its full CONTEMPORANEOUS classification and provenance. The classifier's verdict
+# at first detection is frozen; a genuine later reclassification appends a dated snapshot, so history is
+# reconstructable and never silently overwritten. Build A says "this document was detected and classified
+# as X"; Build B, after primary-source verification, says "this establishes event Y" — the epistemic
+# boundary is kept: NO Build-B conclusion field ever lives here.
+SCHEMA_VERSION = 2
+
+
+def _canonical_url(item):
+    """Best available canonical link. Google-News redirect URLs are not canonical — prefer a resolved
+    publisher link if we already have one, else return the raw url unchanged. Never guesses a URL."""
+    url = item.get("url", "") or ""
+    if "news.google.com" in url:
+        return item.get("canonical") or item.get("resolved_url") or url
+    return url
+
+
+def _content_hash(item):
+    """Deterministic content fingerprint at detection time (title|source|url) — a reproducibility
+    anchor, NOT a raw snapshot. Build A records identity; raw-source capture is Build B's job."""
+    import hashlib
+    basis = "|".join([(item.get("title") or ""), (item.get("source") or ""), (item.get("url") or "")])
+    return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]
+
+
+def item_classification(item, classified_at=None, build_id=None):
+    """One dated CLASSIFICATION snapshot for the prospective dataset — Build A's contemporaneous verdict
+    on a single item. Holds only classification variables (+ its version stamps); identity, the three
+    dates and provenance live on the record, so re-versioning history never touches them."""
+    _et, _str = item.get("etype"), item.get("strength")
+    if _et is None:
+        _et, _str = classify_evidence(item)
+    _mat = item.get("maturity")
+    return {
+        "classified_at": classified_at,
+        "build_id": build_id,
+        "taxonomy_version": TAXONOMY_VERSION,
+        "stage": item.get("layer", ""),
+        "evidence_type": _et,
+        "strength": _str,
+        "relevance": item.get("relevance") or healthcare_relevance(item),
+        "modality": item.get("modality") or ai_modality(item),
+        "maturity": ("" if _mat is None else _mat),
+        "jurisdiction": {"country": item.get("country", ""), "region": item.get("region", "")},
+        "body_role": item.get("stype") or source_type(item),
+        "clinical_area": clinical_area_of(item),
+        "reimbursement_pathway": reimbursement_pathway_of(item),
+        "decision_type": item.get("decision_type") or access_facets(item)[0],
+        "payer_type": item.get("payer_type") or access_facets(item)[1],
+        "topics": list(item.get("topics", [])),
+        "rank_score": item.get("score", 0),
+    }
+
+
+# Substantive classification fields — a change in ANY of these (or the taxonomy) is a real
+# reclassification worth a new snapshot. The version stamps (classified_at/build_id) always differ, so
+# they are deliberately excluded — otherwise every rebuild would append noise.
+_CLASSIFICATION_KEYS = ("taxonomy_version", "stage", "evidence_type", "strength", "relevance",
+                        "modality", "maturity", "jurisdiction", "body_role", "clinical_area",
+                        "reimbursement_pathway", "decision_type", "payer_type", "topics", "rank_score")
+
+
+def _classification_changed(prev, cur):
+    return any((prev or {}).get(k) != cur.get(k) for k in _CLASSIFICATION_KEYS)
+
+
+def _legacy_to_record(r):
+    """Upgrade a pre-schema (flat, 6-field) detection line to a schema-2 record WITHOUT inventing a
+    classification: the item's contemporaneous Build-A verdict was never stored, so we say so
+    explicitly rather than back-fill today's classifier and mislabel it 'historical'."""
+    return {
+        "schema": SCHEMA_VERSION,
+        "id": r.get("id"), "url": r.get("url"), "title": r.get("title"),
+        "source": r.get("source"), "date": r.get("date"), "first_detected": r.get("first_detected"),
+        "canonical_url": None, "retrieved_at": None, "content_hash": None, "snapshot_ref": None,
+        "historical_classification_available": False,
+        "first_classification": None,
+        "classification_history": [],
+    }
+
+
+def build_detection_records(existing_text, items, today, retrieved_at=None):
+    """Pure, network-free core of the prospective evidence corpus. Append-only + WRITE-ONCE:
+      • a NEW item → a full schema-2 record with its contemporaneous classification frozen as
+        first_classification (and as classification_history[0]);
+      • an already-logged item → NEVER overwritten; a genuinely changed classification (or taxonomy
+        bump) APPENDS a dated snapshot to classification_history, leaving first_classification and all
+        prior snapshots byte-identical; re-seeing an unchanged item appends nothing;
+      • a pre-schema line → upgraded once (idempotent) to schema 2, marked
+        historical_classification_available:false, no fabricated classification.
+    The six original top-level fields (id/url/title/source/date/first_detected) are preserved, so
+    recall/timeliness consumers keep working. Returns (out_text, new_count, reclassified_count)."""
+    retrieved_at = retrieved_at or today
+    records, index = [], {}
+    for line in (existing_text or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            r = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if r.get("schema") is None:              # one-time, idempotent legacy upgrade
+            r = _legacy_to_record(r)
+        records.append(r)
+        index[r.get("url") or r.get("id")] = r
+    new = reclassified = 0
+    for i in items:
+        key = i.get("url") or i.get("id")
+        if not key:
+            continue
+        snap = item_classification(i, classified_at=today, build_id=today)
+        # INVARIANT: every non-legacy classification snapshot carries the taxonomy it was produced under,
+        # so verdicts made under different rules are never silently treated as comparable.
+        assert snap.get("taxonomy_version"), "classification snapshot must carry taxonomy_version"
+        rec = index.get(key)
+        if rec is None:                          # NEW → full prospective record
+            rec = {
+                "schema": SCHEMA_VERSION,
+                "id": i.get("id"), "url": i.get("url"), "title": i.get("title"),
+                "source": i.get("source"), "date": i.get("date"), "first_detected": today,
+                "canonical_url": _canonical_url(i), "retrieved_at": retrieved_at,
+                "content_hash": _content_hash(i), "snapshot_ref": None,
+                "historical_classification_available": True,
+                "first_classification": snap,
+                "classification_history": [snap],
+            }
+            records.append(rec)
+            index[key] = rec
+            new += 1
+        else:                                    # EXISTING → append only on real change; never overwrite
+            # INVARIANT: first_classification is immutable once written. A later classifier change can ONLY
+            # append to classification_history — the answer to "what did the monitor classify when it first
+            # observed this evidence?" must never be lost. rec["first_classification"] is never reassigned.
+            hist = rec.get("classification_history") or []
+            latest = hist[-1] if hist else rec.get("first_classification")
+            if latest is not None and _classification_changed(latest, snap):
+                rec["classification_history"] = hist + [snap]   # append-only; first_classification frozen
+                reclassified += 1
+    out = "\n".join(json.dumps(r, ensure_ascii=False) for r in records) + "\n"
+    return out, new, reclassified
+
+
 def log_detections(items, token=None):
-    """Lightweight, append-only item-level detection log for the (external) recall/timeliness eval.
-    Records the FIRST appearance of each published item — {id, url, title, source, date,
-    first_detected} — once, keyed by url (else id); re-published items are not re-logged. So
-    detection = "first_detected", enabling prospective recall (detected vs a gold set) and timeliness
-    (first_detected − event published date) WITHOUT retaining the full historical feed. Persisted to
-    the private repo (local `data/` fallback); never published (publish adds only docs/). Never fatal."""
+    """Append-only PROSPECTIVE EVIDENCE CORPUS (schema 2) — the durable, item-level Build-A dataset.
+    Each newly published item is recorded ONCE with its full contemporaneous classification and
+    provenance, and THREE distinct dates: publication `date`, `first_detected`, and `retrieved_at`
+    (so detection lag = first_detected − date is measurable). Write-once + append-only: an item's
+    original verdict is frozen as first_classification; a genuine later reclassification (or taxonomy
+    bump) APPENDS a dated snapshot to classification_history — a record is never silently overwritten,
+    and re-seeing an unchanged item adds nothing. Pre-existing (pre-schema) lines are upgraded once to
+    schema 2 and explicitly marked historical_classification_available:false — their contemporaneous
+    classification was never stored, so it is not invented. Persisted to the private repo (local `data/`
+    fallback); never published (publish adds only docs/). Never fatal."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     path = ROOT / "data" / "feed-log.jsonl"
     text, sha = private_get("feed-log.jsonl", token)
     if not text and path.exists():
         text = path.read_text(encoding="utf-8")
-    lines = [l for l in (text or "").splitlines() if l.strip()]
-    seen = set()
-    for l in lines:
-        try:
-            r = json.loads(l); seen.add(r.get("url") or r.get("id"))
-        except json.JSONDecodeError:
-            continue
-    new = 0
-    for i in items:
-        key = i.get("url") or i.get("id")
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        lines.append(json.dumps({"id": i.get("id"), "url": i.get("url"), "title": i.get("title"),
-                                 "source": i.get("source"), "date": i.get("date"),
-                                 "first_detected": today}, ensure_ascii=False))
-        new += 1
-    out = "\n".join(lines) + "\n"
-    if not private_put("feed-log.jsonl", out, token, sha, f"feed-log {today} (+{new})"):
+    out, new, reclassified = build_detection_records(text, items, today, retrieved_at)
+    msg = f"feed-log {today} (+{new} new, {reclassified} reclassified)"
+    if not private_put("feed-log.jsonl", out, token, sha, msg):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(out, encoding="utf-8")
     return new
@@ -2144,14 +2278,40 @@ SPECIALTIES = [
     ("Pulmonology", ["pulmonar", "lung", "respirator", "copd"]),
 ]
 
+# Reimbursement-pathway lexicon — module-level so it is the single source of truth for BOTH the
+# per-item dataset field (reimbursement_pathway_of) and the Overview pathway tally (overview_stats).
+REIMB_PATHWAYS = [
+    ("NTAP", ["ntap", "new technology add-on"]),
+    ("CPT / coding", ["cpt code", "cpt category", "coding"]),
+    ("DiGA", ["diga"]),
+    ("PECAN / France", ["pecan"]),
+    ("NICE EVA", ["early value assessment", "nice eva"]),
+    ("LCD / MAC", ["local coverage", "lcd "]),
+    ("Reimbursement (general)", ["reimburse", "coverage decision", "payer"]),
+]
+
+
+def clinical_area_of(item):
+    """The clinical specialty label(s) one item matches (SPECIALTIES keywords over title+summary).
+    Multi-label — a paper can touch several specialties. Single source of truth for the per-item
+    prospective-dataset field AND the clinical_focus aggregate, so the two can never diverge."""
+    blob = (item.get("title", "") + " " + item.get("summary", "")).lower()
+    return [label for label, keys in SPECIALTIES if any(k in blob for k in keys)]
+
+
+def reimbursement_pathway_of(item):
+    """The reimbursement-pathway label(s) one item mentions (REIMB_PATHWAYS keywords over
+    title+summary). Multi-label. Single source of truth for the per-item field AND the Overview tally."""
+    blob = (item.get("title", "") + " " + item.get("summary", "")).lower()
+    return [label for label, keys in REIMB_PATHWAYS if any(k in blob for k in keys)]
+
 
 def clinical_focus(items):
-    blob = [(i.get("title", "") + " " + i.get("summary", "")).lower() for i in items]
-    out = []
-    for label, keys in SPECIALTIES:
-        n = sum(1 for t in blob if any(k in t for k in keys))
-        if n:
-            out.append((label, n))
+    counts = {}
+    for i in items:
+        for label in clinical_area_of(i):
+            counts[label] = counts.get(label, 0) + 1
+    out = [(label, counts[label]) for label, _ in SPECIALTIES if counts.get(label)]
     out.sort(key=lambda x: -x[1])
     return out
 
@@ -2218,22 +2378,12 @@ def overview_stats(items):
     research = sum(1 for i in items if i["layer"] in ("research", "clinical", "heor"))
     access = sum(1 for i in items if i["layer"] in ("regulation", "access", "industry"))
 
-    # reimbursement-pathway chatter — which access route is in the news
-    PATHWAYS = [
-        ("NTAP", ["ntap", "new technology add-on"]),
-        ("CPT / coding", ["cpt code", "cpt category", "coding"]),
-        ("DiGA", ["diga"]),
-        ("PECAN / France", ["pecan"]),
-        ("NICE EVA", ["early value assessment", "nice eva"]),
-        ("LCD / MAC", ["local coverage", "lcd "]),
-        ("Reimbursement (general)", ["reimburse", "coverage decision", "payer"]),
-    ]
-    blob = [(i.get("title", "") + " " + i.get("summary", "")).lower() for i in items]
-    pathways = []
-    for label, keys in PATHWAYS:
-        n = sum(1 for t in blob if any(k in t for k in keys))
-        if n:
-            pathways.append((label, n))
+    # reimbursement-pathway chatter — which access route is in the news (shared per-item lexicon)
+    pcount = {}
+    for i in items:
+        for label in reimbursement_pathway_of(i):
+            pcount[label] = pcount.get(label, 0) + 1
+    pathways = [(label, pcount[label]) for label, _ in REIMB_PATHWAYS if pcount.get(label)]
     pathways.sort(key=lambda x: -x[1])
 
     layers = {k: sum(1 for i in items if i["layer"] == k) for k in LAYERS}
