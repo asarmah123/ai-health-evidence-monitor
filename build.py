@@ -1489,7 +1489,7 @@ MACRO = {
     "Thailand": "Asia-Pacific", "Canada": "North America",
     "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
     "Belgium": "Europe", "Ireland": "Europe", "Poland": "Europe", "Spain": "Europe",
-    "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe",
+    "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe", "Austria": "Europe",
     "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
     "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
     "Egypt": "Middle East & Africa", "Turkey": "Europe", "Nigeria": "Middle East & Africa",
