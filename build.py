@@ -2047,6 +2047,7 @@ def country_of(i):
         ("Norway", ["legemiddelverket", "norway"]),
         ("Finland", ["fimea", "finland"]),
         ("Denmark", ["amgros", "denmark"]),
+        ("Austria", ["aihta", "austria", "austrian"]),
         ("Saudi Arabia", ["sfda", "saudi"]),
         ("South Africa", ["sahpra", "south africa"]),
         ("United Arab Emirates", ["uae", "united arab emirates", "mohap", "dubai health", "abu dhabi"]),
