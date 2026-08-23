@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-22T13:28:45Z",
+ "generated_at": "2026-08-23T13:29:06Z",
  "taxonomy_version": "2.52",
- "count": 79,
+ "count": 75,
  "fields": [
   "id",
   "title",
@@ -110,48 +110,6 @@
    "topics": ""
   },
   {
-   "id": "35e7d8f27b1b",
-   "title": "Siemens Healthineers, Philips awarded ARPA-H funds for stroke robots",
-   "url": "https://www.medtechdive.com/news/siemens-healthineers-philips-awarded-arpa-h-funds-for-stroke-robots/828513/",
-   "source": "MedTech Dive",
-   "feed": "MedTech Dive",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Robotics",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "North America",
-   "country": "United States",
-   "date": "2026-08-21",
-   "score": 3,
-   "topics": ""
-  },
-  {
-   "id": "b1adb0d56674",
-   "title": "Ant Group upgrades doctor app with AI",
-   "url": "https://news.google.com/rss/articles/CBMifkFVX3lxTFA0bEdlWm95UnlCZy1xdWcxWW51Y0Z5cldGREw3QURrcUplX1pUU0JMTnBOa19SZ1B5YVJqVzBGY09FRmE0OS1jSU1vak9yUTFUYkNSb3NqbjhWejlnVHRXM25oOXVveHg3clc4aHhOWXgxdjljanowbUtocVZJQQ?oc=5",
-   "source": "MobiHealthNews",
-   "feed": "MobiHealthNews",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Adjacent AI",
-   "ai_modality": "",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-21",
-   "score": 3,
-   "topics": ""
-  },
-  {
    "id": "d14dc4639bc5",
    "title": "STAT+: How health systems are embracing chatbots to query and summarize patient records",
    "url": "https://www.statnews.com/2026/08/20/health-systems-embrace-ai-chatbots-query-patient-records-ehr/?utm_campaign=rss",
@@ -169,7 +127,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -190,7 +148,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -211,7 +169,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -232,7 +190,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": ""
   },
   {
@@ -253,7 +211,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -274,7 +232,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -295,7 +253,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research"
   },
   {
@@ -316,7 +274,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": "ai-research;radiology-imaging-ai"
   },
   {
@@ -337,7 +295,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": "oncology-ai"
   },
   {
@@ -358,7 +316,7 @@
    "region": "Asia-Pacific",
    "country": "Japan",
    "date": "2026-08-20",
-   "score": 3,
+   "score": 2,
    "topics": "oncology-ai"
   },
   {
@@ -572,25 +530,46 @@
    "topics": ""
   },
   {
-   "id": "b844b06d13c1",
-   "title": "STAT+: What Medicare incentives for AI-based devices mean for tech companies — and hospitals",
-   "url": "https://www.statnews.com/2026/08/13/how-medicare-cms-pays-ntap-for-new-ai-medical-devices/?utm_campaign=rss",
-   "source": "STAT — Health Tech",
-   "feed": "STAT — Health Tech",
-   "source_type": "Industry press",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Adjacent AI",
-   "ai_modality": "",
+   "id": "a355cb494b63",
+   "title": "Performance, Generalizability, and Fairness of a Peripheral Artery Disease Detection Model Across Patient Phenotypes and Health Systems",
+   "url": "https://www.medrxiv.org/content/10.64898/2026.08.19.26360861v1?rss=1",
+   "source": "medRxiv — Health Informatics",
+   "feed": "medRxiv — Health Informatics",
+   "source_type": "Preprint / research",
+   "stage": "clinical",
+   "evidence_type": "Preprint",
+   "evidence_strength": "Primary evidence",
+   "evidence_maturity": 0,
+   "healthcare_relevance": "Healthcare operations",
+   "ai_modality": "Predictive ML",
    "decision_type": "",
    "payer_type": "",
-   "region": "North America",
-   "country": "United States",
-   "date": "2026-08-13",
-   "score": 1,
-   "topics": ""
+   "region": "",
+   "country": "",
+   "date": "2026-08-22",
+   "score": 2,
+   "topics": "ai-clinical-studies;cardiology-ai"
+  },
+  {
+   "id": "9662795f0ff3",
+   "title": "Algorithms-Based Monitoring of Vaccine Coverage in Chronic-Disease Cohorts: A Population-Based Evaluation of Regional Immunization Policy in Emilia-Romagna, Italy.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42631668/",
+   "source": "PubMed — health-economics & policy journals (AI)",
+   "feed": "PubMed — health-economics & policy journals (AI)",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "evidence_type": "Journal study",
+   "evidence_strength": "Primary evidence",
+   "evidence_maturity": 1,
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "Predictive ML",
+   "decision_type": "",
+   "payer_type": "",
+   "region": "Europe",
+   "country": "Italy",
+   "date": "2026-08-22",
+   "score": 2,
+   "topics": "ai-clinical-studies"
   },
   {
    "id": "5ede17754fa9",
@@ -799,7 +778,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 4,
+   "score": 3,
    "topics": "hta-value-evidence"
   },
   {
@@ -820,29 +799,8 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 4,
+   "score": 3,
    "topics": "hta-value-evidence"
-  },
-  {
-   "id": "8f6082c6bb17",
-   "title": "Artificial intelligence in diabetic retinopathy: from automated screening to risk-stratified care.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42622662/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "feed": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "evidence_type": "Review",
-   "evidence_strength": "Secondary evidence",
-   "evidence_maturity": 1,
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Clinical decision support",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-20",
-   "score": 2,
-   "topics": "ai-clinical-studies"
   },
   {
    "id": "cb0b6a11c0f6",
@@ -885,27 +843,6 @@
    "date": "2026-08-19",
    "score": 3,
    "topics": "regulatory-activity"
-  },
-  {
-   "id": "a17efacdd828",
-   "title": "The Eye as a Window to Cardio-Kidney-Metabolic Disease.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42616587/",
-   "source": "PubMed — AI × HTA/HEOR",
-   "feed": "PubMed — AI × HTA/HEOR",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "evidence_type": "Journal study",
-   "evidence_strength": "Primary evidence",
-   "evidence_maturity": 1,
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Imaging AI",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-19",
-   "score": 1,
-   "topics": "ai-clinical-studies;cardiology-ai"
   },
   {
    "id": "7d7e7aa5b611",
@@ -992,27 +929,6 @@
    "topics": "ai-clinical-studies"
   },
   {
-   "id": "df0f23bf9015",
-   "title": "The Impact of Digitalization on European General Practice From the Perspective of General Practitioners: Systematic Review.",
-   "url": "https://pubmed.ncbi.nlm.nih.gov/42612165/",
-   "source": "PubMed — digital health value & reimbursement",
-   "feed": "PubMed — digital health value & reimbursement",
-   "source_type": "Journal / evidence",
-   "stage": "clinical",
-   "evidence_type": "Systematic review",
-   "evidence_strength": "Secondary evidence",
-   "evidence_maturity": 2,
-   "healthcare_relevance": "Direct clinical",
-   "ai_modality": "",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-18",
-   "score": 1,
-   "topics": "ai-clinical-studies"
-  },
-  {
    "id": "90847e50f5c8",
    "title": "Frost & Sullivan White Paper Marks a Turning Point for Medical Imaging AI: Imagecore Leads the Development of the Digital and Intelligent Medical Imaging Ecosystem in the AGI Era",
    "url": "https://news.google.com/rss/articles/CBMingJBVV95cUxPbHdwb2djNzlPVWpWY3dfdERuUGZldEtUMHRuZjQzTlVIempCenBpVE9NdWFjZVFjM3h6TmRncGF4QXIyZ3NnQWVtQjZBRW5keEtwRUZkREFwRmIyVVNNVmcwb0dHNEQ2ODdUbzgwM1psanVxbjZKMXM2alBpSndEcmdaQ2t1NEh3TG0yczZVZWxBblZmLThxdF9KZ0VUQ0FxV2p5bUF1YW9vLWVRSUgwQ2x4US1UYXlxNlZ0Q1hFUmc0N0lIVTI5U0tQTUk4THZpVUs0T0FFZVlKLTlsNXlJYzRjR2tNNTR2c3k4TnhFemxpbmJQc1RkamZyTjZwTXQ3YUVJcmgyLTJ3UHZDdjlJTTFYTm9aOFprV3hkVmFB?oc=5",
@@ -1055,27 +971,6 @@
    "topics": "ai-clinical-studies"
   },
   {
-   "id": "94107978c7a3",
-   "title": "New UK MHRA guidance on ambient voice technology products",
-   "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxPT0VEUmJTZE9JOHdCQ2ZJQ0xvRExFUTRPNDR0TzZRQWFUXzctQ2F5TllQV29ZRGFCeVFyY2lHY1dXSGEyX2dvVUdOX1BOa3VpWWVOb201b0dYcmN5UzZFQVNxOGJrLTlxODYzVXRnLXFZS2NReVZhaXhLd01lZFpodGd3WGsxcWJwMlFYOTJYak4xZWRIbVU3cg?oc=5",
-   "source": "www.hlc.com",
-   "feed": "MHRA (UK)",
-   "source_type": "Regulator",
-   "stage": "regulation",
-   "evidence_type": "Regulatory guidance",
-   "evidence_strength": "Policy signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Healthcare operations",
-   "ai_modality": "Generative AI / LLM",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "Europe",
-   "country": "United Kingdom",
-   "date": "2026-08-15",
-   "score": 6,
-   "topics": "mhra-updates;regulatory-activity"
-  },
-  {
    "id": "6c130e4c9389",
    "title": "Medicare approves new technology add-on payment for inpatient radiology AI solution",
    "url": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxPX0tLZ3FNN1BVRzJNVXJvZTFFeUhIVnNvd2tjQ3dIUXh0blhGRlgyUjhRRXhNWDdHZHBvUWFKQ29tWWJqRTFjS1owVjI2aEhvbDZ3am14dzhEdHZoSG9UM3d3RHBIZUpia29VMUdYOVVzX2xNdkNhNGV3dTM5RzdpS1ZFV293aHRXMWIxbW1HWHBReThaMEhfQ0lqNkVGenJOWTVvN2F5QXBZWEMxNWJhVV9MeUZWZFFSV3NiV3RwMlVFazN6bjhHMkt6dUxVbXJvYVU0?oc=5",
@@ -1116,27 +1011,6 @@
    "date": "2026-08-13",
    "score": 2,
    "topics": "fda-ai-authorisations;regulatory-activity"
-  },
-  {
-   "id": "feb6e11b8573",
-   "title": "Digital health leads the agenda at Global Health Exhibition 2026",
-   "url": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxQM19GWVRKSjIzTWo3V2VyVXlJM2xPQWwxeFVONFRXV0J5WHJjaEIxZG1YOC1zeWNPc21Ea1NDTHJLWTB4QkxiLXZQaWlDYVlMT3NtNUx6ZkVKLThaVFV2NDRJcHViVFNPUkVWZEZDam5zanBfbzU2N3o0Z2tKYmRocDdURC1lZmI3Zm1SRFY4WHZMVFpMdGJiNlloOTBKdjNOZlZLVzQxdlViS0w1RHpMRl80ejBiRFZKYjQwX3RuQktfYnNPdWlxYg?oc=5",
-   "source": "Zawya",
-   "feed": "MEA AI device & digital health regulation",
-   "source_type": "Other",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Adjacent AI",
-   "ai_modality": "",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-13",
-   "score": 0,
-   "topics": ""
   },
   {
    "id": "ef5a507975e4",
@@ -1244,6 +1118,27 @@
    "topics": "regulatory-activity"
   },
   {
+   "id": "17256dd41327",
+   "title": "The daily dose: Early usability of an LLM tool for patient summaries and trial matching in radiation oncology.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42633058/",
+   "source": "PubMed — AI × HTA/HEOR",
+   "feed": "PubMed — AI × HTA/HEOR",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "evidence_type": "Journal study",
+   "evidence_strength": "Primary evidence",
+   "evidence_maturity": 1,
+   "healthcare_relevance": "Healthcare operations",
+   "ai_modality": "Generative AI / LLM",
+   "decision_type": "",
+   "payer_type": "",
+   "region": "",
+   "country": "",
+   "date": "2026-08-11",
+   "score": 0,
+   "topics": "ai-clinical-studies;oncology-ai"
+  },
+  {
    "id": "6d6270dcd262",
    "title": "Addressing antimicrobial resistance: Current challenges, emerging strategies, and an AI-powered, community-driven approach.",
    "url": "https://pubmed.ncbi.nlm.nih.gov/42626337/",
@@ -1307,25 +1202,25 @@
    "topics": ""
   },
   {
-   "id": "5b39fa3187c0",
-   "title": "ACR shares resource for helping patients use AI-generated radiology report summaries",
-   "url": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxOZlhGdVhaa0VrQ08xS2ZGTGQ0bUFlaGo0RVRTVTFwNm51ODJLSVVzcHhzbDQtT2ZIVVU2Nzd0NUdtUllWXzB5ZWo0VUhqT0U4bktkenlScUpMZnNyR3pIWFZCb3JlcXEtQ3o2TXg5TUtMSWtxZHFFZUhYRnJqTEFWX1MyZDR3MWlUTi1jSUh2a0lYZXBYYmE0UVEtenJ3ekg1eTlhcWNJTjhOSEVwVWVNNnQwNnhfYk11MjkxeDlkLWZhTnNmcVc4d0lOS3Z0eEhGM1pxU2VTX18?oc=5",
-   "source": "Radiology Business",
-   "feed": "CMS coverage determinations (NCD/LCD) — AI",
-   "source_type": "HTA / payer",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
+   "id": "40bc7f9e8e38",
+   "title": "MHRA clarifies how existing medical device law applies to AVT",
+   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxPN1pVem54UnkzVWxUYXJ4Q2lWdlFuNjZUTEtaY2pBZ1VnTXhZMXQ3a3hwaGJ6X3BuVjFkQVVZTTN4OWx0RkpucmRNTDVsVWpFN0NJRWEtMWhHaVVMa3NJQjcyTlhBdE5zTnZhbjl5TXktMEpMcVFxekVQbi03SzVyOTlMM19CZGh4V3hFdVE3RWx2VFU?oc=5",
+   "source": "Medical Buyer",
+   "feed": "MHRA (UK)",
+   "source_type": "Regulator",
+   "stage": "regulation",
+   "evidence_type": "Regulatory guidance",
+   "evidence_strength": "Policy signal",
    "evidence_maturity": "",
    "healthcare_relevance": "Direct clinical",
-   "ai_modality": "Imaging AI",
+   "ai_modality": "",
    "decision_type": "",
    "payer_type": "",
-   "region": "North America",
-   "country": "United States",
-   "date": "2026-08-05",
-   "score": 3,
-   "topics": "cms-coverage;radiology-imaging-ai"
+   "region": "Europe",
+   "country": "United Kingdom",
+   "date": "2026-08-04",
+   "score": 5,
+   "topics": "mhra-updates;regulatory-activity"
   },
   {
    "id": "ab6f40e5b873",
@@ -1433,6 +1328,27 @@
    "topics": "ai-clinical-studies;radiology-imaging-ai"
   },
   {
+   "id": "e5525345fe6f",
+   "title": "Implementing telemedicine under polycrisis: a mixed-methods case study from Myanmar using the RE-AIM framework",
+   "url": "https://www.nature.com/articles/s41746-026-03166-4",
+   "source": "npj Digital Medicine",
+   "feed": "npj Digital Medicine",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "evidence_type": "Journal study",
+   "evidence_strength": "Primary evidence",
+   "evidence_maturity": 1,
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "",
+   "decision_type": "",
+   "payer_type": "",
+   "region": "",
+   "country": "",
+   "date": "2026-08-22",
+   "score": 2,
+   "topics": "ai-clinical-studies"
+  },
+  {
    "id": "f32ead63ca6f",
    "title": "Integrative metabolic and inflammatory phenotyping identifies cancer cachexia independent of weight history",
    "url": "https://www.nature.com/articles/s41746-026-03123-1",
@@ -1492,7 +1408,7 @@
    "region": "",
    "country": "",
    "date": "2026-08-20",
-   "score": 2,
+   "score": 1,
    "topics": "ai-clinical-studies"
   },
   {
@@ -1580,6 +1496,27 @@
    "topics": "ai-clinical-studies"
   },
   {
+   "id": "37dde40416f7",
+   "title": "The TopCoW Challenge - Topology-Aware Circle of Willis Segmentation for CT and MR Angiography.",
+   "url": "https://pubmed.ncbi.nlm.nih.gov/42631290/",
+   "source": "NEJM AI",
+   "feed": "NEJM AI",
+   "source_type": "Journal / evidence",
+   "stage": "clinical",
+   "evidence_type": "Journal study",
+   "evidence_strength": "Primary evidence",
+   "evidence_maturity": 1,
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "",
+   "decision_type": "",
+   "payer_type": "",
+   "region": "",
+   "country": "",
+   "date": "2026-08-01",
+   "score": 0,
+   "topics": "ai-clinical-studies"
+  },
+  {
    "id": "7a05862e996c",
    "title": "National CLEAR Programme launches NHS pilot to evaluate AVT - Home",
    "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxQOXpiVFBzSkdXN1dmbnc5elNBdm1aTDZWcTBScFQ1VmU1SFZvN2tZMG4zZ1h3Qi1ZZm1aU1hwT2FYYzhSN3ZURHlrOF9OOXBFa3BlU0pBWXpNZ21sZXBBeTZDR1NycEZPR3RfOUVYck16MUtiYzVpekI2XzA3M3JGcjVBM1VHMVhYOXFhcU1aR2Nod2t3MGcxWWJGem5KUjA?oc=5",
@@ -1660,27 +1597,6 @@
    "region": "",
    "country": "",
    "date": "2026-07-10",
-   "score": 0,
-   "topics": ""
-  },
-  {
-   "id": "5d5e065993e1",
-   "title": "State of digital health in 32 countries of the WHO African Region: a l",
-   "url": "https://news.google.com/rss/articles/CBMiywFBVV95cUxQUjlBNXlpUGQ0bWFCMnRfTmE2ZjFENnhPQXpESHM3M2dMSkgzcnZNYVI5bXZfR2ptUndPdlNsYmF4Z1kyOEM3QjRpTFZveUJpRHNjcG96bWpxaUY3Vjdlc2RHMkxGbFJNNVR2ZXp3cGxPY25VdWZFQVZjM21WeWhFZl9oX040dzBTR3VXcXUzUXpFcmpWdlV2cWItQWVpSkZ3a25id2pnc01EZEJXTnZKQi1jMjZBSUdRVmlRcTkxZmFDaG1FTlFQNkI3cw?oc=5",
-   "source": "Dove Medical Press",
-   "feed": "WHO / OECD — global AI health policy",
-   "source_type": "Other",
-   "stage": "industry",
-   "evidence_type": "Industry analysis",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Adjacent AI",
-   "ai_modality": "",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-07-09",
    "score": 0,
    "topics": ""
   }
