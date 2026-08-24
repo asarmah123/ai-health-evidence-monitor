@@ -1156,12 +1156,17 @@ def fetch_gnews(sources, now, default_days):
             # (each a short source/journal name) so neither tag survives.
             title = re.sub(r"\s+-\s+[^-|]{1,60}$", "", raw_title)   # " - Publisher"
             title = re.sub(r"\s+\|\s+[^-|]{1,60}$", "", title)     # " | Journal"
+            # Google News RSS gives no article URL — only the opaque redirect (e.link) + the publisher's
+            # HOMEPAGE in <source url="…">. Capture that homepage so provenance keeps the real outlet even
+            # when the article link can't be recovered (the article URL genuinely isn't in the feed).
+            publisher_url = (e.get("source") or {}).get("href", "") or ""
             items.append({
                 "id": uid(e.link), "title": title, "url": e.link,
                 "source": s["name"], "tier": s["tier"], "layer": s["layer"],
                 "date": when.strftime("%Y-%m-%d") if when else "", "summary": "",
                 "gnews": True,   # health-gated in relevance_gate (loose query → non-health noise)
-                "publisher": publisher,   # resolved underlying source, for the primary-evidence gate
+                "publisher": publisher,       # resolved underlying source name, for the primary-evidence gate
+                "publisher_url": publisher_url,   # publisher homepage from <source url> (article URL is unavailable)
             })
     return items, dead
 
@@ -1217,19 +1222,22 @@ def _resolve_gnews_url(url, timeout=6):
 
 
 def resolve_gnews_urls(items, resolver=None, cache=None, max_failures=6):
-    """Upgrade news.google.com redirect URLs on FINAL items to the publisher URL where possible. Best-effort
-    + cached, with a CIRCUIT-BREAKER: after `max_failures` consecutive resolve failures it stops trying (so a
-    down endpoint can't add minutes to the build). On failure the Google URL is kept and the item stays
-    flagged `gnews` so the UI labels it 'via Google News'; the resolved Google URL is preserved in
-    `gnews_url`. Returns the count upgraded."""
+    """Attempt to decode news.google.com redirect URLs to the publisher ARTICLE URL. On success the decoded
+    URL goes in `resolved_url` (the href prefers it); `url` ALWAYS stays the Google-News redirect — the only
+    article-specific link the feed provides — and items stay flagged `gnews` so cards mark 'via Google News'.
+    Three explicit states result: resolved (`resolved_url` set), unresolved gnews (`resolved_url=None`,
+    `url`=redirect), native (not gnews). `publisher_url` (the homepage) is NEVER used as an article href.
+    Best-effort + cached, with a CIRCUIT-BREAKER after `max_failures` consecutive failures. Returns the
+    count resolved."""
     resolver = resolver or _resolve_gnews_url
     cache = cache if cache is not None else {}
-    upgraded, fails = 0, 0
+    resolved, fails = 0, 0
     for i in items:
         u = i.get("url", "") or ""
         if "news.google.com/rss/articles/" not in u:
             continue
         i["gnews"] = True
+        i.setdefault("resolved_url", None)
         if u in cache:
             real = cache[u]
         elif fails >= max_failures:
@@ -1239,10 +1247,17 @@ def resolve_gnews_urls(items, resolver=None, cache=None, max_failures=6):
             cache[u] = real
             fails = 0 if real else fails + 1
         if real:
-            i["gnews_url"] = u               # keep the redirect for provenance
-            i["url"] = real                  # publish the real publisher link
-            upgraded += 1
-    return upgraded
+            i["resolved_url"] = real          # url stays the redirect; href prefers this
+            resolved += 1
+    return resolved
+
+
+def link_url(item):
+    """The card/export href: the resolved publisher ARTICLE URL when available, else the item's own `url`
+    (a Google-News redirect for gnews items — article-specific, not the original source). NEVER the
+    publisher HOMEPAGE (`publisher_url`), which is not the article. This is the single source of truth for
+    'where a card click goes', shared by the server-rendered cards and (mirrored) by the client JS."""
+    return item.get("resolved_url") or item.get("url", "")
 
 
 def fetch_federal_register(sources, lookback):
@@ -2931,7 +2946,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
         for why, gitems in groups.items():
             gitems = sorted(gitems, key=lambda i: -rank_score(i)[0])
             grows = "".join(
-                f'<a class="dig" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
+                f'<a class="dig" href="{safe_url(link_url(i))}" target="_blank" rel="noopener">'
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
                 f'<span class="dsrc">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}</span></a>'
                 for i in gitems)
@@ -3038,8 +3053,8 @@ def overview_html(items, cov_pub, o, history=None, take=""):
         why_text = WHY_TEXT.get(why, why)
         _kind = _KIND.get(hi.get("layer", ""), "")
         _kind_html = f'<span class="ts-kind">{_kind}</span> · ' if _kind else ""
-        topstory = (f'<div class="topstory" data-open="{html.escape(safe_url(hi["url"]))}"><div class="topstory-l">Featured story</div>'
-                    f'<a class="topstory-t" href="{safe_url(hi["url"])}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
+        topstory = (f'<div class="topstory" data-open="{html.escape(safe_url(link_url(hi)))}"><div class="topstory-l">Featured story</div>'
+                    f'<a class="topstory-t" href="{safe_url(link_url(hi))}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
                     f'<div class="topstory-m">{_kind_html}<span class="ts-src">{html.escape(hi.get("publisher") or hi["source"])}</span> · '
                     f'<span class="ts-date">{_fmt_date(hi["date"])}</span></div>'
                     f'<div class="topstory-why"><b>Why it matters:</b> {html.escape(why_text)}</div></div>')
@@ -3100,7 +3115,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
     _ranked = sorted(items, key=lambda i: -rank_score(i)[0])[:5]
     if _ranked:
         _rows = "".join(
-            f'<a class="tbrow" href="{safe_url(i["url"])}" target="_blank" rel="noopener">'
+            f'<a class="tbrow" href="{safe_url(link_url(i))}" target="_blank" rel="noopener">'
             f'<span class="tbn">{n}</span>'
             f'<span class="tbc"><span class="tbt">{html.escape(i["title"])}</span>'
             f'<span class="tbs">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}</span></span></a>'
@@ -3423,6 +3438,7 @@ button.f .n{opacity:.55;margin-left:4px;font-variant-numeric:tabular-nums}
 .tag{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:#f0f0f0;color:#555}
 .tag.daily{background:#fdeeee;color:#9c2c2c}.tag.weekly{background:#eaf2fd;color:#1f4f8f}.tag.monthly{background:#edf6ee;color:#2b6432}
 .src{font-size:12px;color:var(--mute)}
+.viagn{font-size:10px;font-weight:600;letter-spacing:.02em;color:#8a5a00;background:#fbf3e2;border:1px solid #ecdcb8;padding:1px 6px;border-radius:4px}
 h3{font-size:16px;margin:0 0 6px;font-weight:600;line-height:1.4}
 h3 a{color:var(--ink);text-decoration:none}h3 a:hover{text-decoration:underline}
 .summ{font-size:13.5px;color:#3f3f3f;margin-bottom:9px}
@@ -3621,6 +3637,9 @@ const SC={research:'#6a4c93',clinical:'#9c2c44',regulation:'#2f6f9f',heor:'#1f8a
 const EVC={'Primary evidence':'ev-prim','Secondary evidence':'ev-sec','Policy signal':'ev-pol','Market signal':'ev-mkt','Commentary':'ev-com'};
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const safeUrl=u=>(/^https?:\/\//i.test(u||'')?u:'#');
+// href decision, mirroring build.link_url: resolved article URL if decoded, else the item's own url
+// (a Google-News redirect for gnews items). NEVER publisher_url (the homepage), which is not the article.
+const hrefOf=i=>(i.resolved_url||i.url||'');
 
 // tab switching
 function goto(name){
@@ -3696,11 +3715,11 @@ function render(){
       <div class="meta"><span class="tag ${i.tier}">${LABEL[i.tier]}</span>
         ${i.etype?`<span class="ev ${EVC[i.strength]||''}" title="${esc(i.strength||'')}">${esc(i.etype)}</span>`:''}
         ${(i.maturity!=null)?`<span class="mat" title="Evidence maturity ${i.maturity} of 4">${esc(i.maturity_lab||'')}</span>`:''}
-        <span class="src">${esc(i.publisher||i.source)} · ${i.date||'date unknown'}</span>
+        <span class="src">${esc(i.publisher||i.source)} · ${i.date||'date unknown'}${(i.gnews&&!i.resolved_url)?' · <span class="viagn">via Google News</span>':''}</span>
         ${i.country?`<span class="geo">${esc(i.country)}</span>`:''}
         ${i.modality?`<span class="mod">${esc(i.modality)}</span>`:''}
         ${i.relevance&&i.relevance!=='Direct clinical'?`<span class="rel">${esc(i.relevance)}</span>`:''}</div>
-      <h3><a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
+      <h3><a href="${esc(safeUrl(hrefOf(i)))}" target="_blank" rel="noopener">${esc(i.title)}</a></h3>
       ${i.summary?`<div class="summ">${esc(i.summary.length>200?i.summary.slice(0,200).replace(/\\s+\\S*$/,'')+'…':i.summary)}</div>`:''}
       <div class="acts">
         <button data-i="${i.id}">${read.has(i.id)?'Mark unread':'Mark read'}</button>
@@ -3949,7 +3968,7 @@ def _rss_xml(title, desc, subset):
     for i in subset:
         d = _pdate(i.get("date", ""))
         pub = f"<pubDate>{format_datetime(datetime(d.year, d.month, d.day, tzinfo=timezone.utc))}</pubDate>" if d else ""
-        link = safe_url(i["url"])
+        link = safe_url(link_url(i))
         dsc = html.escape(i["source"] + sep + (i.get("date") or "date unknown"))
         title_html = html.escape(i["title"])
         parts.append(
@@ -4027,7 +4046,7 @@ def write_export(items):
     import csv, io
     data_dir = DOCS / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    cols = ["id", "title", "url", "source", "feed", "source_type", "stage",
+    cols = ["id", "title", "url", "resolved_url", "source", "publisher_url", "via_gnews", "feed", "source_type", "stage",
             "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
             "decision_type", "payer_type", "region", "country", "date", "score", "topics"]
 
@@ -4038,8 +4057,11 @@ def write_export(items):
         return {
             "id": i.get("id", ""),
             "title": i.get("title", ""),
-            "url": i.get("url", ""),
+            "url": i.get("url", ""),                                # the item's own link (gnews → redirect)
+            "resolved_url": i.get("resolved_url") or "",            # decoded article URL when available, else blank
             "source": i.get("publisher") or i.get("source", ""),   # accurate attribution (real outlet)
+            "publisher_url": i.get("publisher_url", ""),            # publisher homepage (gnews items; else blank)
+            "via_gnews": ("yes" if (i.get("gnews") or "news.google.com" in (i.get("url") or "")) else ""),
             "feed": i.get("source", ""),                            # the curated query/feed it came from
             "source_type": i.get("stype") or source_type(i),
             "stage": i.get("layer", ""),
@@ -4065,7 +4087,11 @@ def write_export(items):
         "fields": cols,
         "notice": ("Deterministic, rule-classified aggregation of public sources. Every row "
                    "links to its source; verify there before acting. Empty date = "
-                   "no usable date at source (never estimated)."),
+                   "no usable date at source (never estimated). URL semantics: when via_gnews=yes, `url` "
+                   "is an article-specific Google News REDIRECT (a discovery link, not the canonical "
+                   "publisher URL); `resolved_url` is the decoded publisher article when available, else "
+                   "blank; `publisher_url` is the outlet homepage (provenance only — never the article). "
+                   "For non-gnews rows, `url` is the native article URL."),
         "items": rows,
     }
     (data_dir / "feed-latest.json").write_text(

@@ -341,8 +341,10 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
         gnews = [i for i in items if "news.google.com" in (i.get("url") or "")]
         if items and 100 * len(gnews) / len(items) > _GNEWS_MAX_PCT:
             R.warn("Evidence", "E12_gnews_prevalence",
-                   f"{len(gnews)}/{len(items)} items ({100*len(gnews)//len(items)}%) still use unresolved "
-                   f"Google-News redirect URLs (>{_GNEWS_MAX_PCT}%) — resolver down or over-reliant on Google News")
+                   f"{len(gnews)}/{len(items)} items ({100*len(gnews)//len(items)}%) are Google-News-sourced "
+                   f"(>{_GNEWS_MAX_PCT}%): the article URL isn't recoverable from Google News RSS (only an opaque "
+                   f"redirect), but publisher name + homepage are preserved. Consider native feeds to raise "
+                   f"article-link provenance.")
 
     # ================= LAYER S — scope integrity =================
     def check_scope():

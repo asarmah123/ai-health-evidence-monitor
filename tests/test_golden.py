@@ -157,7 +157,7 @@ def test_export_schema():
     and 'date unknown' preserved as empty (never guessed) — downstream consumers rely on it."""
     import tempfile, json, csv, io
     from pathlib import Path
-    cols = ["id", "title", "url", "source", "feed", "source_type", "stage",
+    cols = ["id", "title", "url", "resolved_url", "source", "publisher_url", "via_gnews", "feed", "source_type", "stage",
             "evidence_type", "evidence_strength", "evidence_maturity", "healthcare_relevance", "ai_modality",
             "decision_type", "payer_type", "region", "country", "date", "score", "topics"]
     items = [
@@ -2047,19 +2047,33 @@ def test_gnews_url_parser():
 
 
 def test_resolve_gnews_urls_upgrade_and_fallback():
-    """Success → publish the real URL, keep the google redirect in gnews_url. Failure → keep the google
-    URL, still flag gnews (so the UI can label 'via Google News'). Non-google items are untouched."""
+    """`url` ALWAYS stays the google redirect; success puts the decoded article URL in `resolved_url`.
+    Failure → resolved_url stays None, still flagged gnews. Non-google items untouched (no gnews/resolved_url)."""
     G = "https://news.google.com/rss/articles/CBMiABC?oc=5"
     items = [{"url": G, "title": "x"}]
     up = build.resolve_gnews_urls(items, resolver=lambda u: "https://real.com/a")
-    assert up == 1 and items[0]["url"] == "https://real.com/a"
-    assert items[0]["gnews_url"] == G and items[0]["gnews"] is True
+    assert up == 1 and items[0]["url"] == G                       # url unchanged (still the redirect)
+    assert items[0]["resolved_url"] == "https://real.com/a" and items[0]["gnews"] is True
     items = [{"url": G, "title": "x"}]
     up = build.resolve_gnews_urls(items, resolver=lambda u: None)
-    assert up == 0 and items[0]["url"] == G and items[0]["gnews"] is True and "gnews_url" not in items[0]
+    assert up == 0 and items[0]["url"] == G and items[0]["gnews"] is True and items[0]["resolved_url"] is None
     items = [{"url": "https://www.fda.gov/x", "title": "y"}]
     build.resolve_gnews_urls(items, resolver=lambda u: "SHOULD_NOT_BE_USED")
-    assert items[0]["url"] == "https://www.fda.gov/x" and "gnews" not in items[0]
+    assert items[0]["url"] == "https://www.fda.gov/x" and "gnews" not in items[0] and "resolved_url" not in items[0]
+
+
+def test_link_url_three_states_and_publisher_guard():
+    """The href decision (build.link_url, mirrored by JS hrefOf) for all three states, plus the guard that
+    the publisher HOMEPAGE is never used as the article href."""
+    G = "https://news.google.com/rss/articles/CBMiABC"
+    # 1) resolved gnews → href = resolved article URL
+    assert build.link_url({"url": G, "resolved_url": "https://reuters.com/a", "gnews": True}) == "https://reuters.com/a"
+    # 2) unresolved gnews → href = the google redirect (article-specific), NOT the homepage
+    unresolved = {"url": G, "resolved_url": None, "gnews": True, "publisher_url": "https://www.reuters.com"}
+    assert build.link_url(unresolved) == G
+    assert build.link_url(unresolved) != unresolved["publisher_url"]      # never the homepage
+    # 3) native item → href = the native article URL
+    assert build.link_url({"url": "https://www.fda.gov/x"}) == "https://www.fda.gov/x"
 
 
 def test_resolve_gnews_circuit_breaker():
@@ -2087,3 +2101,50 @@ def test_gnews_batch_body_structure():
     assert inner[0] == "garturlreq"
     assert inner[1][1] == "CBMiABC" and inner[1][2] == 1699999999 and inner[1][3] == "SIGXYZ"
     assert inner[1][0][7] == "US:en"                   # PARAMS locale marker in the right slot
+
+
+def test_export_preserves_gnews_provenance():
+    """The export preserves the distinction the Google-News redirect otherwise hides: publisher name +
+    publisher homepage + an explicit via_gnews marker — so provenance survives even when the article URL
+    can't be recovered. Native items carry no gnews marker."""
+    import tempfile, json as J, csv as C
+    from pathlib import Path
+    items = [
+        {"id": "g1", "title": "AI device news", "url": "https://news.google.com/rss/articles/CBMiABC",
+         "source": "APAC AI device regulation", "gnews": True, "publisher": "Reuters",
+         "publisher_url": "https://www.reuters.com", "layer": "regulation", "date": "2026-08-20",
+         "topics": [], "score": 5, "region": "Asia-Pacific", "country": "", "stype": "Industry press",
+         "etype": "Industry news", "strength": "Market signal", "relevance": "Direct clinical", "modality": "Predictive ML"},
+        {"id": "n1", "title": "FDA clears device", "url": "https://www.fda.gov/x", "source": "FDA — AI",
+         "layer": "regulation", "date": "2026-08-20", "topics": [], "score": 8, "region": "North America",
+         "country": "United States", "stype": "Regulator", "etype": "Regulatory guidance",
+         "strength": "Policy signal", "relevance": "Direct clinical", "modality": "Predictive ML"},
+    ]
+    tmp = Path(tempfile.mkdtemp()); orig = build.DOCS
+    try:
+        build.DOCS = tmp
+        build.write_export(items)
+        rows = {r["id"]: r for r in J.loads((tmp / "data" / "feed-latest.json").read_text())["items"]}
+        assert rows["g1"]["via_gnews"] == "yes" and rows["g1"]["publisher_url"] == "https://www.reuters.com"
+        assert rows["g1"]["source"] == "Reuters"                 # outlet name preserved
+        assert rows["g1"]["url"].startswith("https://news.google.com") and rows["g1"]["resolved_url"] == ""
+        assert rows["n1"]["via_gnews"] == "" and rows["n1"]["publisher_url"] == "" and rows["n1"]["resolved_url"] == ""
+    finally:
+        build.DOCS = orig
+
+
+def test_js_uses_href_decision():
+    """The client feed template uses the explicit hrefOf(resolved_url||url) decision and marks unresolved
+    gnews cards — so nobody quietly reverts the card link to a bare i.url or substitutes publisher_url."""
+    assert "hrefOf" in build.JS and "i.resolved_url||i.url" in build.JS
+    assert "safeUrl(hrefOf(i))" in build.JS and "via Google News" in build.JS
+    assert "i.publisher_url" not in build.JS   # homepage must never become the href
+
+
+def test_server_cards_use_link_url_not_raw():
+    """Guard: the server-rendered cards (featured/digest/table) route through link_url(), not the raw
+    i['url'] — so a gnews card's href is the resolved article or the redirect, never a reverted bare url."""
+    import pathlib
+    src = pathlib.Path(build.__file__).read_text(encoding="utf-8")
+    assert 'safe_url(link_url(i))' in src and 'safe_url(link_url(hi))' in src
+    assert 'safe_url(i["url"])' not in src and 'safe_url(hi["url"])' not in src
