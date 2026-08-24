@@ -1955,3 +1955,84 @@ def _run():
 
 if __name__ == "__main__":
     sys.exit(_run())
+
+
+# --- technology resolution (schema 3) -----------------------------------------
+# Build A's forward-trajectory layer. Resolution is a SUBJECT claim ("appears to concern Technology X"),
+# never a verified conclusion; deterministic; explicitly `unresolved`/`ambiguous`, never guessed.
+_TEST_REG = build._norm_registry([
+    {"id": "heartflow-ffrct", "name": "HeartFlow FFRct", "aliases": ["HeartFlow"], "identifiers": ["MTG32"]},
+    {"id": "viz-lvo", "name": "Viz LVO", "aliases": ["ContaCT"], "identifiers": ["DEN170073"]},
+])
+
+
+def test_resolve_technology():
+    """Deterministic resolution: by name, by identifier, ambiguous (2 techs), unresolved, empty registry."""
+    r = build.resolve_technology({"title": "HeartFlow FFRct wins CMS payment", "summary": "", "source": "CMS"}, _TEST_REG)
+    assert r["technology_id"] == "heartflow-ffrct" and r["technology_match_status"] == "resolved"
+    r = build.resolve_technology({"title": "FDA device news", "summary": "cleared DEN170073", "source": "FDA"}, _TEST_REG)
+    assert r["technology_id"] == "viz-lvo" and r["technology_match_confidence"] >= 0.95     # identifier hit
+    r = build.resolve_technology({"title": "HeartFlow and Viz LVO both featured", "summary": "", "source": ""}, _TEST_REG)
+    assert r["technology_id"] is None and r["technology_match_status"] == "ambiguous"       # 2 distinct → no pick
+    r = build.resolve_technology({"title": "Generic AI imaging roundup", "summary": "", "source": ""}, _TEST_REG)
+    assert r["technology_id"] is None and r["technology_match_status"] == "unresolved"
+    assert build.resolve_technology({"title": "HeartFlow"}, [])["technology_match_status"] == "unresolved"  # no registry
+
+
+def test_market_and_observation_type():
+    assert build.market_of({"country": "United States"}) == "us"
+    assert build.market_of({"country": "United Kingdom"}) == "uk"
+    assert build.market_of({"country": ""}) == ""                       # unknown → empty, never guessed
+    assert build.observation_type_of({"layer": "access"}) == "reimbursement_observation"
+    assert build.observation_type_of({"layer": "regulation"}) == "regulatory_observation"
+    assert build.observation_type_of({"layer": "industry"}) == "market_observation"
+
+
+def test_schema3_resolution_record():
+    """A new record carries the schema-3 observation-trajectory fields (technology_id/status/confidence ·
+    market · observation_type), and resolution never disturbs the frozen classification."""
+    item = _corpus_item(title="HeartFlow FFRct earns NICE MTG32 recommendation", summary="cardiology",
+                        country="United Kingdom", layer="access")
+    out, new, _ = build.build_detection_records("", [item], "2026-08-21", "2026-08-21T09:00:00Z", _TEST_REG)
+    rec = _json.loads(out.strip())
+    assert rec["schema"] == 3 and rec["schema"] == build.SCHEMA_VERSION
+    assert rec["technology_id"] == "heartflow-ffrct" and rec["technology_match_status"] == "resolved"
+    assert rec["market"] == "uk" and rec["observation_type"] == "reimbursement_observation"
+    frozen = rec["first_classification"]
+    out2, _, _ = build.build_detection_records(out, [], "2026-08-22", registry=_TEST_REG)   # rebuild, no new items
+    rec2 = _json.loads(out2.strip())
+    assert rec2["first_classification"] == frozen and len(rec2["classification_history"]) == 1
+    assert rec2["technology_id"] == "heartflow-ffrct"                   # resolution stable
+
+
+def test_resolution_is_rederivable_classification_frozen():
+    """Resolution IMPROVES as the registry grows without touching the frozen classification: a record
+    created with an empty registry is `unresolved`; a later build with a registry resolves it (re-derived
+    from stored title+source), while first_classification stays byte-identical."""
+    item = _corpus_item(title="HeartFlow FFRct coverage update", summary="", country="United States", layer="access")
+    out, _, _ = build.build_detection_records("", [item], "2026-08-21", registry=[])
+    r1 = _json.loads(out.strip())
+    assert r1["technology_match_status"] == "unresolved" and r1["technology_id"] is None
+    frozen = r1["first_classification"]
+    out2, _, _ = build.build_detection_records(out, [], "2026-08-22", registry=_TEST_REG)   # existing re-derived
+    r2 = _json.loads(out2.strip())
+    assert r2["technology_id"] == "heartflow-ffrct" and r2["technology_match_status"] == "resolved"
+    assert r2["market"] == "us" and r2["first_classification"] == frozen                    # classification untouched
+
+
+def test_log_detections_reports_resolution():
+    """log_detections returns a stats dict (new/reclassified/registry/resolved/ambiguous/unresolved) so the
+    daily CI log confirms at a glance that the registry loaded and matched — not silently all-unresolved."""
+    saved = (build.private_get, build.private_put, build.load_tech_registry)
+    try:
+        build.private_get = lambda *a, **k: ("", None)      # no existing corpus
+        build.private_put = lambda *a, **k: True            # 'written to private' → no disk write
+        build.load_tech_registry = lambda *a, **k: _TEST_REG
+        stats = build.log_detections([_corpus_item(title="HeartFlow FFRct US OPPS payment",
+                                                   summary="", country="United States", layer="access")])
+        assert isinstance(stats, dict)
+        assert stats["registry"] == len(_TEST_REG)
+        assert stats["new"] == 1 and stats["resolved"] >= 1
+        assert stats["resolved"] + stats["ambiguous"] + stats["unresolved"] == 1
+    finally:
+        build.private_get, build.private_put, build.load_tech_registry = saved

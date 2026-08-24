@@ -1440,7 +1440,112 @@ def log_history(items, terms, token=None, health=None, o=None):
 # reconstructable and never silently overwritten. Build A says "this document was detected and classified
 # as X"; Build B, after primary-source verification, says "this establishes event Y" — the epistemic
 # boundary is kept: NO Build-B conclusion field ever lives here.
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+
+# ── Technology resolution (schema 3) ─────────────────────────────────────────────────────────────
+# Build A's forward-trajectory layer: resolve each observation to a technology × market so the corpus
+# forms observation-grade trajectories, not just classified documents. RESOLUTION ≠ CONCLUSION — a
+# `technology_id` asserts only "this observation APPEARS to concern Technology X in Market Y"; it is
+# never a verified market-access finding. Deterministic (device names / FDA·CPT·UDI·MTG identifiers /
+# aliases), explicitly `unresolved` when uncertain, never guessed. The registry is Build A's OWN
+# reference data (like feeds.yaml) — NOT Build B's watchlist. See coverage-intelligence/AB_CROSSWALK.md.
+MARKET_CODES = {
+    "United States": "us", "United Kingdom": "uk", "Germany": "de", "France": "fr", "Japan": "jp",
+    "Canada": "ca", "Australia": "au", "Netherlands": "nl", "Italy": "it", "Spain": "es",
+    "China": "cn", "South Korea": "kr", "Brazil": "br", "Mexico": "mx", "India": "in",
+    "Switzerland": "ch", "Sweden": "se", "Belgium": "be", "Austria": "at",
+}
+
+
+def market_of(item):
+    """Short market code from the item's resolved country (Build B markets: us/uk/de/fr/…).
+    Empty when the country is unknown — never guessed."""
+    return MARKET_CODES.get(item.get("country") or "", "")
+
+
+_OBS_TYPE = {"regulation": "regulatory_observation", "access": "reimbursement_observation",
+             "clinical": "evidence_observation", "research": "evidence_observation",
+             "heor": "evidence_observation", "industry": "market_observation"}
+
+
+def observation_type_of(item):
+    """Coarse observation class — deliberately COARSER than Build B's verified closed vocabulary."""
+    return _OBS_TYPE.get(item.get("layer", ""), "other_observation")
+
+
+def _norm_registry(raw):
+    """Normalize a registry list into [{id, names[lower], idents[lower]}]. Names/aliases match on word
+    boundaries; identifiers match as substrings."""
+    out = []
+    for t in (raw or []):
+        if not isinstance(t, dict) or not t.get("id"):
+            continue
+        names = ([t["name"]] if t.get("name") else []) + list(t.get("aliases") or [])
+        out.append({"id": t["id"],
+                    "names": [str(n).lower() for n in names if n],
+                    "idents": [str(i).lower() for i in (t.get("identifiers") or []) if i]})
+    return out
+
+
+def load_tech_registry(token=None):
+    """Build A's OWN technology reference (like feeds.yaml) — never Build B's watchlist. Fetched from the
+    private data repo (local `data/` or root fallback); graceful [] if unavailable, so resolution simply
+    returns `unresolved` and the build never breaks."""
+    text = None
+    try:
+        text, _ = private_get("tech_registry.yaml", token)
+    except Exception:
+        text = None
+    if not text:
+        for p in (ROOT / "data" / "tech_registry.yaml", ROOT / "tech_registry.yaml"):
+            if p.exists():
+                text = p.read_text(encoding="utf-8"); break
+    if not text:
+        return []
+    try:
+        import yaml
+        data = yaml.safe_load(text) or {}
+        return _norm_registry(data.get("technologies", data if isinstance(data, list) else []))
+    except Exception:
+        return []
+
+
+def resolve_technology(item, registry):
+    """Deterministically resolve an observation to a technology from Build A's registry.
+    Returns `{technology_id, technology_match_status, technology_match_confidence}`. RESOLUTION ≠
+    CONCLUSION. identifier hit → 0.95 · distinct product name/alias (word-boundary) → 0.9 (≥6 chars) or
+    0.75 · >1 distinct technologies → `ambiguous` (id=None) · none → `unresolved` (id=None). Never guessed."""
+    if not registry:
+        return {"technology_id": None, "technology_match_status": "unresolved", "technology_match_confidence": 0.0}
+    blob = (str(item.get("title", "")) + " " + str(item.get("summary", "")) + " " + str(item.get("source", ""))).lower()
+    hits = {}
+    for t in registry:
+        conf = 0.0
+        for ident in t["idents"]:
+            if ident and ident in blob:
+                conf = max(conf, 0.95)
+        for name in t["names"]:
+            if name and re.search(r"\b" + re.escape(name) + r"\b", blob):
+                conf = max(conf, 0.9 if len(name) >= 6 else 0.75)
+        if conf > 0:
+            hits[t["id"]] = max(hits.get(t["id"], 0.0), conf)
+    if not hits:
+        return {"technology_id": None, "technology_match_status": "unresolved", "technology_match_confidence": 0.0}
+    if len(hits) > 1:
+        return {"technology_id": None, "technology_match_status": "ambiguous",
+                "technology_match_confidence": round(max(hits.values()), 2)}
+    tid, conf = next(iter(hits.items()))
+    return {"technology_id": tid, "technology_match_status": "resolved", "technology_match_confidence": round(conf, 2)}
+
+
+def _observation_fields(item, registry):
+    """The schema-3 observation-trajectory fields for one item: resolution + market + observation type.
+    Re-derivable each build (improves as the registry grows) — distinct from the frozen classification."""
+    r = resolve_technology(item, registry)
+    r["market"] = market_of(item)
+    r["observation_type"] = observation_type_of(item)
+    return r
 
 
 def _canonical_url(item):
@@ -1510,24 +1615,29 @@ def _legacy_to_record(r):
         "id": r.get("id"), "url": r.get("url"), "title": r.get("title"),
         "source": r.get("source"), "date": r.get("date"), "first_detected": r.get("first_detected"),
         "canonical_url": None, "retrieved_at": None, "content_hash": None, "snapshot_ref": None,
+        "technology_id": None, "technology_match_status": "unresolved",
+        "technology_match_confidence": 0.0, "market": "", "observation_type": None,
         "historical_classification_available": False,
         "first_classification": None,
         "classification_history": [],
     }
 
 
-def build_detection_records(existing_text, items, today, retrieved_at=None):
-    """Pure, network-free core of the prospective evidence corpus. Append-only + WRITE-ONCE:
-      • a NEW item → a full schema-2 record with its contemporaneous classification frozen as
-        first_classification (and as classification_history[0]);
-      • an already-logged item → NEVER overwritten; a genuinely changed classification (or taxonomy
-        bump) APPENDS a dated snapshot to classification_history, leaving first_classification and all
-        prior snapshots byte-identical; re-seeing an unchanged item appends nothing;
-      • a pre-schema line → upgraded once (idempotent) to schema 2, marked
-        historical_classification_available:false, no fabricated classification.
-    The six original top-level fields (id/url/title/source/date/first_detected) are preserved, so
-    recall/timeliness consumers keep working. Returns (out_text, new_count, reclassified_count)."""
+def build_detection_records(existing_text, items, today, retrieved_at=None, registry=None):
+    """Pure, network-free core of the prospective evidence corpus (schema 3). Append-only + WRITE-ONCE
+    for classification; RE-DERIVABLE for technology resolution:
+      • a NEW item → a full record with its contemporaneous classification frozen as first_classification,
+        plus schema-3 observation fields (technology_id/status/confidence · market · observation_type);
+      • an already-logged item → classification NEVER overwritten (a real change/taxonomy bump APPENDS a
+        dated snapshot; an unchanged re-observation appends nothing), while its technology-resolution
+        fields are RE-DERIVED each build (resolution improves as the registry grows — it is observation
+        metadata, not a frozen verdict, and never a verified conclusion);
+      • a pre-schema line → upgraded once (idempotent), no fabricated classification.
+    The six original top-level fields (id/url/title/source/date/first_detected) are preserved. `registry`
+    is Build A's own technology reference (empty → everything `unresolved`). Returns
+    (out_text, new_count, reclassified_count)."""
     retrieved_at = retrieved_at or today
+    registry = registry or []
     records, index = [], {}
     for line in (existing_text or "").splitlines():
         line = line.strip()
@@ -1541,6 +1651,14 @@ def build_detection_records(existing_text, items, today, retrieved_at=None):
             r = _legacy_to_record(r)
         records.append(r)
         index[r.get("url") or r.get("id")] = r
+    # Refresh every existing record to schema 3 + re-derive its resolution from stored fields (title +
+    # source + stored country). Cheap, deterministic, and improves coverage as the registry grows.
+    for r in records:
+        fc = r.get("first_classification") or {}
+        country = (fc.get("jurisdiction") or {}).get("country", "")
+        pseudo = {"title": r.get("title", ""), "source": r.get("source", ""), "summary": "", "country": country}
+        r.update(_observation_fields(pseudo, registry))
+        r["schema"] = SCHEMA_VERSION
     new = reclassified = 0
     for i in items:
         key = i.get("url") or i.get("id")
@@ -1562,10 +1680,12 @@ def build_detection_records(existing_text, items, today, retrieved_at=None):
                 "first_classification": snap,
                 "classification_history": [snap],
             }
+            rec.update(_observation_fields(i, registry))   # resolve on the full item (title+summary+source)
             records.append(rec)
             index[key] = rec
             new += 1
         else:                                    # EXISTING → append only on real change; never overwrite
+            rec.update(_observation_fields(i, registry))   # re-derive resolution from the full item
             # INVARIANT: first_classification is immutable once written. A later classifier change can ONLY
             # append to classification_history — the answer to "what did the monitor classify when it first
             # observed this evidence?" must never be lost. rec["first_classification"] is never reassigned.
@@ -1579,28 +1699,48 @@ def build_detection_records(existing_text, items, today, retrieved_at=None):
 
 
 def log_detections(items, token=None):
-    """Append-only PROSPECTIVE EVIDENCE CORPUS (schema 2) — the durable, item-level Build-A dataset.
-    Each newly published item is recorded ONCE with its full contemporaneous classification and
-    provenance, and THREE distinct dates: publication `date`, `first_detected`, and `retrieved_at`
-    (so detection lag = first_detected − date is measurable). Write-once + append-only: an item's
-    original verdict is frozen as first_classification; a genuine later reclassification (or taxonomy
-    bump) APPENDS a dated snapshot to classification_history — a record is never silently overwritten,
-    and re-seeing an unchanged item adds nothing. Pre-existing (pre-schema) lines are upgraded once to
-    schema 2 and explicitly marked historical_classification_available:false — their contemporaneous
-    classification was never stored, so it is not invented. Persisted to the private repo (local `data/`
-    fallback); never published (publish adds only docs/). Never fatal."""
+    """Append-only PROSPECTIVE EVIDENCE CORPUS (schema 3) — the durable, item-level Build-A dataset and
+    forward-trajectory layer. Each newly published item is recorded ONCE with its full contemporaneous
+    classification, provenance, THREE dates (publication `date`, `first_detected`, `retrieved_at`), and a
+    TECHNOLOGY-RESOLUTION layer (technology_id/status/confidence · market · observation_type) so the
+    corpus forms technology × market observation trajectories — resolution being a subject claim, never a
+    verified conclusion. Classification is write-once + append-only; resolution is re-derived each build
+    (improves as the registry grows). Pre-schema lines are upgraded once with no fabricated
+    classification. Persisted to the private repo (local `data/` fallback); never published. Never fatal."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     path = ROOT / "data" / "feed-log.jsonl"
     text, sha = private_get("feed-log.jsonl", token)
     if not text and path.exists():
         text = path.read_text(encoding="utf-8")
-    out, new, reclassified = build_detection_records(text, items, today, retrieved_at)
-    msg = f"feed-log {today} (+{new} new, {reclassified} reclassified)"
+    try:
+        registry = load_tech_registry(token)
+    except Exception:
+        registry = []
+    out, new, reclassified = build_detection_records(text, items, today, retrieved_at, registry)
+    # Resolution tally over the WHOLE corpus — the CI signal that the registry loaded and matched.
+    resolved = ambiguous = unresolved = 0
+    for _l in out.splitlines():
+        _l = _l.strip()
+        if not _l:
+            continue
+        try:
+            _st = json.loads(_l).get("technology_match_status")
+        except json.JSONDecodeError:
+            continue
+        if _st == "resolved":
+            resolved += 1
+        elif _st == "ambiguous":
+            ambiguous += 1
+        else:
+            unresolved += 1
+    msg = (f"feed-log {today} (+{new} new, {reclassified} reclassified; "
+           f"resolved {resolved}/amb {ambiguous}/unres {unresolved}, registry {len(registry)})")
     if not private_put("feed-log.jsonl", out, token, sha, msg):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(out, encoding="utf-8")
-    return new
+    return {"new": new, "reclassified": reclassified, "registry": len(registry),
+            "resolved": resolved, "ambiguous": ambiguous, "unresolved": unresolved}
 
 
 # No language model is used anywhere in this build. Classification, ranking, dating
@@ -4736,8 +4876,10 @@ def main():
     row, history = log_history(items, cfg.get("trend_terms", []), token, health, o)
     print(f"  history: {row['total']} items logged for {row['date']} ({len(history)} builds on record)")
     try:                                     # item-level detection log — never blocks the build
-        _newlog = log_detections(items, token)
-        print(f"  feed-log: +{_newlog} newly-detected item(s) logged")
+        _s = log_detections(items, token)
+        print(f"  feed-log: +{_s['new']} new, {_s['reclassified']} reclassified · "
+              f"resolved {_s['resolved']} / ambiguous {_s['ambiguous']} / unresolved {_s['unresolved']} "
+              f"(registry {_s['registry']} techs)")
     except Exception as e:
         print(f"  feed-log: skipped ({type(e).__name__})", file=sys.stderr)
 

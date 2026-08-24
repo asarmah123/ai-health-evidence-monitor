@@ -3,8 +3,8 @@ __pycache__/
 
 # Private data & internal notes — pulled from the private repo or kept local; never public.
 feeds.yaml
+tech_registry.yaml
 coverage.yaml
-lens_prompt.txt
 PRODUCT_ROADMAP.md
 ENGINEERING_NOTES.md
 TECHNICAL.md
@@ -13,24 +13,16 @@ FILE_INVENTORY.md
 SCHEMA.md
 SOURCE_AUDIT.md
 CURATION_PROTOCOL.md
-docs/DATASETS.md
-# Owner-only utilities (historical export / verification) — not a public feature yet.
-private-tools/
 history-wide.csv
-homepage_layout_preview.html
-first_build_preview.html
-restructure_preview.html
+
 # Root-only: the private cache/history dir. Anchored with a leading slash so it does
 # NOT match docs/data/ (the public CSV/JSON export, which must be committed).
 /data/
 *.env
 .env
-layout_preview.html
-coverage-pipeline/
-feed_tab_preview.html
-trends_tab_preview.html
-sources_tab_preview.html
-header_preview.html
+
+# Local design mock-ups / scratch snapshots — never part of the build.
+*_preview.html
 
 # Internal evaluation harness & known-event sets — private.
 evals/
