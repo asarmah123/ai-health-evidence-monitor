@@ -1575,7 +1575,7 @@ def test_validator_clean_build_passes():
     """2.46: a well-formed build (data + rendered page) raises no validation ERRORs."""
     r = _vbuild(_clean_items())
     assert not r.errors, "clean build should have no errors: " + str([(i.code, i.detail) for i in r.errors])
-    assert r.checks_run == 8, "all layers should run on a clean build"
+    assert r.checks_run == 12, "all layers should run on a clean build"
 
 
 # --------- MUTATION TESTS: prove each check is SENSITIVE to the defect it targets ---------
@@ -2396,3 +2396,115 @@ def test_country_name_beats_regulator_comparison():
          "url": "https://news.google.com/x", "gnews": True}
     assert build.country_of(i) == "Bulgaria"
     assert build.MACRO.get("Bulgaria") == "Europe"
+
+
+def test_classification_precision_gold_set():
+    """The human-reviewed gold set (classification_gold.yaml) must grade 100% against the current
+    classifier — this is the precision regression anchor that integrity checks cannot provide. If a
+    rule change moves any labelled item off its reviewed stage/source_type/region, this fails loudly
+    (and the build's P01 check warns). Also proves apply_classification_refiners stays in sync."""
+    import os, json
+    # build.__file__ is repo-root/build.py, so the gold file sits beside it
+    gold_path = os.path.join(os.path.dirname(os.path.abspath(build.__file__)), "classification_gold.json")
+    gold = json.load(open(gold_path, encoding="utf-8"))["items"]
+    assert len(gold) >= 50, "gold set should be a representative sample"
+    # (dimension, gold-key, sparse?) — sparse dims graded only where an expected value is present
+    dims = (("stage", "expect_stage", False), ("source_type", "expect_source_type", False),
+            ("evidence_type", "expect_evidence_type", False), ("strength", "expect_strength", False),
+            ("region", "expect_region", True), ("decision_type", "expect_decision_type", True),
+            ("payer_type", "expect_payer_type", True))
+    bad = {d[0]: [] for d in dims}
+    for g in gold:
+        raw = {"title": g["title"], "source": g["source"], "url": g["url"],
+               "declared_layer": g["declared_layer"], "gnews": bool(g.get("gnews"))}
+        got = build.classify_for_eval(raw)
+        for dim, key, sparse in dims:
+            exp = g.get(key, "")
+            if sparse and not exp:
+                continue
+            if got.get(dim) != exp:
+                bad[dim].append((g["title"][:38], got.get(dim), exp))
+    for dim, _k, _s in dims:
+        assert not bad[dim], f"{dim} regressions: {bad[dim]}"
+
+
+def test_apply_classification_refiners_matches_inline_chain():
+    """apply_classification_refiners is the single source of truth for the refiner order; a governance
+    paper and a roundup routed through it must land where the build puts them."""
+    items = [
+        {"layer": "heor", "source": "PubMed — regulatory science & AI policy", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/1/",
+         "title": "Reframing risk management for AI devices: a dual-layer governance framework"},
+        {"layer": "regulation", "gnews": True, "url": "https://news.google.com/x", "summary": "",
+         "source": "Mexico Business News", "title": "The Week in Health: AI, Regulation, and Infrastructure"},
+    ]
+    build.apply_classification_refiners(items)
+    assert items[0]["layer"] == "research"    # governance paper (heor→clinical→research)
+    assert items[1]["layer"] == "industry"    # roundup out of regulation
+
+
+# --------- MUTATION TESTS for Tier-2 credibility checks (provenance / dates / dedup) ---------
+def test_mut_gnews_no_publisher():
+    def m(it):
+        it[0].update(gnews=True, url="https://news.google.com/rss/articles/CBMiABC", source="")
+    assert "E13_gnews_no_publisher" in _codes_after(m)
+
+
+def test_mut_publisher_not_homepage():
+    def m(it):
+        it[0].update(gnews=True, url="https://news.google.com/rss/articles/CBMiABC",
+                     source="Some Outlet", publisher_url="https://outlet.com/2026/08/24/an-article-slug")
+    assert "E14_publisher_not_homepage" in _codes_after(m)
+
+
+def test_mut_resolved_publisher_mismatch():
+    def m(it):
+        it[0].update(resolved_url="https://other-domain.example/a", publisher_url="https://realpublisher.com")
+    assert "E15_resolved_publisher_mismatch" in _codes_after(m)
+
+
+def test_mut_implausible_date():
+    assert "E17_implausible_date" in _codes_after(lambda it: it[0].__setitem__("date", "2001-05-01"))
+
+
+def test_mut_stale_items():
+    def m(it):
+        for k in range(7):
+            it.append(_vmk(100 + k, url=f"https://example.org/old{k}", date="2026-01-01"))
+    assert "E16_stale_items" in _codes_after(m)
+
+
+def test_mut_residual_duplicate():
+    # same normalised headline surviving under two different links
+    assert "E18_residual_duplicate" in _codes_after(lambda it: it[1].__setitem__("title", it[0]["title"]))
+
+
+def test_clean_build_has_no_tier2_warnings():
+    """The Tier-2 checks must be quiet on a well-formed build (no false positives)."""
+    r = _vbuild(_clean_items())
+    noisy = {"E13_gnews_no_publisher", "E14_publisher_not_homepage", "E15_resolved_publisher_mismatch",
+             "E16_stale_items", "E17_implausible_date", "E18_residual_duplicate"}
+    fired = {i.code for i in r.issues} & noisy
+    assert not fired, f"Tier-2 checks false-fired on a clean build: {fired}"
+
+
+def test_superlative_guard_needs_clear_leader():
+    """'led / most active / top' is only asserted on a credible base: leader >= floor AND strictly
+    beats the runner-up. Thin (n<3) or tied leaders return None so no superlative is rendered."""
+    assert build._clear_leader([("Asia-Pacific", 7), ("Europe", 6)]) == ("Asia-Pacific", 7)
+    assert build._clear_leader([("Oncology", 7), ("Radiology", 5)]) == ("Oncology", 7)
+    assert build._clear_leader([("ANVISA", 2), ("TGA", 1)]) is None      # below floor
+    assert build._clear_leader([("A", 4), ("B", 4)]) is None             # tied
+    assert build._clear_leader([("X", 1)]) is None                        # single, thin
+    assert build._clear_leader([]) is None
+
+
+def test_verify_deploy_is_fresh():
+    """The post-deploy freshness comparison: live matches local only when generated_at AND
+    taxonomy_version both match; a missing/renamed field fails closed (treated as stale)."""
+    import verify_deploy
+    loc = {"generated_at": "2026-08-24T18:25:09Z", "taxonomy_version": "2.55"}
+    assert verify_deploy.is_fresh(loc, dict(loc)) is True
+    assert verify_deploy.is_fresh(loc, {"generated_at": "2026-08-24T12:14:00Z", "taxonomy_version": "2.55"}) is False
+    assert verify_deploy.is_fresh(loc, {"taxonomy_version": "2.55"}) is False   # missing field → fail closed
+    assert verify_deploy.is_fresh(loc, {}) is False

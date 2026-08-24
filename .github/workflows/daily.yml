@@ -74,6 +74,19 @@ jobs:
           done
           if [ "$published" != "1" ]; then echo "::error title=Publish failed::could not push after 5 attempts"; exit 1; fi
 
+      # ---- post-publish DEPLOY freshness check (alert-only) ----------------------------------------
+      # GitHub Pages deploys asynchronously and can lag or silently fail, leaving the PUBLIC site on an
+      # older build than the one just committed. Poll the live build.json and confirm it reaches this
+      # build; a persistent mismatch annotates a warning (the build is already published, so this never
+      # unpublishes — it just surfaces a stale-deploy so it gets investigated).
+      - name: Verify live deploy is fresh
+        if: always()
+        continue-on-error: true
+        run: |
+          python verify_deploy.py --local docs/build.json \
+            --url https://asarmah123.github.io/ai-health-evidence-monitor/build.json \
+            --retries 10 --wait 30
+
       # ---- post-publish validation (never blocks the publish above) --------------------------------
       # build.py has already written validation_status.json + validation_report.{md,html}. We read the
       # status and, only when the build flags issues, email a detailed summary so problems get caught

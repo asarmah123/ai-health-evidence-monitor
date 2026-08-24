@@ -31,6 +31,9 @@ WARN_EMAIL_THRESHOLD = 4        # email fires on ANY error, or on this many warn
 _CLOCK_SKEW_DAYS = 1            # a date within this many days ahead of the build is not "future"
 _LINK_SAMPLE = 8               # external URLs sampled for reachability per build (keeps the build fast)
 _GNEWS_MAX_PCT = 15            # warn if more than this % of published items still use unresolved google URLs
+_STALE_DAYS = 45              # a dated item materially older than this (vs build) is unusually old for a daily feed
+_STALE_MAX = 6               # warn only if MORE than this many items are stale (a few slow native feeds are fine)
+_IMPLAUSIBLE_YEAR = 2015     # a published date before this is almost certainly a parse error, not a real date
 
 # Item-integrity ERROR codes — if any of these fire, the aggregate layers (H/A/R/Z/X) are skipped.
 _INTEGRITY_CODES = {"E01_missing_field", "E02_bad_url", "E03_duplicate_id", "E04_duplicate_url",
@@ -346,6 +349,85 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                    f"redirect), but publisher name + homepage are preserved. Consider native feeds to raise "
                    f"article-link provenance.")
 
+    # ================= LAYER L — link / provenance integrity =================
+    def check_provenance():
+        """The credibility of the whole feed rests on 'headline → its real source'. For the ~30% of
+        items reached via a Google-News redirect (whose article URL isn't recoverable), verify the
+        provenance we DO keep is coherent: a publisher name is present, publisher_url is an outlet
+        HOMEPAGE (never the article), and a decoded resolved_url — when we have one — actually lives on
+        that publisher's domain (a mismatch would mean the link points somewhere the headline doesn't)."""
+        from urllib.parse import urlparse
+        for i in items:
+            url = i.get("url", "") or ""
+            is_gnews = bool(i.get("gnews")) or "news.google.com" in url
+            pub_url = (i.get("publisher_url") or "").strip()
+            resolved = (i.get("resolved_url") or "").strip()
+            if is_gnews:
+                if not (i.get("source") or "").strip():
+                    R.warn("Evidence", "E13_gnews_no_publisher",
+                           "Google-News item has no publisher name — provenance lost", url[:70])
+                # publisher_url must be a homepage, not a deep article link
+                if pub_url:
+                    p = urlparse(pub_url)
+                    if len([s for s in p.path.split("/") if s]) >= 2 or len(p.path) > 24:
+                        R.warn("Evidence", "E14_publisher_not_homepage",
+                               "publisher_url looks like an article, not the outlet homepage",
+                               f"{i.get('title','?')[:45]} → {pub_url[:60]}")
+            # a decoded article URL should sit on the publisher's domain (host match, ignoring www.)
+            if resolved and pub_url:
+                rh = urlparse(resolved).netloc.replace("www.", "")
+                ph = urlparse(pub_url).netloc.replace("www.", "")
+                if rh and ph and rh != ph:
+                    R.warn("Evidence", "E15_resolved_publisher_mismatch",
+                           "resolved_url host does not match publisher_url host",
+                           f"{i.get('title','?')[:40]} → {rh} ≠ {ph}")
+
+    # ================= LAYER D — date sanity =================
+    def check_dates():
+        """'No invented dates' protects credibility only if the dates that ARE shown are plausible.
+        Beyond the future-date guard (E05), flag implausibly OLD dates (near-certain parse errors) and
+        report when an unusual number of items are materially staler than the build — the time-series
+        and 'N days ago' framing rest on date quality."""
+        stale = []
+        for i in items:
+            if not i.get("date"):
+                continue
+            d = B._pdate(i.get("date", ""))
+            if not d:
+                continue
+            if d.year < _IMPLAUSIBLE_YEAR:
+                R.warn("Evidence", "E17_implausible_date",
+                       f"Item date is before {_IMPLAUSIBLE_YEAR} — almost certainly a parse error",
+                       f"{i.get('title','?')[:55]} → {i.get('date')}")
+            elif (build_date - d).days > _STALE_DAYS:
+                stale.append((i.get("title", "?")[:44], i.get("date")))
+        if len(stale) > _STALE_MAX:
+            detail = f"{len(stale)} items older than {_STALE_DAYS}d: " + "; ".join(f"{t} ({d})" for t, d in stale[:8])
+            R.warn("Evidence", "E16_stale_items",
+                   f"{len(stale)} items are materially older than the build (>{_STALE_DAYS}d) for a daily feed", detail)
+
+    # ================= LAYER U — residual de-duplication =================
+    def check_duplicates():
+        """De-dup inflates the most numeric-looking claims (stage counts, trending) if it misses a
+        story that several outlets ran. Exact id/url dupes are ERRORs (E03/E04); this catches what those
+        can't — two SURVIVING items with the same normalised title (same story, different links)."""
+        import re as _re
+        def _norm(t):
+            return _re.sub(r"[^a-z0-9 ]", "", (t or "").lower()).strip()
+        by_title = {}
+        for i in items:
+            key = _norm(i.get("title", ""))
+            if len(key) < 12:
+                continue                          # too short to be a confident match
+            by_title.setdefault(key, []).append(i)
+        for key, grp in by_title.items():
+            if len(grp) > 1:
+                urls = {_canon_url(i.get("url", "")) for i in grp}
+                if len(urls) > 1:                 # same title, different links → residual duplicate
+                    R.warn("Evidence", "E18_residual_duplicate",
+                           "Same headline survived under two different links (near-duplicate not collapsed)",
+                           f"{grp[0].get('title','?')[:60]} ×{len(grp)}")
+
     # ================= LAYER S — scope integrity =================
     def check_scope():
         for i in items:
@@ -639,21 +721,73 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                           f"{i.get('title','?')[:55]} tagged={tagged} rule={should}")
                     break
 
+    # ================= LAYER P — classification precision (self-contained fixtures) =================
+    def check_classification_precision():
+        """Grade the deterministic classifier against a human-reviewed gold set (classification_gold.yaml):
+        re-classify each labelled fixture through the SAME pipeline the build uses (B.classify_for_eval)
+        and compare stage / source_type / region. This is the precision axis the integrity/reconciliation
+        checks cannot see — a mislabeled-but-well-formed item passes everything else. WARN (never blocks)
+        if accuracy on any graded dimension drops below threshold, and name every mismatch so a regression
+        points at the exact item. Self-contained + deterministic: runs every build, no network."""
+        import os, json
+        gold_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "classification_gold.json")
+        try:
+            gold = (json.load(open(gold_path, encoding="utf-8")) or {}).get("items", [])
+        except FileNotFoundError:
+            R.warn("Precision", "P00_gold_missing", "classification_gold.json not found — precision ungraded")
+            return
+        if not gold or not hasattr(B, "classify_for_eval"):
+            return
+        # dimension → (gold key, always-graded?, floor). Sparse facets (region/decision/payer) are graded
+        # only where the gold sets a non-empty expected value.
+        DIMS = (("stage", "expect_stage", True, 0.95),
+                ("source_type", "expect_source_type", True, 0.95),
+                ("evidence_type", "expect_evidence_type", True, 0.95),
+                ("strength", "expect_strength", True, 0.95),
+                ("region", "expect_region", False, 0.90),
+                ("decision_type", "expect_decision_type", False, 0.90),
+                ("payer_type", "expect_payer_type", False, 0.90))
+        tot = {d[0]: 0 for d in DIMS}
+        ok = {d[0]: 0 for d in DIMS}
+        miss = {d[0]: [] for d in DIMS}
+        for g in gold:
+            raw = {"title": g.get("title", ""), "source": g.get("source", ""), "url": g.get("url", ""),
+                   "declared_layer": g.get("declared_layer", ""), "gnews": bool(g.get("gnews"))}
+            got = B.classify_for_eval(raw)
+            for dim, exp_key, always, _floor in DIMS:
+                exp = g.get(exp_key, "")
+                if not always and not exp:
+                    continue                      # sparse facet: grade only where an expected value is set
+                tot[dim] += 1
+                if got.get(dim) == exp:
+                    ok[dim] += 1
+                else:
+                    miss[dim].append(f"{g.get('title','?')[:44]} → got {got.get(dim)!r}, expected {exp!r}")
+        for dim, _exp_key, _always, floor in DIMS:
+            if tot[dim] == 0:
+                continue
+            acc = ok[dim] / tot[dim]
+            if acc < floor:
+                detail = f"{ok[dim]}/{tot[dim]} = {acc:.0%} (floor {floor:.0%}). " + "; ".join(miss[dim][:8])
+                R.warn("Precision", f"P01_{dim}_precision",
+                       f"Classification {dim} accuracy {acc:.0%} below {floor:.0%} vs gold set", detail)
+
     # ---- layered execution with dependency short-circuit ----
     integrity = (check_fields, check_routes)
-    scope_facets = (check_scope, check_facets)
+    scope_facets = (check_scope, check_facets, check_provenance, check_dates,
+                    check_duplicates, check_classification_precision)
     aggregates = (check_home, check_analysis, check_coherence, check_render, check_empty_states, check_topic_tags)
 
     for fn in integrity + scope_facets:
         _safe(fn)
-    R.checks_run = 3
+    R.checks_run = 7
     if any(i.code in _INTEGRITY_CODES for i in R.errors):
         # skipped ≠ passed: item integrity failed, so downstream layers did NOT run
         R._skipped.update({"H", "A", "R", "Z", "X"})
     else:
         for fn in aggregates:
             _safe(fn)
-        R.checks_run = 8
+        R.checks_run = 12
     # finalise the skipped-layer list in canonical order (H → A → R → Z → X)
     R.layers_skipped = [ly for ly in ("H", "A", "R", "Z", "X") if ly in R._skipped]
     return R

@@ -173,7 +173,21 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       evidence/regulatory stage to industry — a compilation is not a discrete evidence item. (c) geo:
 #       an unambiguous country NAME in a headline (Bulgaria/Romania/Greece/Portugal/Hungary/Czechia)
 #       wins over a regulator comparison drawn in the body (fixes a Bulgaria story tagged Germany).
-TAXONOMY_VERSION = "2.54"
+# 2.55: evidence-strength honesty — a non-empirical scholarship paper (viewpoint / position / benchmark /
+#       framework / governance / regulatory-science, with no patient/trial/cohort/real-world signal) can no
+#       longer carry a 'Primary evidence' badge: strength is downgraded to Methodology / Secondary evidence
+#       (parallel to the existing transport-layer gate). Genuine studies keep 'Primary evidence'. The
+#       classification-precision eval now grades evidence_type, strength, decision_type and payer_type in
+#       addition to stage / source_type / region (7 dimensions).
+# 2.56: credibility hardening (Tier 2/3) — (a) new validation checks: link/provenance coherence for
+#       Google-News items (publisher present, publisher_url is a homepage, resolved_url host matches
+#       publisher — E13/E14/E15), date sanity (implausibly-old + materially-stale — E16/E17), and residual
+#       near-duplicate detection (same headline under two links — E18). (b) superlative guard: 'led /
+#       most active / top' snapshot claims are suppressed unless the leader clears a floor (>=3) AND
+#       strictly beats the runner-up, so thin/tied bases aren't dressed as findings. (c) post-deploy
+#       freshness verifier (verify_deploy.py) confirms the LIVE site reached this build. No item's
+#       stage/type/strength changes here — display + validation only.
+TAXONOMY_VERSION = "2.56"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -912,6 +926,62 @@ def refine_industry_to_access(items):
         if _ACCESS_OVERRIDE_RE.search(text):
             i["layer"] = "access"
     return items
+
+
+# Canonical stage-refinement pipeline: the ordered sequence of deterministic refiners that turn each
+# item's FEED-DECLARED layer into its final stage. Order matters (each refiner assumes the previous
+# ones ran), so this is the SINGLE source of truth — the daily build and the classification-precision
+# eval both call it, guaranteeing the eval grades exactly what ships. Does NOT include the relevance
+# gate (which only drops non-health items) or the de-dup/collapse (which drop but never re-stage).
+_CLASSIFICATION_REFINERS = (
+    ("refine_access_layer", "reimbursement precision: reclassify non-coverage access items"),
+    ("refine_heor_layer", "HEOR precision: reclassify non-economic AI reviews to clinical"),
+    ("refine_clinical_to_heor", "clinical economic evaluations → HEOR (category-2 boundary)"),
+    ("refine_safety_surveillance_to_regulation", "postmarketing safety → Regulation (cat-4 boundary)"),
+    ("refine_research_layer", "research precision: newsletters/product news → industry"),
+    ("refine_method_papers", "method vs clinical: pure model-dev papers → research"),
+    ("refine_regulation_layer", "regulatory precision: generic policy/marketing news → industry"),
+    ("refine_commentary_layer", "general commentary is excluded (not evidence)"),
+    ("refine_research_precision", "research = models/methods only; reviews → clinical"),
+    ("refine_governance_methods_to_research", "governance/reg-science/methods/viewpoint/benchmark papers → research"),
+    ("refine_roundups_out_of_evidence", "roundups/digests are compilations, not discrete evidence → industry"),
+    ("refine_news_out_of_evidence", "coherence: News/VC/commercial items leave evidence stages"),
+    ("refine_industry_to_regulation", "canonical: regulatory-event stories → regulation"),
+    ("refine_industry_to_access", "canonical: coverage/procurement/funding → access"),
+)
+
+
+def apply_classification_refiners(items):
+    """Run the canonical ordered stage-refinement chain (the single source of truth used by both the
+    daily build and the precision eval). Mutates + returns items."""
+    for fn_name, _ in _CLASSIFICATION_REFINERS:
+        items = globals()[fn_name](items)
+    return items
+
+
+def classify_for_eval(raw):
+    """Classify ONE labelled gold item exactly as the build would, for the classification-precision
+    eval. `raw` carries title/source/url/summary + declared_layer (the feed's starting stage) and an
+    optional gnews flag. Returns a dict of every graded dimension. Faithful to build order: source_type,
+    evidence_type/strength and the access facets are computed on the DECLARED layer (build.py computes
+    these in the per-item metadata loop, BEFORE the refiner chain), while the final STAGE and region are
+    read AFTER the refiner chain — exactly as they appear on the site."""
+    i = dict(raw)
+    i["layer"] = raw.get("declared_layer", raw.get("layer", "")) or ""
+    i["stype"] = source_type(i)
+    etype, strength = classify_evidence(i)
+    decision, payer = access_facets(i)
+    i = apply_classification_refiners([i])[0]          # → final stage
+    country = country_of(i) or ""
+    return {
+        "stage": i["layer"],
+        "source_type": i["stype"],
+        "region": (MACRO.get(country, "") if country else ""),
+        "evidence_type": etype,
+        "strength": strength,
+        "decision_type": decision,
+        "payer_type": payer,
+    }
 
 
 def apply_source_caps(items, caps):
@@ -1975,6 +2045,19 @@ MACRO = {
     "Colombia": "Latin America", "Chile": "Latin America",
 }
 
+# Superlative-credibility guard. The feed is curated (not a census), so "led / most active / top"
+# claims on a thin or tied base ('Asia-Pacific led with 2', 'ANVISA most active regulator (1)') read as
+# stronger findings than the counts support. Only assert leadership when the leader clears a floor AND
+# strictly beats the runner-up; otherwise the claim is dropped (a quiet build needs no superlative).
+_MIN_LEADER = 3
+def _clear_leader(ranked, floor=_MIN_LEADER):
+    r = sorted(ranked, key=lambda x: x[1], reverse=True) if ranked else []
+    if not r or r[0][1] < floor:
+        return None
+    if len(r) > 1 and r[1][1] >= r[0][1]:      # tied with the runner-up → no clear leader
+        return None
+    return r[0]
+
 # body -> role. Regulators gate market authorisation; HTA/payers gate reimbursement;
 # professional societies set standards but make no binding decisions.
 BODY_ROLE = {
@@ -2260,11 +2343,21 @@ _EV_REG_CONSULT = re.compile(r"consultation|call for (evidence|input|comment)|re
 
 
 def classify_evidence(i):
-    """Return (etype, strength). Wraps the core rules with the source-registry gate: a transport
-    layer (Google News / unresolved 'Other') can never carry 'Primary evidence'."""
+    """Return (etype, strength). Wraps the core rules with two strength gates: (1) a transport layer
+    (Google News / unresolved 'Other') can never carry 'Primary evidence'; (2) a non-empirical
+    scholarship paper — viewpoint / position / benchmark / framework / governance / regulatory-science —
+    is not clinical PRIMARY evidence, so its strength badge is downgraded to Methodology / Secondary.
+    Both gates only ever DOWNGRADE strength; a genuine study (patient/trial/cohort/real-world signal)
+    keeps 'Primary evidence'."""
     et, strn = _classify_core(i)
     if strn == "Primary evidence" and not _primary_eligible(i):
         return "News", "Market signal"
+    if strn == "Primary evidence" and (i.get("stype") or source_type(i)) != "Preprint / research":
+        # journal / research / clinical / heor scholarship only (preprints keep their provenance label)
+        if i.get("layer") in ("research", "clinical", "heor") or (i.get("stype") or source_type(i)) == "Journal / evidence":
+            ti = i.get("title", "").lower().replace("-", " ")
+            if _GOV_METHODS_RE.search(ti) and not _CLINICAL_VALID_RE.search(ti):
+                return "Methodology", "Secondary evidence"
     return et, strn
 
 
@@ -3212,21 +3305,21 @@ def overview_html(items, cov_pub, o, history=None, take=""):
                     '<div class="topstory-t2">A quiet day</div>'
                     '<div class="topstory-why">No new device authorisations, economic-endpoint trials, '
                     'or major-regulator actions in this build.</div></div>')
-    # most active market + body
-    if o.get("macro"):
-        reg = o["macro"][0]
+    # most active market + body — only asserted when the leader clears the credibility floor
+    reg = _clear_leader(o.get("macro"))
+    if reg:
         allb_reg = o["bodies"]["regulator"]
         allb = allb_reg + o["bodies"]["payer"]
-        tb = max(allb, key=lambda x: x[1]) if allb else None
+        tb = _clear_leader(allb)
         line = f'Highest activity by region: <b>{html.escape(reg[0])}</b> ({reg[1]})'
         if tb:
             _role = "regulator" if tb in allb_reg else "HTA / payer body"
             line += f' · Most active {_role}: <b>{html.escape(tb[0])}</b> ({tb[1]})'
         ln_region = line
-    # dominant clinical area — a real distribution insight (no fabricated cause)
-    focus = o.get("focus", [])
-    if focus:
-        ln_clin = f"<b>{html.escape(focus[0][0])}</b> led clinical evidence in this build"
+    # dominant clinical area — a real distribution insight (no fabricated cause), only if a clear leader
+    lead_focus = _clear_leader(o.get("focus", []))
+    if lead_focus:
+        ln_clin = f"<b>{html.escape(lead_focus[0])}</b> led clinical evidence in this build"
     hero_lines = [x for x in (ln_mover, ln_term, ln_clin, ln_body) if x][:3]  # region/regulator lives in Analysis
     if hero_lines:
         hl = "".join(f'<div class="hero-line">{x}</div>' for x in hero_lines)
@@ -4465,16 +4558,18 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
     active_strip = ""
     if o:
         parts = []
-        if o.get("macro"):
-            m = o["macro"][0]; parts.append(f'<b>{html.escape(str(m[0]))}</b> led with {m[1]} updates')
+        m = _clear_leader(o.get("macro"))
+        if m:
+            parts.append(f'<b>{html.escape(str(m[0]))}</b> led with {m[1]} updates')
         allb_reg = o["bodies"]["regulator"]
         allb = allb_reg + o["bodies"]["payer"]
-        if allb:
-            tb = max(allb, key=lambda x: x[1])
+        tb = _clear_leader(allb)
+        if tb:
             _r = "regulator" if tb in allb_reg else "HTA/payer body"
             parts.append(f'<b>{html.escape(str(tb[0]))}</b> was the most active {_r} ({tb[1]})')
-        if o.get("focus"):
-            f0 = o["focus"][0]; parts.append(f'<b>{html.escape(str(f0[0]))}</b> was the top clinical area ({f0[1]})')
+        f0 = _clear_leader(o.get("focus"))
+        if f0:
+            parts.append(f'<b>{html.escape(str(f0[0]))}</b> was the top clinical area ({f0[1]})')
         if parts:
             active_strip = (f'<div class="activestrip"><span class="as-l">Snapshot</span> '
                             f'{" · ".join(parts)}</div>')
@@ -5102,20 +5197,7 @@ def main():
     _caps = {s["name"]: int(s.get("max_per_feed", st["max_per_feed"]))
              for grp in ("rss", "gnews") for s in cfg.get(grp, [])}
     items = apply_source_caps(items, _caps)
-    items = refine_access_layer(items)   # reimbursement precision: reclassify non-coverage access items
-    items = refine_heor_layer(items)     # HEOR precision: reclassify non-economic AI reviews to clinical
-    items = refine_clinical_to_heor(items) # clinical economic evaluations → HEOR (category-2 boundary)
-    items = refine_safety_surveillance_to_regulation(items) # postmarketing safety → Regulation (cat-4 boundary)
-    items = refine_research_layer(items) # research precision: newsletters/product news → industry
-    items = refine_method_papers(items)  # method vs clinical: pure model-dev papers → research
-    items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
-    items = refine_commentary_layer(items) # general commentary is excluded (not evidence)
-    items = refine_research_precision(items) # research = models/methods only; reviews → clinical
-    items = refine_governance_methods_to_research(items) # governance/reg-science/methods/viewpoint/benchmark papers (no patient signal) → research
-    items = refine_roundups_out_of_evidence(items) # roundups/digests are compilations, not discrete evidence → industry
-    items = refine_news_out_of_evidence(items) # coherence: News/VC/commercial items leave evidence stages
-    items = refine_industry_to_regulation(items) # canonical: regulatory-event stories → regulation
-    items = refine_industry_to_access(items)     # canonical: coverage/procurement/funding → access
+    items = apply_classification_refiners(items)
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)
