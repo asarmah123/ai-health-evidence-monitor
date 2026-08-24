@@ -212,16 +212,20 @@ def test_geo_and_body_classification():
     """Freeze the geo + body rules added with the source expansion (taxonomy 1.1):
     LATAM resolves to Latin America, new European bodies map correctly, and the NoMA
     word-boundary guard doesn't misfire on oncology terms like 'melanoma'."""
+    # These are Google-News discovery items (url = news.google.com): the named body (ANVISA, CONITEC,
+    # Zorginstituut) is the SUBJECT of the story, not the source, so provenance source_type is 'Other'
+    # (a gnews redirect is never a primary body — see test_gnews_never_typed_as_primary_body). The geo
+    # rules below (country + macro-region) are what this test freezes and are unaffected.
     cases = [
-        # source, layer, title, expected country, expected region, expected source_type
+        # source, layer, title, expected country, expected region, expected source_type (gnews → Other)
         ("LATAM — device authorisation (ANVISA / COFEPRIS)", "regulation",
-         "ANVISA approves AI ECG device in Brazil", "Brazil", "Latin America", "Regulator"),
+         "ANVISA approves AI ECG device in Brazil", "Brazil", "Latin America", "Other"),
         ("LATAM — HTA & coverage (CONITEC)", "access",
-         "CONITEC recommends coverage of AI screening", "Brazil", "Latin America", "HTA / payer"),
+         "CONITEC recommends coverage of AI screening", "Brazil", "Latin America", "Other"),
         ("LATAM — device authorisation (ANVISA / COFEPRIS)", "regulation",
-         "COFEPRIS authorises AI software in Mexico", "Mexico", "Latin America", "Regulator"),
+         "COFEPRIS authorises AI software in Mexico", "Mexico", "Latin America", "Other"),
         ("Netherlands — Zorginstituut", "access",
-         "Zorginstituut assesses AI diagnostic", "Netherlands", "Europe", "HTA / payer"),
+         "Zorginstituut assesses AI diagnostic", "Netherlands", "Europe", "Other"),
     ]
     for src, layer, title, country, region, stype in cases:
         i = {"source": src, "layer": layer, "title": title, "summary": "", "url": "https://news.google.com/x"}
@@ -2252,3 +2256,143 @@ def test_minor_audit_fixes():
     _b.datetime = build.datetime
     feat = build.select_featured(o)
     assert feat is not None and feat[1]["id"] == "open"
+
+
+def test_gnews_never_typed_as_primary_body():
+    """A Google-News redirect item must never be typed as a primary body (Regulator/HTA/Journal)
+    from its publisher NAME — its source is the outlet, not the primary source (audit: #51/#62
+    'Mexico Business News' from an ANVISA/COFEPRIS query was mistyped 'Regulator')."""
+    gnu = "https://news.google.com/rss/articles/CBMiABCD"
+    # publisher name carries a regulator token, but item is a gnews redirect → NOT 'Regulator'
+    anvisa = {"source": "ANVISA regulatory bulletin", "url": gnu, "gnews": True}
+    assert build.source_type(anvisa) == "Other"
+    # trade-press publisher over gnews → Industry press
+    fierce = {"source": "Fierce Healthcare", "url": gnu, "gnews": True}
+    assert build.source_type(fierce) == "Industry press"
+    # plain trade outlet over gnews → Other
+    mbn = {"source": "Mexico Business News", "url": gnu, "gnews": True}
+    assert build.source_type(mbn) == "Other"
+    # native primary sources are UNAFFECTED
+    assert build.source_type({"source": "U.S. FDA", "url": "https://www.fda.gov/x"}) == "Regulator"
+    assert build.source_type({"source": "PubMed — regulatory science",
+                              "url": "https://pubmed.ncbi.nlm.nih.gov/1/"}) == "Journal / evidence"
+
+
+def test_governance_methods_papers_to_research():
+    """Governance / regulatory-science / methods journal papers with NO clinical-validation signal are
+    scholarly contributions, not clinical evidence → clinical becomes research. Genuine clinical
+    studies (patient/trial/cohort/real-world) stay clinical."""
+    move = [
+        {"layer": "clinical", "source": "PubMed — regulatory science & AI policy", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/1/",
+         "title": "Reframing risk management for AI-enabled medical devices: A dual-layer risk governance framework"},
+        {"layer": "clinical", "source": "npj Digital Medicine", "summary": "",
+         "url": "https://www.nature.com/articles/x",
+         "title": "Delays between CE mark and FDA regulatory approval of AI-enabled software for radiology"},
+        {"layer": "clinical", "source": "PubMed — digital health value & reimbursement", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/2/",
+         "title": "Clinical Laboratory Terminology Standardization for Semantic Interoperability: Methodological Study"},
+    ]
+    build.refine_governance_methods_to_research(move)
+    assert [i["layer"] for i in move] == ["research", "research", "research"]
+    # genuine clinical studies are NOT moved
+    stay = [
+        {"layer": "clinical", "source": "npj Digital Medicine", "summary": "",
+         "url": "https://www.nature.com/articles/y",
+         "title": "A governance framework validated in a prospective multi-centre patient cohort"},  # has patient/cohort
+        {"layer": "clinical", "source": "JAMA Network — AI in medicine", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/3/",
+         "title": "Deep-learning triage improves diagnostic accuracy in a randomised trial"},
+    ]
+    build.refine_governance_methods_to_research(stay)
+    assert all(i["layer"] == "clinical" for i in stay)
+    # non-journal news with 'governance' in the title is untouched (source_type guard)
+    news = [{"layer": "clinical", "source": "Fierce Healthcare", "summary": "",
+             "url": "https://www.fiercehealthcare.com/x",
+             "title": "Hospital AI governance committees are asking the wrong questions"}]
+    build.refine_governance_methods_to_research(news)
+    assert news[0]["layer"] == "clinical"
+
+
+def test_fda_genai_event_cluster_collapse():
+    """The FDA generative-AI guidance thread reported by several outlets collapses to one primary
+    representative; an unrelated FDA story (device pilot) is never merged in."""
+    items = [
+        {"id": "stat", "layer": "regulation", "date": "2026-08-24", "summary": "",
+         "source": "STAT — Health Tech", "url": "https://www.statnews.com/x",
+         "title": "FDA digital health leader promises generative AI regulatory guidance is coming"},
+        {"id": "raps", "layer": "regulation", "date": "2026-08-18", "summary": "",
+         "source": "RAPS", "url": "https://news.google.com/rss/articles/CBMiRAPS",
+         "title": "Recon: FDA releases draft guidance on gen AI-enabled devices"},
+        {"id": "pilot", "layer": "industry", "date": "2026-08-24", "summary": "",
+         "source": "MedTech Dive", "url": "https://www.medtechdive.com/x",
+         "title": "FDA adds two behavioral health firms to TEMPO pilot"},
+    ]
+    out = build.collapse_event_clusters(items)
+    ids = {i["id"] for i in out}
+    assert "pilot" in ids                       # unrelated FDA story kept
+    assert len(out) == 2                         # the two gen-AI items collapsed to one
+    assert "stat" in ids and "raps" not in ids   # primary (native) kept over gnews roundup
+
+
+def test_viewpoint_benchmark_framework_to_research():
+    """Viewpoint / position / benchmark / framework journal papers (no clinical-validation signal)
+    are Category-1 scholarship, not clinical evidence → clinical becomes research."""
+    move = [
+        {"layer": "clinical", "source": "JAMA Network — AI in medicine", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/10/",
+         "title": "From Breakthrough to Follow-Through: A Public Health Agenda for AI"},
+        {"layer": "clinical", "source": "npj Digital Medicine", "summary": "",
+         "url": "https://www.nature.com/articles/a",
+         "title": "Building safer clinical agents: the case for residency-level benchmarks"},
+        {"layer": "clinical", "source": "NEJM AI", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/11/",
+         "title": "The TopCoW Challenge - Topology-Aware Circle of Willis Segmentation"},
+        {"layer": "clinical", "source": "npj Digital Medicine", "summary": "",
+         "url": "https://www.nature.com/articles/b",
+         "title": "When machines misread science: creating guardrails for AI interpretation"},
+    ]
+    build.refine_governance_methods_to_research(move)
+    assert all(i["layer"] == "research" for i in move), [i["layer"] for i in move]
+    # a narrative review with 'current challenges' (plural) is NOT a named challenge → stays clinical;
+    # a behavioural/coaching study stays clinical; a real trial stays clinical
+    stay = [
+        {"layer": "clinical", "source": "PubMed — AI × HTA/HEOR", "summary": "",
+         "url": "https://pubmed.ncbi.nlm.nih.gov/12/",
+         "title": "Addressing antimicrobial resistance: current challenges and emerging strategies"},
+        {"layer": "clinical", "source": "npj Digital Medicine", "summary": "",
+         "url": "https://www.nature.com/articles/c",
+         "title": "A benchmark framework validated in a prospective patient cohort"},  # has patient/cohort
+    ]
+    build.refine_governance_methods_to_research(stay)
+    assert all(i["layer"] == "clinical" for i in stay), [i["layer"] for i in stay]
+
+
+def test_roundups_leave_evidence_stages():
+    """Roundups/digests are compilations, not discrete evidence — a roundup in a non-industry stage
+    is routed to industry; a real study and a ClinicalTrials record are never touched."""
+    items = [
+        {"layer": "regulation", "url": "https://news.google.com/x",
+         "title": "The Week in Health: AI, Regulation, and Infrastructure"},
+        {"layer": "industry", "url": "https://www.fiercehealthcare.com/x",
+         "title": "Weekly Rundown: several digital-health deals"},          # already industry
+        {"layer": "clinical", "url": "https://clinicaltrials.gov/study/NCT1",
+         "title": "Weekly monitoring trial of an AI wearable"},             # ctgov guard: not a roundup
+        {"layer": "clinical", "url": "https://pubmed.ncbi.nlm.nih.gov/9/",
+         "title": "Deep-learning triage improves diagnostic accuracy"},     # real study
+    ]
+    build.refine_roundups_out_of_evidence(items)
+    assert items[0]["layer"] == "industry"    # roundup demoted out of regulation
+    assert items[1]["layer"] == "industry"    # unchanged
+    assert items[2]["layer"] == "clinical"    # ctgov never a roundup
+    assert items[3]["layer"] == "clinical"    # real study untouched
+
+
+def test_country_name_beats_regulator_comparison():
+    """A story ABOUT a country (named in the headline) is placed there even when the body compares it
+    to another market's regulator (audit: 'Bulgaria lags on digital therapeutics' mentioning DiGA)."""
+    i = {"title": "Bulgaria lags on digital therapeutics as reimbursement rules stall",
+         "summary": "compared with Germany's DiGA scheme run by BfArM", "source": "euractiv.com",
+         "url": "https://news.google.com/x", "gnews": True}
+    assert build.country_of(i) == "Bulgaria"
+    assert build.MACRO.get("Bulgaria") == "Europe"

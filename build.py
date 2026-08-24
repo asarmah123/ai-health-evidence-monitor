@@ -158,7 +158,22 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       litigation" digest bucket with accurate why-it-matters copy, not framed as a regulator's decision.
 # 2.30: primary-source links — when the same story appears from both a Google-News redirect and a
 #       direct publisher/regulator/journal feed, near-duplicate collapse now keeps the primary link.
-TAXONOMY_VERSION = "2.52"
+# 2.53: classification precision — (a) a Google-News item is never typed as a primary body
+#       (Regulator/HTA/Journal) from its publisher name: gnews provenance types by publisher (trade
+#       press) else 'Other', since the redirect is a discovery link, not a primary source (fixes an
+#       ANVISA/COFEPRIS query typing "Mexico Business News" as Regulator). (b) governance / regulatory-
+#       science / methods journal papers with no clinical-validation signal route clinical→research
+#       (a governance framework, a CE-mark/FDA approval-timeline analysis, a terminology-standardisation
+#       methods study are scholarship, not clinical evidence). (c) curated event-cluster added for the
+#       FDA generative-AI guidance thread so multi-outlet coverage collapses to one primary.
+# 2.54: full-build audit cleanup — (a) the clinical→research refiner also catches viewpoint / position /
+#       benchmark / framework papers (agenda, 'the case for', guardrail, named Challenge, benchmark,
+#       'towards a … framework'), still guarded by the clinical-validation signal so real studies stay.
+#       (b) roundups/digests ('The Week in Health', 'Weekly Digest', 'Recon:') are routed out of any
+#       evidence/regulatory stage to industry — a compilation is not a discrete evidence item. (c) geo:
+#       an unambiguous country NAME in a headline (Bulgaria/Romania/Greece/Portugal/Hungary/Czechia)
+#       wins over a regulator comparison drawn in the body (fixes a Bulgaria story tagged Germany).
+TAXONOMY_VERSION = "2.54"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -793,6 +808,62 @@ def refine_research_precision(items):
             continue
         if classify_evidence(i)[0] in ("Review", "Systematic review", "Meta-analysis"):
             i["layer"] = "clinical"
+    return items
+
+
+# Governance / regulatory-science / methods PUBLICATIONS are scholarly work ABOUT how AI is governed,
+# approved, standardised or evaluated — not clinical evidence IN patients. When such a journal/preprint
+# paper carries no clinical-validation signal (no patient / trial / cohort / real-world outcome), it is
+# a Category-1 knowledge contribution, so route clinical → research. This catches value/reg-science
+# PubMed papers that fall through the HEOR filter into 'clinical' (a governance framework, a CE-mark/FDA
+# approval-timeline analysis, a terminology-standardisation methods study), without touching genuine
+# clinical studies (guarded by _CLINICAL_VALID_RE) or non-journal news (guarded by source_type).
+_GOV_METHODS_RE = re.compile(
+    # governance / regulatory-science / methods signals
+    r"governance|regulatory science|reflection paper|risk management framework|dual.?layer"
+    r"|semantic interoperab|terminology standardi|methodological study"
+    r"|reporting (guideline|standard|checklist)|conformity assessment|notified body"
+    r"|\bce.?mark\b|regulatory approval|market authoris|approval pathway|reframing risk"
+    # viewpoint / position / benchmark / framework signals (non-empirical scholarship, not clinical
+    # evidence): a benchmark/challenge is a methods contribution; an agenda/manifesto/blueprint/'case
+    # for'/guardrail/'towards a … framework' is a position piece. \bchallenge\b (singular) matches a
+    # named challenge/benchmark but not "current challenges" in a clinical review.
+    r"|\bthe case for\b|guardrail|towards a .{0,45}framework|\bagenda\b|\bmanifesto\b|\bblueprint\b"
+    r"|\bblind spot\b|\bchallenge\b|\bbenchmark|\brethinking\b|\breimagining\b|\bvision for\b"
+    r"|\broadmap\b|position (paper|statement)|call to action")
+
+
+def refine_governance_methods_to_research(items):
+    """Non-empirical scholarship — governance / regulatory-science / methods papers AND viewpoint /
+    position / benchmark / framework papers — with no clinical-validation signal are Category-1
+    contributions, not clinical evidence, so route clinical → research. Runs AFTER
+    refine_research_precision so review-typed papers aren't bounced back to clinical. Guarded to
+    journal/preprint sources and to items lacking any patient/trial/cohort/real-world signal, so
+    genuine clinical studies (and behavioural/qualitative studies) are never moved."""
+    for i in items:
+        if i.get("layer") != "clinical":
+            continue
+        if source_type(i) not in ("Preprint / research", "Journal / evidence"):
+            continue
+        ti = i.get("title", "").lower().replace("-", " ")
+        if _GOV_METHODS_RE.search(ti) and not _CLINICAL_VALID_RE.search(ti):
+            i["layer"] = "research"
+    return items
+
+
+def refine_roundups_out_of_evidence(items):
+    """A roundup / digest / rundown ('The Week in Health', 'Weekly OHDSI Digest', 'Recon:…') is an
+    editorial compilation of many stories, not a single discrete evidence item — it must not sit in an
+    evidence or regulatory stage. Route any roundup-titled item in a non-industry stage to industry
+    (deterministic, keyed on _ROUNDUP_RE, which is precise). A ClinicalTrials record is never a
+    roundup and is guarded out."""
+    for i in items:
+        if i.get("layer") == "industry":
+            continue
+        if "clinicaltrials" in i.get("url", ""):
+            continue
+        if _ROUNDUP_RE.search(i.get("title", "")):
+            i["layer"] = "industry"
     return items
 
 
@@ -1894,6 +1965,8 @@ MACRO = {
     "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
     "Belgium": "Europe", "Ireland": "Europe", "Poland": "Europe", "Spain": "Europe",
     "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe", "Austria": "Europe",
+    "Bulgaria": "Europe", "Romania": "Europe", "Greece": "Europe", "Portugal": "Europe",
+    "Hungary": "Europe", "Czechia": "Europe",
     "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
     "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
     "Egypt": "Middle East & Africa", "Turkey": "Europe", "Nigeria": "Middle East & Africa",
@@ -1963,6 +2036,14 @@ def source_type(i):
         return "Trial registry"
     if any(d in u for d in _PREPRINT_DOMAINS) or "arxiv" in s.lower() or "medrxiv" in s.lower():
         return "Preprint / research"
+    # Google-News items are a discovery REDIRECT (news.google.com), not a primary body. Their `source`
+    # is the PUBLISHER name — which must never be read as a regulator/HTA/journal token (e.g. an
+    # ANVISA/COFEPRIS query surfacing a trade outlet like "Mexico Business News" must not be typed
+    # 'Regulator'). Type a gnews item by its publisher only: trade press, else 'Other'.
+    if i.get("gnews") or "news.google.com" in u:
+        if any(k in s for k in _ST_INDUSTRY):
+            return "Industry press"
+        return "Other"
     if any(k in s for k in _ST_REGULATOR):
         return "Regulator"
     if any(k in s for k in _ST_PAYER):
@@ -2442,6 +2523,11 @@ def country_of(i):
         ("United States", ["ntap", "medicare", "medicaid", "510(k)", "de novo", "u.s. food and drug",
                            "unitedhealthcare", "aetna", "cigna", "humana", "elevance", "anthem",
                            "blue cross", "kaiser permanente", "arpa-h", "veterans affairs", "sam.gov"]),
+        # Unambiguous country NAMES first, so a story ABOUT a country (in its headline) is placed
+        # there even when the body draws a comparison to another market's regulator (audit: a
+        # "Bulgaria lags on digital therapeutics" story mentioning Germany's DiGA must be Bulgaria).
+        ("Bulgaria", ["bulgaria"]), ("Romania", ["romania"]), ("Greece", ["greece", "greek"]),
+        ("Portugal", ["portugal"]), ("Hungary", ["hungary"]), ("Czechia", ["czechia", "czech republic"]),
         ("Germany", ["diga", "bfarm", "g-ba", "nub-"]),
         ("France", ["pecan", "cnedimts", "lppr", "haute autorite"]),
         ("Japan", ["pmda", "japan", "chuikyo", "mhlw"]),
@@ -4871,6 +4957,13 @@ _EVENT_CLUSTERS = [
     # UK/NHS AI-health regulatory sandbox — reported as "Pioneering… sandbox launched" (GOV.UK) and
     # "London launches AI health regulatory sandbox" (syndicated); 'regulatory sandbox' is distinctive.
     (re.compile(r"mhra|\bnhs\b|london|gov\.uk", re.I), re.compile(r"regulatory sandbox", re.I)),
+    # FDA generative-AI regulatory guidance thread — the same regulatory story reported by several
+    # outlets (STAT "guidance is coming", RAPS "releases draft guidance on gen AI-enabled devices").
+    # Requires FDA + generative-AI + guidance/discussion-paper co-occurrence, so it cannot merge an
+    # unrelated FDA story (a device clearance, a pilot, a non-genAI guidance). Keeps the primary link.
+    (re.compile(r"\bfda\b", re.I),
+     re.compile(r"(generative ai|gen[- ]?ai).*(guidance|discussion paper|draft guidance)"
+                r"|(guidance|discussion paper|draft guidance).*(generative ai|gen[- ]?ai)", re.I)),
 ]
 
 
@@ -5018,6 +5111,8 @@ def main():
     items = refine_regulation_layer(items) # regulatory precision: generic policy/marketing news → industry
     items = refine_commentary_layer(items) # general commentary is excluded (not evidence)
     items = refine_research_precision(items) # research = models/methods only; reviews → clinical
+    items = refine_governance_methods_to_research(items) # governance/reg-science/methods/viewpoint/benchmark papers (no patient signal) → research
+    items = refine_roundups_out_of_evidence(items) # roundups/digests are compilations, not discrete evidence → industry
     items = refine_news_out_of_evidence(items) # coherence: News/VC/commercial items leave evidence stages
     items = refine_industry_to_regulation(items) # canonical: regulatory-event stories → regulation
     items = refine_industry_to_access(items)     # canonical: coverage/procurement/funding → access
