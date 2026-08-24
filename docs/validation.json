@@ -2,12 +2,11 @@
   "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 3,
-  "generated_at": "2026-08-24T13:47:42Z",
+  "n_warnings": 2,
+  "generated_at": "2026-08-24T14:40:10Z",
   "taxonomy_version": "2.52",
   "codes": [
     "C02_study_outside_evidence",
-    "E11_title_source_tag",
     "E12_gnews_prevalence"
   ],
   "layers_skipped": []
