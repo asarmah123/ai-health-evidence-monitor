@@ -416,6 +416,11 @@ _AI_NATIVE_SOURCES = {"arXiv", "NEJM AI",
                       # PubMed queries that REQUIRE AI/ML in the abstract — clinical titles are still AI
                       "PubMed — AI × HTA/HEOR", "JAMA Network — AI in medicine", "BMJ — AI in medicine"}
 
+# Frontier-lab blogs — monitored ONLY as an upstream HEALTH-AI capability signal (per the About page),
+# so a general consumer/product post ("ChatGPT for Teens") with no biomedical bearing is dropped. Their
+# direct feeds aren't gnews, so the standard health-gate (which only fires on gnews) would miss them.
+_LAB_BLOG_SOURCES = {"OpenAI News", "Google DeepMind Blog"}
+
 
 def _ai_native(i):
     # NB: the 'research' layer is NOT exempt here — it is health-gated in relevance_gate
@@ -464,7 +469,11 @@ _OUT_OF_SCOPE_RE = re.compile(
     r"|sodium.ion|lithium.ion|\bcathode\b|\banode\b|polyanion|supercapacitor|perovskite|photovoltaic"
     r"|electrocatal|battery (cathode|anode|electrolyte|cell|material|storage|technolog)"
     r"|high.entropy (alloy|engineering|material|oxide)"
-    r"|river sediment|dredg(e|ed|ing)|wastewater|sewage sludge|\beffluent\b|geopolymer")
+    r"|river sediment|dredg(e|ed|ing)|wastewater|sewage sludge|\beffluent\b|geopolymer"
+    # synthetic / PROCESS chemistry (drug manufacturing, not clinical/health AI) — targeted so drug
+    # DISCOVERY AI ("drug response", "drug discovery") is NOT caught.
+    r"|suzuki coupling|cross.coupling|buchwald|drug intermediate|synthetic (route|intermediate)"
+    r"|industrial synthesis|reaction (yield|optimi[sz]|condition)")
 # Pharmaceutical drug authorisations are out of scope: this monitor tracks AI/software/devices, not
 # small-molecule or biologic drug approvals. These slip in via broad news queries when the only "AI"
 # token is a vendor/publisher name (e.g. "MedPal AI Highlights MHRA Approval of ... GLP-1 pill").
@@ -536,6 +545,8 @@ def relevance_gate(items):
         broad = i.get("gnews") or "news.google.com" in i.get("url", "")
         if broad and not _health_relevant(t, s):
             continue   # AI item that isn't clearly about healthcare
+        if i.get("source", "") in _LAB_BLOG_SOURCES and not _health_relevant(t, s):
+            continue   # frontier-lab blog with no biomedical bearing (e.g. a consumer product post)
         if _PR_JUNK_RE.search((t + " " + s).lower()):
             continue   # market-research / press-release padding, not evidence
         out.append(i)
@@ -1137,6 +1148,16 @@ def fetch_pubmed(sources, default_days):
     return items, dead
 
 
+def _strip_gnews_source_tag(raw_title):
+    """Strip Google News' trailing " - Publisher" and " | Source" tags. The publisher/source name may
+    itself contain hyphens (e.g. "CDA-AMC", "Wired-Gov"), so the segment allows hyphens; the negative
+    lookahead prevents matching ACROSS another spaced " - " separator (so a legitimate mid-title dash
+    isn't over-stripped). Strip " | X" first so a trailing " - Publisher | Source" is fully removed."""
+    title = re.sub(r"\s+\|\s+[^|]{1,60}$", "", raw_title)             # " | Source"
+    title = re.sub(r"\s+-\s+(?![^|]*\s-\s)[^|]{1,60}$", "", title)    # " - Publisher" (hyphens ok)
+    return title
+
+
 def fetch_gnews(sources, now, default_days):
     """Read selected publishers and standing topic queries via Google News."""
     items, dead = [], []
@@ -1160,8 +1181,7 @@ def fetch_gnews(sources, now, default_days):
             # Google News can append BOTH a journal tag and a publisher tag, in either order
             # (e.g. "… a l | JHL - Dove Medical Press"). Strip a trailing " - X" and a trailing " | X"
             # (each a short source/journal name) so neither tag survives.
-            title = re.sub(r"\s+-\s+[^-|]{1,60}$", "", raw_title)   # " - Publisher"
-            title = re.sub(r"\s+\|\s+[^-|]{1,60}$", "", title)     # " | Journal"
+            title = _strip_gnews_source_tag(raw_title)
             # Google News RSS gives no article URL — only the opaque redirect (e.link) + the publisher's
             # HOMEPAGE in <source url="…">. Capture that homepage so provenance keeps the real outlet even
             # when the article link can't be recovered (the article URL genuinely isn't in the feed).
@@ -2081,8 +2101,12 @@ _REFERENCE_GUIDE_RE = re.compile(
 # dedicated story. They still appear in the feed; they are just excluded from the digest/featured pick.
 _ROUNDUP_RE = re.compile(
     r"\brecon\b|reconnaissance|round[\s-]?up|\brundown\b|\bwrap[\s-]?up\b|\bin brief\b|week in review"
-    r"|this week in\b|weekly (digest|brief|recap|review|rundown|roundup|wrap)|news briefing|daily briefing"
+    r"|(this|the) week in\b|weekly (digest|brief|recap|review|rundown|roundup|wrap)|news briefing|daily briefing"
     r"|what we'?re reading|\bnewsletter\b|\bdigest\b(?!ive)", re.I)
+
+# Paywalled / subscriber-only headlines (e.g. "STAT+:") should not lead the FEATURED marquee — a marquee
+# click into a paywall is a poor first impression. They still appear normally in the feed.
+_PAYWALL_RE = re.compile(r"^\s*STAT\+|subscribers?[\s-]only|\bpaywall\b", re.I)
 
 def _access_decision_type(text):
     # No silent default — an unmatched access item is 'Unknown', never assumed to be a coverage decision.
@@ -2518,7 +2542,10 @@ def _is_fda_authorisation(i):
     if i.get("source", "").startswith("FDA — AI device"):
         return True
     txt = i.get("title", "") + " " + i.get("summary", "")
-    return "fda" in txt.lower() and i.get("layer") == "regulation" and bool(_DEVICE_AUTH_EVENT_RE.search(txt))
+    low = txt.lower()
+    if re.search(r"saudi fda|\bsfda\b", low):
+        return False   # Saudi FDA (SFDA) is a DIFFERENT regulator — not a US-FDA authorisation
+    return "fda" in low and i.get("layer") == "regulation" and bool(_DEVICE_AUTH_EVENT_RE.search(txt))
 
 
 SPECIALTIES = [
@@ -2714,10 +2741,19 @@ def select_featured(o):
     def _primary(it):
         return "news.google.com" not in it.get("url", "")
 
+    def _open(it):     # not paywalled — a marquee click shouldn't land on a paywall
+        return not _PAYWALL_RE.search(it.get("title", ""))
+
     fresh_picks = [(w, it) for w, it in hpicks if _fresh(it)]
-    return next(((w, it) for w, it in fresh_picks if _primary(it)),
-                next(((w, it) for w, it in hpicks if _primary(it)),
-                     (fresh_picks[0] if fresh_picks else hpicks[0])))
+    # Preference order: fresh+primary+open → fresh+primary → primary+open → primary → freshest → any.
+    for cand in ([(w, it) for w, it in fresh_picks if _primary(it) and _open(it)],
+                 [(w, it) for w, it in fresh_picks if _primary(it)],
+                 [(w, it) for w, it in hpicks if _primary(it) and _open(it)],
+                 [(w, it) for w, it in hpicks if _primary(it)],
+                 fresh_picks, hpicks):
+        if cand:
+            return cand[0]
+    return None
 
 
 # Plain-language, honest reasons for why an item is the day's top story. We state the

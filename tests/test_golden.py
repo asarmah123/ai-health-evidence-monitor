@@ -2194,3 +2194,60 @@ def test_hta_policy_items_stay_regulatory():
     assert relayer("New Guidance Issued for Reporting AI Methods Used to Generate Real-World Evidence") == "regulation"
     assert relayer("Considerations for the Regulation of Generative AI-Enabled Medical Devices: Discussion Paper") == "regulation"
     assert relayer("HealthAI startup launches new imaging assistant, raises Series B funding") == "industry"
+
+
+def test_gnews_title_strips_hyphenated_source():
+    """Google-News source tags are stripped even when the publisher name contains hyphens (CDA-AMC,
+    Wired-Gov) — the earlier [^-|] class broke on those and left ' - Publisher | Source' in the title.
+    A legitimate mid-title dash is not over-stripped."""
+    s = build._strip_gnews_source_tag
+    assert s("New Guidance Issued for Reporting AI Methods Used to Generate Real-World Evidence - Canada's Drug Agency | CDA-AMC") \
+        == "New Guidance Issued for Reporting AI Methods Used to Generate Real-World Evidence"
+    assert s("NICE Listens: hearing the public's views on AI in health and care - Wired-Gov") \
+        == "NICE Listens: hearing the public's views on AI in health and care"
+    # only the trailing publisher tag is removed, not an internal " - "
+    assert s("AI in Health - A New Era - MedTech Dive") == "AI in Health - A New Era"
+    # hyphenated words with no spaced separator are untouched
+    assert s("Real-World Evidence for AI") == "Real-World Evidence for AI"
+
+
+def test_process_chemistry_out_of_scope():
+    """Drug-manufacturing / process-chemistry papers are out of scope; drug-DISCOVERY AI stays in scope.
+    (_OUT_OF_SCOPE_RE is applied to lowercased text in the gate, so match on .lower() as the pipeline does.)"""
+    hit = lambda t: bool(build._OUT_OF_SCOPE_RE.search(t.lower()))
+    assert hit("Bayesian Optimization of a Suzuki Coupling for the Industrial Synthesis of a Sartan Drug Intermediate")
+    assert not hit("Agentic AI for Drug Discovery through human alignment")
+    assert not hit("Patient Drug Response Prediction with latent transitions")
+
+
+def test_minor_audit_fixes():
+    """Four minor audit fixes: (1) lab-blog consumer posts need health relevance; (2) Saudi SFDA is not a
+    US-FDA authorisation; (3) 'The Week in…' roundups are caught; (4) paywalled headlines don't lead featured."""
+    # 1) frontier-lab blog: consumer post dropped, health-AI capability kept
+    kept = {i["title"] for i in build.relevance_gate([
+        {"source": "OpenAI News", "layer": "industry", "url": "https://openai.com/x",
+         "title": "Introducing ChatGPT for Teens: Built for learning", "summary": ""},
+        {"source": "OpenAI News", "layer": "industry", "url": "https://openai.com/y",
+         "title": "New AI model improves clinical diagnosis and patient triage", "summary": ""},
+    ])}
+    assert "New AI model improves clinical diagnosis and patient triage" in kept
+    assert "Introducing ChatGPT for Teens: Built for learning" not in kept
+    # 2) Saudi SFDA licence is NOT tagged as a US-FDA authorisation
+    saudi = {"layer": "regulation", "source": "MEA AI device", "summary": "",
+             "title": "DIAGNOS Receives Saudi FDA Medical Device License for CARA System"}
+    assert build._is_fda_authorisation(saudi) is False
+    us = {"layer": "regulation", "source": "News", "summary": "",
+          "title": "FDA grants De Novo clearance to AI stroke-triage device"}
+    assert build._is_fda_authorisation(us) is True
+    # 3) roundup pattern
+    assert build._ROUNDUP_RE.search("The Week in Health: AI, Regulation, and Infrastructure")
+    # 4) paywalled headline is not featured when an open item exists
+    o = {"clears": [], "econ": [], "reg": [
+        {"id": "pay", "layer": "regulation", "summary": "", "date": "2026-08-24",
+         "title": "STAT+: FDA digital health leader promises generative AI guidance"},
+        {"id": "open", "layer": "regulation", "summary": "", "date": "2026-08-24",
+         "title": "MHRA finalises AI medical-device guidance"}]}
+    import build as _b
+    _b.datetime = build.datetime
+    feat = build.select_featured(o)
+    assert feat is not None and feat[1]["id"] == "open"
