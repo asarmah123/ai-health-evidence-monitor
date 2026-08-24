@@ -1260,6 +1260,15 @@ def link_url(item):
     return item.get("resolved_url") or item.get("url", "")
 
 
+def _via_gnews_html(item):
+    """The 'via Google News' badge for a SERVER-rendered card — shown only for UNRESOLVED gnews items
+    (whose href is a Google redirect, not the publisher article). Empty for resolved or native items.
+    Mirrors the client feed's inline marker so every prominent card is labeled consistently."""
+    if item.get("gnews") and not item.get("resolved_url"):
+        return ' · <span class="viagn">via Google News</span>'
+    return ""
+
+
 def fetch_federal_register(sources, lookback):
     """FDA/CMS guidance and notices via the Federal Register API."""
     items, dead = [], []
@@ -2948,7 +2957,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             grows = "".join(
                 f'<a class="dig" href="{safe_url(link_url(i))}" target="_blank" rel="noopener">'
                 f'<span class="dttl">{html.escape(i["title"])}</span>'
-                f'<span class="dsrc">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}</span></a>'
+                f'<span class="dsrc">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}{_via_gnews_html(i)}</span></a>'
                 for i in gitems)
             wm = WHY_MATTERS.get(why, "")
             wm_html = f'<div class="digwhy"><b>Why it matters:</b> {wm}</div>' if wm else ""
@@ -3056,7 +3065,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
         topstory = (f'<div class="topstory" data-open="{html.escape(safe_url(link_url(hi)))}"><div class="topstory-l">Featured story</div>'
                     f'<a class="topstory-t" href="{safe_url(link_url(hi))}" target="_blank" rel="noopener">{html.escape(hi["title"])}</a>'
                     f'<div class="topstory-m">{_kind_html}<span class="ts-src">{html.escape(hi.get("publisher") or hi["source"])}</span> · '
-                    f'<span class="ts-date">{_fmt_date(hi["date"])}</span></div>'
+                    f'<span class="ts-date">{_fmt_date(hi["date"])}</span>{_via_gnews_html(hi)}</div>'
                     f'<div class="topstory-why"><b>Why it matters:</b> {html.escape(why_text)}</div></div>')
     else:
         topstory = ('<div class="topstory quiet"><div class="topstory-l">Featured story</div>'
@@ -3118,7 +3127,7 @@ def overview_html(items, cov_pub, o, history=None, take=""):
             f'<a class="tbrow" href="{safe_url(link_url(i))}" target="_blank" rel="noopener">'
             f'<span class="tbn">{n}</span>'
             f'<span class="tbc"><span class="tbt">{html.escape(i["title"])}</span>'
-            f'<span class="tbs">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}</span></span></a>'
+            f'<span class="tbs">{html.escape(i.get("publisher") or i["source"])} · {i["date"] or "date unknown"}{_via_gnews_html(i)}</span></span></a>'
             for n, i in enumerate(_ranked, 1))
         top_updates = ('<div class="sec">Top updates</div>'
                        '<div class="seccap">Ranked automatically by transparent rule. <span class="lnk" data-goto="sources">How ranking works</span></div>'

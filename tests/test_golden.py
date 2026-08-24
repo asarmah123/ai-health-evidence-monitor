@@ -2148,3 +2148,11 @@ def test_server_cards_use_link_url_not_raw():
     src = pathlib.Path(build.__file__).read_text(encoding="utf-8")
     assert 'safe_url(link_url(i))' in src and 'safe_url(link_url(hi))' in src
     assert 'safe_url(i["url"])' not in src and 'safe_url(hi["url"])' not in src
+
+
+def test_via_gnews_badge_states():
+    """The server-card 'via Google News' badge shows ONLY for unresolved gnews items (not resolved, not
+    native) — so the featured/digest/top-updates cards are labeled consistently with the JS feed."""
+    assert "via Google News" in build._via_gnews_html({"gnews": True, "resolved_url": None})
+    assert build._via_gnews_html({"gnews": True, "resolved_url": "https://real.com/a"}) == ""  # resolved → none
+    assert build._via_gnews_html({"url": "https://www.fda.gov/x"}) == ""                        # native → none
