@@ -2156,3 +2156,12 @@ def test_via_gnews_badge_states():
     assert "via Google News" in build._via_gnews_html({"gnews": True, "resolved_url": None})
     assert build._via_gnews_html({"gnews": True, "resolved_url": "https://real.com/a"}) == ""  # resolved → none
     assert build._via_gnews_html({"url": "https://www.fda.gov/x"}) == ""                        # native → none
+
+
+def test_server_cards_show_via_gnews_badge():
+    """Release baseline: all three server-rendered card templates (featured/topstory, digest, top-updates)
+    call the badge helper — so no surface silently drops the 'via Google News' label on unresolved gnews."""
+    import pathlib
+    src = pathlib.Path(build.__file__).read_text(encoding="utf-8")
+    assert "_via_gnews_html(hi)" in src              # featured / top story
+    assert src.count("_via_gnews_html(i)") >= 2      # digest rows + top-updates rows
