@@ -2072,3 +2072,18 @@ def test_resolve_gnews_circuit_breaker():
     items = [{"url": f"https://news.google.com/rss/articles/CBMi{i}", "title": "x"} for i in range(10)]
     build.resolve_gnews_urls(items, resolver=r, max_failures=3)
     assert calls["n"] == 3, calls["n"]
+
+
+def test_gnews_batch_body_structure():
+    """The batchexecute payload STRUCTURE is correct (verifiable without the network — the earlier bug was
+    a malformed Fbv4je/garturlreq shape that made Google return nothing)."""
+    import urllib.parse
+    body = build._gnews_batch_body("CBMiABC", "1699999999", "SIGXYZ")
+    assert body.startswith("f.req=")
+    freq = _json.loads(urllib.parse.unquote(body[len("f.req="):]))
+    call = freq[0][0]                                  # [[[ "Fbv4je", inner, None, "generic" ]]]
+    assert call[0] == "Fbv4je" and call[3] == "generic"
+    inner = _json.loads(call[1])                       # ["garturlreq", [PARAMS, aid, ts, sig]]
+    assert inner[0] == "garturlreq"
+    assert inner[1][1] == "CBMiABC" and inner[1][2] == 1699999999 and inner[1][3] == "SIGXYZ"
+    assert inner[1][0][7] == "US:en"                   # PARAMS locale marker in the right slot

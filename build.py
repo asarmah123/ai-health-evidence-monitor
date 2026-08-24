@@ -1175,28 +1175,42 @@ def _gnews_url_from_batch(text):
     return m.group(1).replace("\\/", "/").replace("\\u003d", "=").replace("\\u0026", "&")
 
 
+_GNEWS_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+             "(KHTML, like Gecko) Chrome/122.0 Safari/537.36")
+
+
+def _gnews_batch_body(aid, ts, sig):
+    """Build the exact `f.req` body for Google's batchexecute `Fbv4je` (garturlreq) RPC. Pure/testable, so
+    the payload STRUCTURE can be verified without the network — the earlier bug was a malformed structure.
+    Correct shape: f.req = [[[ "Fbv4je", json("[\"garturlreq\",[PARAMS, aid, ts, sig]]"), null, "generic" ]]]."""
+    import json as _json
+    import urllib.parse as _url
+    params = ["X", "X", ["X", "X"], None, None, 1, 1, "US:en", None, 1,
+              None, None, None, None, None, 0, 1]
+    inner = _json.dumps(["garturlreq", [params, str(aid), int(ts), str(sig)]])
+    return "f.req=" + _url.quote(_json.dumps([[["Fbv4je", inner, None, "generic"]]]))
+
+
 def _resolve_gnews_url(url, timeout=6):
-    """Best-effort decode of a news.google.com/rss/articles/… redirect to the publisher URL. Returns the
-    real URL or None. NETWORK-DEPENDENT and NON-FATAL: Google's decode endpoint can change, so any failure
-    returns None and the caller keeps the Google URL. (Runs on the build's open network; the CI sandbox
-    blocks news.google.com, so this path is exercised only in the real build.)"""
+    """Best-effort decode of a news.google.com/rss/articles/… redirect to the publisher URL (Google's
+    2024+ format — the base64 no longer embeds the URL, so this uses the batchexecute RPC). Returns the
+    real URL or None. NETWORK-DEPENDENT and NON-FATAL: any failure returns None and the caller keeps the
+    Google URL. Runs on the build's open network; the CI sandbox blocks news.google.com, so the live path
+    is validated by the next build's E12_gnews_prevalence signal, not from here."""
     if "news.google.com/rss/articles/" not in url:
         return None
     try:
-        import json as _json
-        html = get(url).text
+        html = requests.get(url, headers={"User-Agent": _GNEWS_UA}, timeout=timeout).text
         sig = re.search(r'data-n-a-sg="([^"]+)"', html)
         ts = re.search(r'data-n-a-ts="([^"]+)"', html)
         if not (sig and ts):
             return None
         aid = url.split("/articles/")[1].split("?")[0]
-        req = [[["Fbv4je", _json.dumps([["garturlreq", [["X", "X", ["X", "X"], None, None, 1, 1,
-              "US:en", None, 1, None, None, None, None, None, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1,
-              None, 0, 0, None, 0], aid, int(ts.group(1)), sig.group(1)]]), None, "generic"]]]
-        body = "f.req=" + requests.utils.quote(_json.dumps(req))
-        r = requests.post("https://news.google.com/_/DotsSplashUi/data/batchexecute", data=body,
-                          headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-                                   "User-Agent": "Mozilla/5.0"}, timeout=timeout)
+        r = requests.post("https://news.google.com/_/DotsSplashUi/data/batchexecute",
+                          data=_gnews_batch_body(aid, ts.group(1), sig.group(1)),
+                          headers={"User-Agent": _GNEWS_UA,
+                                   "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+                          timeout=timeout)
         return _gnews_url_from_batch(r.text)
     except Exception:
         return None
