@@ -2508,3 +2508,22 @@ def test_verify_deploy_is_fresh():
     assert verify_deploy.is_fresh(loc, {"generated_at": "2026-08-24T12:14:00Z", "taxonomy_version": "2.55"}) is False
     assert verify_deploy.is_fresh(loc, {"taxonomy_version": "2.55"}) is False   # missing field → fail closed
     assert verify_deploy.is_fresh(loc, {}) is False
+
+
+def test_featured_prefers_open_over_paywalled_primary():
+    """A marquee click must not land on a paywall: an OPEN item (even via a Google-News redirect) is
+    featured over a fresh PAYWALLED primary-source item. Only if nothing open exists is a paywalled
+    item allowed into the featured slot."""
+    o = {"clears": [], "econ": [], "reg": [
+        {"id": "paywalled", "layer": "regulation", "summary": "", "date": "2026-08-24",
+         "url": "https://www.statnews.com/x",
+         "title": "STAT+: FDA digital health leader promises generative AI guidance"},
+        {"id": "open", "layer": "regulation", "summary": "", "date": "2026-08-20", "gnews": True,
+         "url": "https://news.google.com/rss/articles/CBMabc",
+         "title": "NICE Listens: hearing the public's views on AI in health and care"}]}
+    feat = build.select_featured(o)
+    assert feat is not None and feat[1]["id"] == "open"
+    # but if the ONLY candidate is paywalled, it may still be featured (better than nothing)
+    o2 = {"clears": [], "econ": [], "reg": [o["reg"][0]]}
+    feat2 = build.select_featured(o2)
+    assert feat2 is not None and feat2[1]["id"] == "paywalled"

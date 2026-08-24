@@ -187,7 +187,11 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       strictly beats the runner-up, so thin/tied bases aren't dressed as findings. (c) post-deploy
 #       freshness verifier (verify_deploy.py) confirms the LIVE site reached this build. No item's
 #       stage/type/strength changes here — display + validation only.
-TAXONOMY_VERSION = "2.56"
+# 2.57: featured-slot fix — OPEN now outranks primary-source in select_featured, so a paywalled item
+#       (e.g. 'STAT+:') is featured ONLY when no open candidate exists; an open story (even via a
+#       Google-News redirect) is preferred, since a marquee click landing on a paywall is a worse first
+#       impression than one that reaches the article.
+TAXONOMY_VERSION = "2.57"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -2925,10 +2929,15 @@ def select_featured(o):
         return not _PAYWALL_RE.search(it.get("title", ""))
 
     fresh_picks = [(w, it) for w, it in hpicks if _fresh(it)]
-    # Preference order: fresh+primary+open → fresh+primary → primary+open → primary → freshest → any.
-    for cand in ([(w, it) for w, it in fresh_picks if _primary(it) and _open(it)],
+    # Preference order — OPEN outranks primary-source: a marquee click that lands on a paywall is a
+    # worse first impression than one that lands on the article via a Google-News redirect, so a
+    # paywalled item is featured ONLY when nothing open is available.
+    #   fresh+open+primary → fresh+open → open+primary → open → fresh+primary → primary → freshest → any
+    for cand in ([(w, it) for w, it in fresh_picks if _open(it) and _primary(it)],
+                 [(w, it) for w, it in fresh_picks if _open(it)],
+                 [(w, it) for w, it in hpicks if _open(it) and _primary(it)],
+                 [(w, it) for w, it in hpicks if _open(it)],
                  [(w, it) for w, it in fresh_picks if _primary(it)],
-                 [(w, it) for w, it in hpicks if _primary(it) and _open(it)],
                  [(w, it) for w, it in hpicks if _primary(it)],
                  fresh_picks, hpicks):
         if cand:
