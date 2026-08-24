@@ -725,7 +725,7 @@ _REG_SIGNAL_RE = re.compile(
     # HTA/regulator BODY names + POLICY-instrument language are themselves regulatory signals — so a
     # body's position/guidance/engagement on AI (e.g. "NICE Listens", CDA-AMC methods guidance, a
     # discussion paper) is staged regulatory/HTA, not demoted to industry.
-    r"|\bnice\b|\bcadth\b|cda.?amc|\bg.?ba\b|\biqwig\b|\bpbac\b|\bmsac\b|zorginstituut|\bhas\b"
+    r"|\bnice\b|\bcadth\b|cda.?amc|\bg.?ba\b|\biqwig\b|\bpbac\b|\bmsac\b|zorginstituut|haute autorit"
     r"|position statement|discussion paper|real.?world (evidence|data)|methods guid|reporting (guid|standard)"
     r"|request for (feedback|comment)|public (engagement|consultation)|\blistens\b|call for evidence")
 
@@ -739,10 +739,11 @@ def refine_regulation_layer(items):
     for i in items:
         if i.get("layer") != "regulation":
             continue
-        native_regulator = (source_type(i) == "Regulator"
-                            and not (i.get("gnews") or "news.google.com" in i.get("url", "")))
-        if native_regulator:
-            continue   # a named regulator's own native feed (MHRA/EMA/Federal Register…) → keep
+        # This filter targets regulator-NAMED Google-News queries pulling marketing/launch stories — it
+        # must NOT touch native feeds (Federal Register, MHRA/EMA) or PUBLICATIONS (a PubMed paper whose
+        # feed declared 'regulation' is a journal article, and must never be demoted to 'industry').
+        if not (i.get("gnews") or "news.google.com" in i.get("url", "")):
+            continue
         text = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
         if not _REG_SIGNAL_RE.search(text):
             i["layer"] = "industry"   # launch / opinion / consumer story via a regulator-named query

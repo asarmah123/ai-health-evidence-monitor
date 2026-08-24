@@ -779,11 +779,12 @@ def test_reimbursement_precision():
 def test_regulation_precision():
     """Regulatory keeps regulator sources + genuine regulatory/governance/safety signals; generic
     policy/marketing news is routed to industry."""
+    # These arrive via regulator-NAMED Google-News queries (gnews) — the only items this filter demotes.
     items = [
-        {"layer": "regulation", "source": "MHRA (UK)", "url": "", "title": "MHRA guidance on AI scribes", "summary": ""},
-        {"layer": "regulation", "source": "AI policy & guidance", "url": "", "title": "EU AI Act radiology compliance", "summary": ""},
-        {"layer": "regulation", "source": "Additional European HTA", "url": "", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
-        {"layer": "regulation", "source": "MEA AI device & digital health regulation", "url": "", "title": "Role of AI Healthcare Solutions in Saudi's Care Domain", "summary": ""},
+        {"layer": "regulation", "gnews": True, "source": "MHRA (UK)", "url": "", "title": "MHRA guidance on AI scribes", "summary": ""},
+        {"layer": "regulation", "gnews": True, "source": "AI policy & guidance", "url": "", "title": "EU AI Act radiology compliance", "summary": ""},
+        {"layer": "regulation", "gnews": True, "source": "Additional European HTA", "url": "", "title": "AI use in health system must be deemed safe - HIQA", "summary": ""},
+        {"layer": "regulation", "gnews": True, "source": "MEA AI device & digital health regulation", "url": "", "title": "Role of AI Healthcare Solutions in Saudi's Care Domain", "summary": ""},
     ]
     build.refine_regulation_layer(items)
     lay = {i["title"][:10]: i["layer"] for i in items}
