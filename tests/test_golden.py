@@ -2036,3 +2036,39 @@ def test_log_detections_reports_resolution():
         assert stats["resolved"] + stats["ambiguous"] + stats["unresolved"] == 1
     finally:
         build.private_get, build.private_put, build.load_tech_registry = saved
+
+
+# --- Google-News URL resolution (provenance: publish primary links, not google redirects) ------
+def test_gnews_url_parser():
+    """The batchexecute response parser extracts the publisher URL (pure, network-free)."""
+    sample = ')]}\'\n[["wrb.fr","Fbv4je","[\\"garturlres\\",\\"https://www.reuters.com/tech/ai-device\\",null]",null,null,null,"generic"]]'
+    assert build._gnews_url_from_batch(sample) == "https://www.reuters.com/tech/ai-device"
+    assert build._gnews_url_from_batch("no url here") is None
+
+
+def test_resolve_gnews_urls_upgrade_and_fallback():
+    """Success → publish the real URL, keep the google redirect in gnews_url. Failure → keep the google
+    URL, still flag gnews (so the UI can label 'via Google News'). Non-google items are untouched."""
+    G = "https://news.google.com/rss/articles/CBMiABC?oc=5"
+    items = [{"url": G, "title": "x"}]
+    up = build.resolve_gnews_urls(items, resolver=lambda u: "https://real.com/a")
+    assert up == 1 and items[0]["url"] == "https://real.com/a"
+    assert items[0]["gnews_url"] == G and items[0]["gnews"] is True
+    items = [{"url": G, "title": "x"}]
+    up = build.resolve_gnews_urls(items, resolver=lambda u: None)
+    assert up == 0 and items[0]["url"] == G and items[0]["gnews"] is True and "gnews_url" not in items[0]
+    items = [{"url": "https://www.fda.gov/x", "title": "y"}]
+    build.resolve_gnews_urls(items, resolver=lambda u: "SHOULD_NOT_BE_USED")
+    assert items[0]["url"] == "https://www.fda.gov/x" and "gnews" not in items[0]
+
+
+def test_resolve_gnews_circuit_breaker():
+    """After max_failures consecutive failures the resolver is not called again (a down endpoint can't
+    add minutes to the build)."""
+    calls = {"n": 0}
+    def r(u):
+        calls["n"] += 1
+        return None
+    items = [{"url": f"https://news.google.com/rss/articles/CBMi{i}", "title": "x"} for i in range(10)]
+    build.resolve_gnews_urls(items, resolver=r, max_failures=3)
+    assert calls["n"] == 3, calls["n"]

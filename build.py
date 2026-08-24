@@ -1166,6 +1166,71 @@ def fetch_gnews(sources, now, default_days):
     return items, dead
 
 
+def _gnews_url_from_batch(text):
+    """Extract the publisher URL from a Google News batchexecute response body. Pure/parsing-only, so it
+    is unit-testable without the network."""
+    m = re.search(r'\[\\?"garturlres\\?",\\?"(https?:(?:\\/|/)(?:\\.|[^"\\])+?)\\?"', text or "")
+    if not m:
+        return None
+    return m.group(1).replace("\\/", "/").replace("\\u003d", "=").replace("\\u0026", "&")
+
+
+def _resolve_gnews_url(url, timeout=6):
+    """Best-effort decode of a news.google.com/rss/articles/… redirect to the publisher URL. Returns the
+    real URL or None. NETWORK-DEPENDENT and NON-FATAL: Google's decode endpoint can change, so any failure
+    returns None and the caller keeps the Google URL. (Runs on the build's open network; the CI sandbox
+    blocks news.google.com, so this path is exercised only in the real build.)"""
+    if "news.google.com/rss/articles/" not in url:
+        return None
+    try:
+        import json as _json
+        html = get(url).text
+        sig = re.search(r'data-n-a-sg="([^"]+)"', html)
+        ts = re.search(r'data-n-a-ts="([^"]+)"', html)
+        if not (sig and ts):
+            return None
+        aid = url.split("/articles/")[1].split("?")[0]
+        req = [[["Fbv4je", _json.dumps([["garturlreq", [["X", "X", ["X", "X"], None, None, 1, 1,
+              "US:en", None, 1, None, None, None, None, None, 0, 1], "X", "X", 1, [1, 1, 1], 1, 1,
+              None, 0, 0, None, 0], aid, int(ts.group(1)), sig.group(1)]]), None, "generic"]]]
+        body = "f.req=" + requests.utils.quote(_json.dumps(req))
+        r = requests.post("https://news.google.com/_/DotsSplashUi/data/batchexecute", data=body,
+                          headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                                   "User-Agent": "Mozilla/5.0"}, timeout=timeout)
+        return _gnews_url_from_batch(r.text)
+    except Exception:
+        return None
+
+
+def resolve_gnews_urls(items, resolver=None, cache=None, max_failures=6):
+    """Upgrade news.google.com redirect URLs on FINAL items to the publisher URL where possible. Best-effort
+    + cached, with a CIRCUIT-BREAKER: after `max_failures` consecutive resolve failures it stops trying (so a
+    down endpoint can't add minutes to the build). On failure the Google URL is kept and the item stays
+    flagged `gnews` so the UI labels it 'via Google News'; the resolved Google URL is preserved in
+    `gnews_url`. Returns the count upgraded."""
+    resolver = resolver or _resolve_gnews_url
+    cache = cache if cache is not None else {}
+    upgraded, fails = 0, 0
+    for i in items:
+        u = i.get("url", "") or ""
+        if "news.google.com/rss/articles/" not in u:
+            continue
+        i["gnews"] = True
+        if u in cache:
+            real = cache[u]
+        elif fails >= max_failures:
+            real = None                      # circuit-breaker: endpoint looks down this run
+        else:
+            real = resolver(u)
+            cache[u] = real
+            fails = 0 if real else fails + 1
+        if real:
+            i["gnews_url"] = u               # keep the redirect for provenance
+            i["url"] = real                  # publish the real publisher link
+            upgraded += 1
+    return upgraded
+
+
 def fetch_federal_register(sources, lookback):
     """FDA/CMS guidance and notices via the Federal Register API."""
     items, dead = [], []
@@ -4238,6 +4303,15 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["modality"] = ai_modality(i)
         i["maturity"], i["maturity_lab"] = evidence_maturity(i)
         i["decision_type"], i["payer_type"] = access_facets(i)   # market-access normalisation
+
+    # Resolve Google-News redirect URLs to the publisher's real link where possible (best-effort, cached,
+    # circuit-broken) so the feed publishes primary links instead of opaque google redirects. The `gnews`
+    # flag is preserved, so geography/relevance gating still treats these as Google-News-sourced.
+    try:
+        _up = resolve_gnews_urls(items)
+        print(f"  gnews: resolved {_up} Google-News redirect URL(s) to publisher links")
+    except Exception as e:                                       # never block the build on URL resolution
+        print(f"  gnews: URL resolution skipped ({type(e).__name__})", file=sys.stderr)
 
     # Evidence-tab filter options, from what's actually in this build
     _REG_ORDER = ["North America", "Europe", "Asia-Pacific", "Latin America", "Middle East & Africa"]

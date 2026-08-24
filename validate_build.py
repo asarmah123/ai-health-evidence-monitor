@@ -30,6 +30,7 @@ from datetime import datetime, timezone, timedelta
 WARN_EMAIL_THRESHOLD = 4        # email fires on ANY error, or on this many warnings
 _CLOCK_SKEW_DAYS = 1            # a date within this many days ahead of the build is not "future"
 _LINK_SAMPLE = 8               # external URLs sampled for reachability per build (keeps the build fast)
+_GNEWS_MAX_PCT = 15            # warn if more than this % of published items still use unresolved google URLs
 
 # Item-integrity ERROR codes — if any of these fire, the aggregate layers (H/A/R/Z/X) are skipped.
 _INTEGRITY_CODES = {"E01_missing_field", "E02_bad_url", "E03_duplicate_id", "E04_duplicate_url",
@@ -334,6 +335,14 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                         pass   # transient/timeout/blocked HEAD is NOT a defect
             except Exception:
                 pass
+        # E12: feed-wide Google-News prevalence — many UNRESOLVED google redirect URLs means the gnews
+        # resolver failed or coverage leans too hard on Google News (a provenance-quality signal the
+        # single featured-story check H04 can't see). Non-blocking warn.
+        gnews = [i for i in items if "news.google.com" in (i.get("url") or "")]
+        if items and 100 * len(gnews) / len(items) > _GNEWS_MAX_PCT:
+            R.warn("Evidence", "E12_gnews_prevalence",
+                   f"{len(gnews)}/{len(items)} items ({100*len(gnews)//len(items)}%) still use unresolved "
+                   f"Google-News redirect URLs (>{_GNEWS_MAX_PCT}%) — resolver down or over-reliant on Google News")
 
     # ================= LAYER S — scope integrity =================
     def check_scope():
