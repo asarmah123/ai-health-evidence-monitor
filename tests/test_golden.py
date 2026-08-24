@@ -2165,3 +2165,32 @@ def test_server_cards_show_via_gnews_badge():
     src = pathlib.Path(build.__file__).read_text(encoding="utf-8")
     assert "_via_gnews_html(hi)" in src              # featured / top story
     assert src.count("_via_gnews_html(i)") >= 2      # digest rows + top-updates rows
+
+
+def test_roundup_excluded_from_featured():
+    """Multi-topic roundups (RAPS 'Recon', weekly rundowns) never lead the featured/priority pick; a
+    focused regulator story does."""
+    o = {"clears": [], "econ": [], "reg": [
+        {"id": "round", "layer": "regulation", "summary": "",
+         "title": "Recon: FDA releases draft guidance on gen AI-enabled devices; Industry warns Germany must reform drug pricing"},
+        {"id": "focus", "layer": "regulation", "summary": "",
+         "title": "FDA finalises guidance on AI-enabled device software functions"},
+    ]}
+    ids = [i["id"] for _, i in build._digest(o)]
+    assert "focus" in ids and "round" not in ids
+    # the pattern also catches weekly rundowns but not ordinary titles
+    assert build._ROUNDUP_RE.search("Fierce weekly rundown: digital health") and not build._ROUNDUP_RE.search("FDA clears AI stroke triage device")
+
+
+def test_hta_policy_items_stay_regulatory():
+    """An HTA/regulator BODY's position, guidance or engagement on AI (NICE Listens, CDA-AMC methods
+    guidance, an FDA discussion paper) stays staged regulatory — not demoted to industry — even via a
+    gnews query with a soft title. A pure marketing/launch story from a regulator-named query is still
+    demoted."""
+    def relayer(title):
+        it = {"layer": "regulation", "title": title, "summary": "", "url": "https://news.google.com/x", "gnews": True}
+        return build.refine_regulation_layer([it])[0]["layer"]
+    assert relayer("NICE Listens: hearing the public's views on AI in health and care") == "regulation"
+    assert relayer("New Guidance Issued for Reporting AI Methods Used to Generate Real-World Evidence") == "regulation"
+    assert relayer("Considerations for the Regulation of Generative AI-Enabled Medical Devices: Discussion Paper") == "regulation"
+    assert relayer("HealthAI startup launches new imaging assistant, raises Series B funding") == "industry"

@@ -710,7 +710,13 @@ _REG_SIGNAL_RE = re.compile(
     r"|authoris|authoriz|\bapproval\b|\bapproved\b|classification|510\(k\)|de novo|\bce mark\b|\bmdr\b|licen[sc]e"
     r"|\bai act\b|\bnist\b|governance|framework|\bstandard|\blaw\b|legislation|compliance|premarket"
     r"|medical device|notified body|marketing author|post.?market|\bhta\b"
-    r"|\bsafe\b|safety|oversight|ethic|human (judgement|judgment|oversight)|responsible ai|assurance|trustworth")
+    r"|\bsafe\b|safety|oversight|ethic|human (judgement|judgment|oversight)|responsible ai|assurance|trustworth"
+    # HTA/regulator BODY names + POLICY-instrument language are themselves regulatory signals — so a
+    # body's position/guidance/engagement on AI (e.g. "NICE Listens", CDA-AMC methods guidance, a
+    # discussion paper) is staged regulatory/HTA, not demoted to industry.
+    r"|\bnice\b|\bcadth\b|cda.?amc|\bg.?ba\b|\biqwig\b|\bpbac\b|\bmsac\b|zorginstituut|\bhas\b"
+    r"|position statement|discussion paper|real.?world (evidence|data)|methods guid|reporting (guid|standard)"
+    r"|request for (feedback|comment)|public (engagement|consultation)|\blistens\b|call for evidence")
 
 
 def refine_regulation_layer(items):
@@ -2070,6 +2076,14 @@ _REFERENCE_GUIDE_RE = re.compile(
     r"laws and regulations\s+\d{4}|legal guide|\biclg\b|\bchambers\b|practice guide|comparative guide"
     r"|country comparison|jurisdictional guide|q&a guide|\bhandbook\b", re.I)
 
+# Multi-topic ROUNDUP / digest headlines (e.g. RAPS "Recon: FDA releases … ; Industry warns …") bundle
+# several stories and are not a single focused event — so they must never win the FEATURED slot over a
+# dedicated story. They still appear in the feed; they are just excluded from the digest/featured pick.
+_ROUNDUP_RE = re.compile(
+    r"\brecon\b|reconnaissance|round[\s-]?up|\brundown\b|\bwrap[\s-]?up\b|\bin brief\b|week in review"
+    r"|this week in\b|weekly (digest|brief|recap|review|rundown|roundup|wrap)|news briefing|daily briefing"
+    r"|what we'?re reading|\bnewsletter\b|\bdigest\b(?!ive)", re.I)
+
 def _access_decision_type(text):
     # No silent default — an unmatched access item is 'Unknown', never assumed to be a coverage decision.
     if _LITIGATION_RE.search(text): return "Unknown"     # coverage litigation ≠ a coverage decision
@@ -2669,13 +2683,16 @@ def _digest(o):
         return bool(_LITIGATION_RE.search((i.get("title", "") + " " + i.get("summary", "")).lower()))
     def _isref(i):
         return bool(_REFERENCE_GUIDE_RE.search(i.get("title", "")))
+    def _isround(i):
+        return bool(_ROUNDUP_RE.search(i.get("title", "")))
     add(o["clears"], "Device authorisations")
     add(o["econ"], "Trials · economic endpoint")
     # genuine regulatory and coverage ACTIONS lead; litigation is demoted BELOW them — a court case is
     # not itself an authorisation, coverage or regulatory decision, so it must not lead the featured card.
-    # Reference-guide chapters (ICLG-style "Laws and Regulations 2026") are excluded — they are not events.
-    add([i for i in o["reg"] if i["layer"] == "regulation" and not _islit(i) and not _isref(i)], "Regulatory actions")
-    add([i for i in o["reg"] if i["layer"] == "access" and not _islit(i)], "Coverage / access")
+    # Reference-guide chapters (ICLG-style "Laws and Regulations 2026") and multi-topic ROUNDUPS (RAPS
+    # "Recon", weekly rundowns) are excluded — neither is a single focused event.
+    add([i for i in o["reg"] if i["layer"] == "regulation" and not _islit(i) and not _isref(i) and not _isround(i)], "Regulatory actions")
+    add([i for i in o["reg"] if i["layer"] == "access" and not _islit(i) and not _isround(i)], "Coverage / access")
     add([i for i in o["reg"] if _islit(i)], "Legal / litigation")
     return picks[:8]
 
