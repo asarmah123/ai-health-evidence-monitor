@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-24T11:43:24Z",
+ "generated_at": "2026-08-24T11:51:42Z",
  "taxonomy_version": "2.52",
- "count": 72,
+ "count": 73,
  "fields": [
   "id",
   "title",
@@ -105,6 +105,27 @@
    "payer_type": "",
    "region": "",
    "country": "",
+   "date": "2026-08-21",
+   "score": 2,
+   "topics": ""
+  },
+  {
+   "id": "35e7d8f27b1b",
+   "title": "Siemens Healthineers, Philips awarded ARPA-H funds for stroke robots",
+   "url": "https://www.medtechdive.com/news/siemens-healthineers-philips-awarded-arpa-h-funds-for-stroke-robots/828513/",
+   "source": "MedTech Dive",
+   "feed": "MedTech Dive",
+   "source_type": "Industry press",
+   "stage": "industry",
+   "evidence_type": "Industry news",
+   "evidence_strength": "Market signal",
+   "evidence_maturity": "",
+   "healthcare_relevance": "Direct clinical",
+   "ai_modality": "Robotics",
+   "decision_type": "",
+   "payer_type": "",
+   "region": "North America",
+   "country": "United States",
    "date": "2026-08-21",
    "score": 2,
    "topics": ""
