@@ -2543,3 +2543,75 @@ def test_opinion_columns_excluded_not_featured_as_regulator_move():
             "title": "MHRA grants approval to AI-enabled stroke triage device"}
     assert build.classify_evidence(real)[0] != "Commentary"
     assert build.refine_commentary_layer([dict(real)]) != []
+
+
+def test_boundary_reasons_flags_low_confidence_only():
+    """boundary_reasons surfaces genuine classifier uncertainty (stage reclassified, ambiguous geo,
+    competing signals, news-type-in-evidence-stage) — NOT ordinary items, and NOT the routine
+    gnews→Other provenance (that is expected, tracked elsewhere)."""
+    # stage reclassified during refinement (captured via the trace)
+    reclass = [{"layer": "heor", "gnews": True, "url": "https://news.google.com/x", "summary": "",
+                "source": "Mexico Business News", "title": "The Week in Health: AI, Regulation, and Infrastructure"}]
+    build.apply_classification_refiners(reclass, trace=True)
+    assert any("reclassified" in r for r in build.boundary_reasons(reclass[0]))
+    # ambiguous geography
+    geo = {"layer": "industry", "title": "Ghana, China push AI innovation in healthcare", "summary": "",
+           "url": "https://news.google.com/x", "stype": "Other", "etype": "Industry news"}
+    assert any("ambiguous geography" in r for r in build.boundary_reasons(geo))
+    # an ordinary gnews item with a confident classification and single geography is NOT flagged
+    ordinary = {"layer": "regulation", "gnews": True, "url": "https://news.google.com/y", "summary": "",
+                "source": "Wired-Gov", "stype": "Other", "etype": "Regulatory guidance",
+                "title": "NICE publishes AI evaluation guidance"}
+    assert build.boundary_reasons(ordinary) == []          # gnews→Other alone is not a boundary reason
+    # a clean native clinical study is not flagged
+    clean = {"layer": "clinical", "url": "https://pubmed.ncbi.nlm.nih.gov/1/", "summary": "",
+             "source": "NEJM AI", "stype": "Journal / evidence", "etype": "RCT",
+             "title": "A randomised trial of an AI sepsis alert in ICU patients"}
+    assert build.boundary_reasons(clean) == []
+
+
+def test_review_queue_rendered_in_report():
+    """An item carrying refinement trace populates the report's review_queue and renders in the email."""
+    items = _clean_items()
+    items[0]["_refine_trail"] = [("refine_heor_layer", "heor", "clinical")]
+    items[0]["_declared_layer"] = "heor"
+    r = _vbuild(items)
+    assert r.review_queue, "reclassified item should appear in the review queue"
+    md = r.to_markdown()
+    assert "Human review queue" in md
+    assert "reclassified" in md
+    # the queue is surveillance, not a defect — it must not create errors
+    assert not r.errors
+
+
+def test_rolling_gold_and_grader():
+    """The rolling gold set grades 100% under the current classifier, and run_precision.grade returns
+    per-facet accuracy + per-class precision/recall (the live-accuracy measurement layer)."""
+    import os, json, run_precision
+    path = os.path.join(os.path.dirname(os.path.abspath(build.__file__)), "classification_gold_rolling.json")
+    gold = json.load(open(path, encoding="utf-8"))["items"]
+    assert len(gold) >= 8 and all("reviewer" in g and "stratum_stage" in g for g in gold)
+    res = run_precision.grade(gold)
+    for f in ("stage", "source_type", "evidence_type", "strength"):
+        assert res["accuracy"][f] == 1.0, (f, res["mismatches"])
+    # per-class breakdown is present for stage
+    assert res["per_class"]["stage"], "expected per-class stage precision/recall"
+    assert all("precision" in s and "recall" in s for s in res["per_class"]["stage"].values())
+
+
+def test_promote_reviews_builds_valid_gold_row():
+    """A reviewed template row promoted by promote_reviews yields a well-formed gold entry that the
+    grader can score — closing the boundary→corrected→rolling→frozen loop without hand-maintenance."""
+    import promote_reviews, run_precision
+    reviewed = {"title": "Reframing risk management for AI-enabled medical devices: a governance framework",
+                "source": "PubMed — regulatory science & AI policy",
+                "url": "https://pubmed.ncbi.nlm.nih.gov/999/", "declared_layer": "heor", "gnews": False,
+                "verdict": "wrong", "reviewer": "A", "reviewed_on": "2026-08-25",
+                "expect_stage": "research", "expect_source_type": "Journal / evidence", "expect_region": "",
+                "expect_evidence_type": "Methodology", "expect_strength": "Secondary evidence",
+                "expect_decision_type": "", "expect_payer_type": ""}
+    row = promote_reviews._gold_row(reviewed, "weekly-review", "2026-08-25")
+    assert row["stratum_stage"] == "research" and row["reviewer"] == "A"
+    # the promoted row is gradeable, and the classifier agrees with the reviewed label
+    res = run_precision.grade([row])
+    assert res["accuracy"]["stage"] == 1.0 and res["accuracy"]["strength"] == 1.0

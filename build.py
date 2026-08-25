@@ -196,7 +196,17 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       analysis column can no longer be typed a 'Regulatory authorisation' (because its title says
 #       'approval') nor headline the featured slot as 'a move by a major regulator'. The precision eval
 #       now also grades an '(excluded)' outcome, so opinion exclusion is a first-class, tested result.
-TAXONOMY_VERSION = "2.58"
+# 2.59: measurement-and-learning loop (observability; no classification change) — (a) low-confidence
+#       REVIEW QUEUE: apply_classification_refiners(trace=True) records each item's refine trail;
+#       boundary_reasons() flags the least-certain calls (stage reclassified, ambiguous geography,
+#       competing signals, news-type-in-evidence-stage) and the build email lists them for human review.
+#       (b) ROLLING precision gold (classification_gold_rolling.json) + run_precision.py grade live
+#       accuracy per-facet/per-class with append-only history, separate from the frozen regression gold.
+#       (c) sample_for_review.py stratified sampler + promote_reviews.py (boundary→corrected→rolling→
+#       frozen promotion path + boundary-queue hit-rate metric). (d) native_url_pct in build.json.
+#       (e) EVALUATION.md documents the system, boundaries and the weekly loop. Internal trace keys are
+#       stripped before export/embedding.
+TAXONOMY_VERSION = "2.59"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -960,12 +970,79 @@ _CLASSIFICATION_REFINERS = (
 )
 
 
-def apply_classification_refiners(items):
+def apply_classification_refiners(items, trace=False):
     """Run the canonical ordered stage-refinement chain (the single source of truth used by both the
-    daily build and the precision eval). Mutates + returns items."""
+    daily build and the precision eval). Mutates + returns items. When trace=True, records on each item
+    a '_declared_layer' (its stage before any refiner) and a '_refine_trail' — the ordered list of
+    (refiner, from_stage, to_stage) transitions — so the boundary-review queue can surface items whose
+    stage was reclassified (the classifier's least-certain calls). These underscore keys are internal and
+    are stripped before export/embedding."""
+    if trace:
+        for it in items:
+            it.setdefault("_declared_layer", it.get("layer"))
     for fn_name, _ in _CLASSIFICATION_REFINERS:
+        before = {id(it): it.get("layer") for it in items} if trace else None
         items = globals()[fn_name](items)
+        if trace:
+            for it in items:
+                b = before.get(id(it))
+                if b is not None and it.get("layer") != b:
+                    it.setdefault("_refine_trail", []).append((fn_name, b, it.get("layer")))
     return items
+
+
+# A news/industry evidence-type sitting in an EVIDENCE stage is a mismatch (a classifier "shrug" that
+# landed a news item among evidence) — surface it. NB: 'Journal study' for a journal item is the normal
+# positive label, not a shrug, so it is deliberately NOT here.
+_FALLBACK_ETYPES = {"News", "Industry news", "Industry analysis"}
+_EVIDENCE_STAGES = {"clinical", "research", "heor", "regulation", "access"}
+
+
+# Compact country-NAME token list for the geo-ambiguity heuristic (distinct from country_of's fuller
+# body-token map — here we only want to notice when a HEADLINE names two+ countries).
+_GEO_TOKENS = ("united states", "u.s.", "\busa\b", "uk", "united kingdom", "england", "germany", "france",
+               "japan", "china", "australia", "korea", "india", "singapore", "thailand", "canada",
+               "switzerland", "italy", "sweden", "netherlands", "belgium", "ireland", "poland", "spain",
+               "norway", "finland", "denmark", "austria", "saudi", "israel", "brazil", "mexico",
+               "argentina", "bulgaria", "romania", "greece", "portugal", "hungary", "ghana", "nigeria",
+               "kenya", "egypt", "taiwan", "malaysia", "indonesia", "vietnam", "philippines")
+
+
+def _geo_token_count(i):
+    """How many DISTINCT country names the title mentions — 2+ means the geography is ambiguous
+    (e.g. 'Ghana, China push AI…' or a US firm's deal in Germany), a low-confidence placement."""
+    import re as _re
+    t = (i.get("title", "") or "").lower()
+    return sum(1 for tok in _GEO_TOKENS if (_re.search(tok, t) if "\\b" in tok else tok in t))
+
+
+def boundary_reasons(i):
+    """Deterministically flag WHY an item is a low-confidence classification, for the human-review
+    queue. Returns a list of short reason strings (empty = a confident, unremarkable classification).
+    Targets exactly the places the deterministic classifier is least sure: a stage reclassified during
+    refinement, a Google-News item with unresolved provenance, ambiguous geography, an evidence-type
+    that fell through to a generic fallback, or a title carrying competing stage signals."""
+    reasons = []
+    trail = i.get("_refine_trail") or []
+    if trail:
+        hops = " → ".join(f"{a}:{b}→{c}" for a, b, c in trail)
+        reasons.append(f"stage reclassified in refinement ({hops})")
+    # a news/industry evidence-type sitting in an evidence stage = a mismatch worth a look (NOT the
+    # routine gnews→'Other' provenance, which is expected and tracked by E12 + the native-URL metric)
+    if i.get("layer") in _EVIDENCE_STAGES and i.get("etype") in _FALLBACK_ETYPES:
+        reasons.append(f"news-type evidence-type in an evidence stage ({i.get('etype')})")
+    if _geo_token_count(i) >= 2:
+        reasons.append("ambiguous geography (2+ country tokens in title)")
+    # competing stage signals in one title: a regulatory signal AND a commercial/industry signal, or a
+    # regulatory signal AND an access/coverage signal — the item could plausibly sit in two stages.
+    ti = (i.get("title", "") + " " + i.get("summary", "")).lower().replace("-", " ")
+    fams = []
+    if _REG_SIGNAL_RE.search(ti): fams.append("regulatory")
+    if _ACCESS_OVERRIDE_RE.search(ti): fams.append("access")
+    if _INDUSTRY_SIGNAL_RE.search(ti): fams.append("industry")
+    if len(fams) >= 2:
+        reasons.append("competing stage signals (" + " + ".join(fams) + ")")
+    return reasons
 
 
 def classify_for_eval(raw):
@@ -4294,6 +4371,13 @@ def write_manifest(items, health):
         "geography_placed": sum(1 for i in items if i.get("region")),
         "geography_completeness_pct": (round(100 * sum(1 for i in items if i.get("region")) / len(items), 1)
                                        if items else 0.0),
+        # Operational objective: raise the share of items that link to a NATIVE article URL (a direct
+        # publisher/regulator/journal page) rather than an unresolvable Google-News redirect. This is the
+        # tracked lever for link-provenance quality — grow it by adding native feeds (not more validators).
+        "native_url_pct": (round(100 * sum(1 for i in items
+                                           if "news.google.com" not in (i.get("url") or "")) / len(items), 1)
+                           if items else 0.0),
+        "gnews_redirect_items": sum(1 for i in items if "news.google.com" in (i.get("url") or "")),
         "qa": dict(_QA_STATS),
         "qa_passed": True,
     }
@@ -4655,7 +4739,10 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
                  '<option value="30">Last 30 days</option>'
                  '<option value="90">Last 90 days</option>')
 
-    items_json = (json.dumps(items).replace("<", "\\u003c").replace(">", "\\u003e")
+    # strip internal underscore-prefixed keys (e.g. _declared_layer / _refine_trail from the boundary
+    # trace) so nothing internal ships to the client
+    _client_items = [{k: v for k, v in i.items() if not k.startswith("_")} for i in items]
+    items_json = (json.dumps(_client_items).replace("<", "\\u003c").replace(">", "\\u003e")
                   .replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
     topic_labels_json = json.dumps({t["slug"]: t["label"] for t in TOPICS})
     DOCS.mkdir(parents=True, exist_ok=True)
@@ -5222,7 +5309,7 @@ def main():
     _caps = {s["name"]: int(s.get("max_per_feed", st["max_per_feed"]))
              for grp in ("rss", "gnews") for s in cfg.get(grp, [])}
     items = apply_source_caps(items, _caps)
-    items = apply_classification_refiners(items)
+    items = apply_classification_refiners(items, trace=True)   # trace → boundary-review queue
     print(f"  relevance gate: {len(items)}/{_pre} items are AI / digital-health (capped per source)")
 
     # de-dupe by exact URL, then collapse near-duplicate stories (same event, many outlets)

@@ -34,6 +34,7 @@ _GNEWS_MAX_PCT = 15            # warn if more than this % of published items sti
 _STALE_DAYS = 45              # a dated item materially older than this (vs build) is unusually old for a daily feed
 _STALE_MAX = 6               # warn only if MORE than this many items are stale (a few slow native feeds are fine)
 _IMPLAUSIBLE_YEAR = 2015     # a published date before this is almost certainly a parse error, not a real date
+_REVIEW_QUEUE_MAX = 15       # cap the human-review queue so the report/email stays scannable
 
 # Item-integrity ERROR codes — if any of these fire, the aggregate layers (H/A/R/Z/X) are skipped.
 _INTEGRITY_CODES = {"E01_missing_field", "E02_bad_url", "E03_duplicate_id", "E04_duplicate_url",
@@ -97,6 +98,7 @@ class Report:
         self.checks_run = 0
         self._skipped: set = set()          # canonical layer letters that did NOT run (≠ passed)
         self.layers_skipped: list[str] = []  # finalised, ordered, from _skipped at the end of the run
+        self.review_queue: list[dict] = []   # low-confidence items surfaced for human review (not defects)
 
     def err(self, page, code, title, detail=""):
         self.issues.append(Issue("ERROR", page, code, title, detail))
@@ -164,17 +166,35 @@ class Report:
         if not self.issues:
             out.append("✅ **All checks passed.** Home, Evidence and Analysis reconcile with the rendered "
                        "page; no scope leaks; empty states consistent; every tag matches its rule.")
-            return "\n".join(out)
-        for level, bucket in (("ERROR", self.errors), ("WARN", self.warnings)):
-            if not bucket:
-                continue
-            out.append(f"## {level}s ({len(bucket)})\n")
-            for i in bucket:
-                out.append(f"- **[{i.page}] {i.title}**  `({i.code})`")
-                if i.detail:
-                    out.append(f"  \n  {i.detail}")
-            out.append("")
+        else:
+            for level, bucket in (("ERROR", self.errors), ("WARN", self.warnings)):
+                if not bucket:
+                    continue
+                out.append(f"## {level}s ({len(bucket)})\n")
+                for i in bucket:
+                    out.append(f"- **[{i.page}] {i.title}**  `({i.code})`")
+                    if i.detail:
+                        out.append(f"  \n  {i.detail}")
+                out.append("")
+        out += self._review_lines_md()
         return "\n".join(out)
+
+    def _review_lines_md(self):
+        """The human-review queue — the classifier's least-certain calls, for active surveillance.
+        Shown even on a clean build (it is surveillance, not a defect list)."""
+        if not self.review_queue:
+            return []
+        out = [f"## 🔎 Human review queue ({len(self.review_queue)})",
+               "_Low-confidence classifications to eyeball — NOT defects. Confirm each label; a wrong one "
+               "is a candidate for the rolling gold, a representative edge case for the regression gold._", ""]
+        for r in self.review_queue:
+            reg = f" · {r['region']}" if r.get("region") else ""
+            out.append(f"- **{r['title']}** — _{r['publisher']}_  \n"
+                       f"  `{r['stage']} · {r['source_type']} · {r['evidence_type']} · {r['strength']}{reg}`  \n"
+                       f"  reasons: {'; '.join(r['reasons'])}"
+                       + (f"  \n  {r['url']}" if r.get("url") else ""))
+        out.append("")
+        return out
 
     def to_html(self):
         m = self.meta
@@ -202,23 +222,51 @@ class Report:
                      f'Coverage gate: <b>{s.get("coverage",0)}</b> · Trials: {s.get("trials",0)} '
                      f'({s.get("econ",0)} econ) · HTA &amp; value: {s.get("hta_value",0)}</div>')
         if not self.issues:
-            return head + '<p style="color:#137333"><b>✅ All checks passed.</b></p>'
+            body = '<p style="color:#137333"><b>✅ All checks passed.</b></p>'
+        else:
+            rows = []
+            for i in self.issues:
+                color = "#b3261e" if i.level == "ERROR" else "#8a6d00"
+                rows.append(f'<tr><td style="padding:6px 10px;color:{color};font-weight:600">{i.level}</td>'
+                            f'<td style="padding:6px 10px;white-space:nowrap">{_html.escape(i.page)}</td>'
+                            f'<td style="padding:6px 10px"><b>{_html.escape(i.title)}</b>'
+                            f'<div style="color:#555;font-size:13px">{_html.escape(i.detail)}</div></td>'
+                            f'<td style="padding:6px 10px;color:#888;font-family:monospace;font-size:12px">'
+                            f'{_html.escape(i.code)}</td></tr>')
+            body = ('<table style="border-collapse:collapse;font-family:system-ui,Arial;font-size:14px">'
+                    '<thead><tr style="background:#f2f2f2">'
+                    '<th style="padding:6px 10px;text-align:left">Level</th>'
+                    '<th style="padding:6px 10px;text-align:left">Page</th>'
+                    '<th style="padding:6px 10px;text-align:left">Issue</th>'
+                    '<th style="padding:6px 10px;text-align:left">Code</th></tr></thead><tbody>'
+                    + "".join(rows) + '</tbody></table>')
+        return head + body + self._review_html()
+
+    def _review_html(self):
+        """Human-review queue as an HTML block (shown even on a clean build — surveillance, not defects)."""
+        if not self.review_queue:
+            return ""
         rows = []
-        for i in self.issues:
-            color = "#b3261e" if i.level == "ERROR" else "#8a6d00"
-            rows.append(f'<tr><td style="padding:6px 10px;color:{color};font-weight:600">{i.level}</td>'
-                        f'<td style="padding:6px 10px;white-space:nowrap">{_html.escape(i.page)}</td>'
-                        f'<td style="padding:6px 10px"><b>{_html.escape(i.title)}</b>'
-                        f'<div style="color:#555;font-size:13px">{_html.escape(i.detail)}</div></td>'
-                        f'<td style="padding:6px 10px;color:#888;font-family:monospace;font-size:12px">'
-                        f'{_html.escape(i.code)}</td></tr>')
-        return head + ('<table style="border-collapse:collapse;font-family:system-ui,Arial;font-size:14px">'
-                       '<thead><tr style="background:#f2f2f2">'
-                       '<th style="padding:6px 10px;text-align:left">Level</th>'
-                       '<th style="padding:6px 10px;text-align:left">Page</th>'
-                       '<th style="padding:6px 10px;text-align:left">Issue</th>'
-                       '<th style="padding:6px 10px;text-align:left">Code</th></tr></thead><tbody>'
-                       + "".join(rows) + '</tbody></table>')
+        for r in self.review_queue:
+            reg = f" · {_html.escape(str(r['region']))}" if r.get("region") else ""
+            labels = _html.escape(f"{r['stage']} · {r['source_type']} · {r['evidence_type']} · {r['strength']}") + reg
+            reasons = _html.escape("; ".join(r["reasons"]))
+            url = (f'<div style="font-size:12px"><a href="{_html.escape(r["url"])}">{_html.escape(r["url"][:70])}</a></div>'
+                   if r.get("url") else "")
+            rows.append(f'<tr><td style="padding:6px 10px"><b>{_html.escape(r["title"])}</b>'
+                        f'<div style="color:#555;font-size:13px">{_html.escape(r["publisher"])}</div>{url}</td>'
+                        f'<td style="padding:6px 10px;font-family:monospace;font-size:12px">{labels}</td>'
+                        f'<td style="padding:6px 10px;color:#555;font-size:13px">{reasons}</td></tr>')
+        return ('<h3 style="margin:18px 0 4px">🔎 Human review queue (' + str(len(self.review_queue)) + ')</h3>'
+                '<p style="margin:0 0 8px;color:#555;font-size:13px">Low-confidence classifications to eyeball — '
+                '<b>not defects</b>. Confirm each label; a wrong one → rolling gold, a representative edge case → '
+                'regression gold.</p>'
+                '<table style="border-collapse:collapse;font-family:system-ui,Arial;font-size:14px">'
+                '<thead><tr style="background:#f2f2f2">'
+                '<th style="padding:6px 10px;text-align:left">Item</th>'
+                '<th style="padding:6px 10px;text-align:left">Current labels</th>'
+                '<th style="padding:6px 10px;text-align:left">Why flagged</th></tr></thead><tbody>'
+                + "".join(rows) + '</tbody></table>')
 
 
 def _fmt_ts(ts):
@@ -772,10 +820,39 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
                 R.warn("Precision", f"P01_{dim}_precision",
                        f"Classification {dim} accuracy {acc:.0%} below {floor:.0%} vs gold set", detail)
 
+    # ================= LAYER Q — low-confidence boundary queue (surveillance, not a defect) =========
+    def check_boundary_queue():
+        """Active surveillance of the classifier's LEAST-CERTAIN calls. Integrity/precision checks
+        confirm consistency and catch regressions on known cases; this instead lists the items where a
+        deterministic rule was on a boundary — stage reclassified in refinement, unresolved gnews
+        provenance, ambiguous geography, an evidence-type fallback, or competing stage signals — so a
+        human eyeballs exactly those, not random ordinary items. NOT errors/warnings: it populates a
+        separate review_queue rendered in the report, and is the on-ramp to the rolling gold."""
+        if not hasattr(B, "boundary_reasons"):
+            return
+        for i in items:
+            reasons = B.boundary_reasons(i)
+            if not reasons:
+                continue
+            R.review_queue.append({
+                "title": (i.get("title") or "")[:110],
+                "publisher": i.get("source") or i.get("publisher") or "",
+                "stage": i.get("layer", ""),
+                "source_type": i.get("stype") or "",
+                "evidence_type": i.get("etype", ""),
+                "strength": i.get("strength", ""),
+                "region": i.get("region", ""),
+                "url": i.get("url", ""),
+                "reasons": reasons,
+            })
+        # keep the queue focused: newest / highest-signal first, capped so the email stays scannable
+        R.review_queue.sort(key=lambda r: len(r["reasons"]), reverse=True)
+        R.review_queue = R.review_queue[:_REVIEW_QUEUE_MAX]
+
     # ---- layered execution with dependency short-circuit ----
     integrity = (check_fields, check_routes)
     scope_facets = (check_scope, check_facets, check_provenance, check_dates,
-                    check_duplicates, check_classification_precision)
+                    check_duplicates, check_classification_precision, check_boundary_queue)
     aggregates = (check_home, check_analysis, check_coherence, check_render, check_empty_states, check_topic_tags)
 
     for fn in integrity + scope_facets:
