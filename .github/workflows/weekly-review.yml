@@ -1,0 +1,89 @@
+# Weekly evaluation-review reminder.
+# Nudges the human review cycle (EVALUATION.md runbook): generates a stratified review template + a
+# current precision grade from the latest published build, and emails them as a reminder. READ-ONLY —
+# it never commits, so precision_history.jsonl / the gold sets stay authoritative from the human's own
+# `run_precision.py` + `promote_reviews.py` runs during the review. Reuses the SMTP secrets already
+# configured for the daily build (SMTP_USERNAME / SMTP_PASSWORD).
+
+name: Weekly eval review reminder
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"    # Mondays 14:00 UTC — after the daily build (13:00) and recall probe (13:30)
+  workflow_dispatch: {}       # run on demand
+
+permissions:
+  contents: read
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Build stratified review template from the latest published build
+        run: |
+          python sample_for_review.py --in docs/data/feed-latest.json \
+            --per-stratum 2 --out review_template.json
+
+      - name: Grade precision (frozen + rolling) — read-only, uses committed history as baseline
+        run: python run_precision.py --out precision_report.md || true
+
+      - name: Assemble the reminder email
+        run: |
+          {
+            echo "# Weekly evaluation review — due"
+            echo ""
+            echo "The stratified review template is attached; this week's precision grade is below."
+            echo "Full steps: see **EVALUATION.md → Weekly evaluation review (the runbook)**."
+            echo ""
+            echo "**Checklist**"
+            echo "1. Open the attached \`review_template.json\` (stratified sample + boundary items)."
+            echo "2. Skim this week's daily build emails' **Human review queue** sections."
+            echo "3. Label each row: \`verdict\` = ok | wrong | ambiguous; confirm/correct \`expect_*\`;"
+            echo "   set \`promote_to_frozen: true\` on representative edge cases."
+            echo "4. \`python promote_reviews.py --template review_template.json\`  → rolling (all) + frozen (edge cases)."
+            echo "5. \`python run_precision.py\`  → read per-facet / per-class + the week-over-week delta."
+            echo "6. Watch the boundary-queue hit-rate in \`review_metrics.jsonl\` (~5% noisy · 40–60% useful triage)."
+            echo "7. Add any missed known events to \`evals/known_events.yaml\`; note thin recall strata."
+            echo "8. Commit updated gold / history so the trend persists."
+            echo ""
+            echo "---"
+            echo ""
+            cat precision_report.md 2>/dev/null || echo "_(precision report unavailable this run)_"
+          } > review_reminder.md
+          echo "SAMPLED=$(python -c "import json;print(json.load(open('review_template.json'))['sampled'])")" >> "$GITHUB_ENV"
+
+      - name: Upload artifacts (also downloadable from the run)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-review
+          path: |
+            review_template.json
+            precision_report.md
+            review_reminder.md
+
+      - name: Email the review reminder
+        if: always()
+        continue-on-error: true
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: AI-HEOR Monitor <${{ secrets.SMTP_USERNAME }}>
+          to: tercera.research@gmail.com
+          subject: "AI-HEOR weekly eval review due — ${{ env.SAMPLED }} items to label"
+          html_body: file://review_reminder.md
+          convert_markdown: true
+          attachments: review_template.json
