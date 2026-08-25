@@ -1,7 +1,7 @@
 {
  "_comment": [
   "Classification-precision gold set — human-reviewed expected labels for a representative real build",
-  "(audit 2026-08-24, taxonomy 2.56). Each build re-classifies these title-only fixtures through the",
+  "(audit 2026-08-24, taxonomy 2.58). Each build re-classifies these title-only fixtures through the",
   "SAME pipeline it ships (build.classify_for_eval) and grades stage / source_type / region /",
   "evidence_type / strength / decision_type / payer_type. region, decision_type, payer_type are graded",
   "ONLY where the expected value is non-empty. Grading is title-based (summaries, which are promo",
@@ -575,11 +575,11 @@
    "url": "https://news.google.com/rss/articles/CBMibkFVX3lxTFBUUTVRcmhFQWttVlF5cWtLTXBQaHMwRm5neU85dTcxaWEwa2ZpbjlnWml4bG1hWF9sWUhacWVwYm1LazRRM2lLbWtvZ1VGR2R6WWt5WHFsc21VYXYtTXlvYWhmSWRPMmRsZS1jd2RR0gFyQVVfeXFMUFMyWFhoU2dKeXFXME8tM2dJMlV6V095c3FnUkhGM2hzOHd3ZEhmZUxiRk1uZXdoZGFEV0wweFVUWElNenRYU1FEV0pBdC1TeHIwYVlGcTZnTzI5Q3E0WUk1cHFXdWpmT1RpWWVJRk93RGln?oc=5",
    "declared_layer": "regulation",
    "gnews": true,
-   "expect_stage": "regulation",
+   "expect_stage": "(excluded)",
    "expect_source_type": "Other",
-   "expect_region": "Asia-Pacific",
-   "expect_evidence_type": "Regulatory authorisation",
-   "expect_strength": "Policy signal",
+   "expect_region": "",
+   "expect_evidence_type": "Commentary",
+   "expect_strength": "Commentary",
    "expect_decision_type": "",
    "expect_payer_type": ""
   },

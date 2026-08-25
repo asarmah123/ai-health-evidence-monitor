@@ -2527,3 +2527,19 @@ def test_featured_prefers_open_over_paywalled_primary():
     o2 = {"clears": [], "econ": [], "reg": [o["reg"][0]]}
     feat2 = build.select_featured(o2)
     assert feat2 is not None and feat2[1]["id"] == "paywalled"
+
+
+def test_opinion_columns_excluded_not_featured_as_regulator_move():
+    """A named opinion-column format ('[Reporter's Notebook]', op-ed, guest column) is analysis
+    journalism, not a discrete event: it must be typed Commentary (→ excluded), never typed a
+    'Regulatory authorisation' or left eligible to headline the featured slot as a regulator move."""
+    korea = {"layer": "regulation", "gnews": True, "summary": "",
+             "url": "https://news.google.com/rss/articles/CBMabc", "source": "Korea Biomedical Review",
+             "title": "[Reporter's Notebook] In Korea, medical AI approval outpaces reimbursement"}
+    assert build.classify_evidence(korea)[0] == "Commentary"     # not 'Regulatory authorisation'
+    assert build.refine_commentary_layer([dict(korea)]) == []     # excluded from evidence stages
+    # a genuine regulator action with 'approval' in the title is NOT swept up
+    real = {"layer": "regulation", "summary": "", "url": "https://www.gov.uk/x", "source": "MHRA — GOV.UK",
+            "title": "MHRA grants approval to AI-enabled stroke triage device"}
+    assert build.classify_evidence(real)[0] != "Commentary"
+    assert build.refine_commentary_layer([dict(real)]) != []

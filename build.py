@@ -191,7 +191,12 @@ LAYERS = ["research", "clinical", "regulation", "heor", "access", "industry"]
 #       (e.g. 'STAT+:') is featured ONLY when no open candidate exists; an open story (even via a
 #       Google-News redirect) is preferred, since a marquee click landing on a paywall is a worse first
 #       impression than one that reaches the article.
-TAXONOMY_VERSION = "2.57"
+# 2.58: opinion-column handling — named opinion formats ('[Reporter's Notebook]', op-ed, guest column,
+#       analysis piece) are now recognised as Commentary and excluded from the evidence stages, so an
+#       analysis column can no longer be typed a 'Regulatory authorisation' (because its title says
+#       'approval') nor headline the featured slot as 'a move by a major regulator'. The precision eval
+#       now also grades an '(excluded)' outcome, so opinion exclusion is a first-class, tested result.
+TAXONOMY_VERSION = "2.58"
 _QA_STATS = {}   # populated by validate_or_abort, read by the build manifest
 _REACHABLE_SOURCES = set()   # native feeds that fetched OK with >=1 entry (even if all relevance-filtered)
 STAGE_COLOR = {"research": "#6a4c93", "clinical": "#9c2c44", "regulation": "#2f6f9f",
@@ -975,7 +980,14 @@ def classify_for_eval(raw):
     i["stype"] = source_type(i)
     etype, strength = classify_evidence(i)
     decision, payer = access_facets(i)
-    i = apply_classification_refiners([i])[0]          # → final stage
+    kept = apply_classification_refiners([i])          # → final stage (may DROP commentary/news items)
+    if not kept:
+        # the refiner chain excluded the item (e.g. opinion/commentary is not evidence) — a real,
+        # gradeable outcome. Report a sentinel stage; other facets keep their pre-refiner values.
+        return {"stage": "(excluded)", "source_type": i["stype"], "region": "",
+                "evidence_type": etype, "strength": strength,
+                "decision_type": decision, "payer_type": payer}
+    i = kept[0]
     country = country_of(i) or ""
     return {
         "stage": i["layer"],
@@ -2155,6 +2167,10 @@ def source_type(i):
 # fine label. Both are descriptive, never a quality rating of the underlying work.
 _EV_COMMENT = re.compile(r"\beditorial\b|\bopinion\b|\bviewpoint\b|\bperspective\b|\bcommentary\b"
                          r"|\bcomment\b|\breply\b|correction|retraction|\berratum\b|\bessay\b"
+                         # named opinion-column formats: analysis journalism, not a discrete event —
+                         # e.g. a "[Reporter's Notebook]" on Korea's approval-vs-reimbursement gap must
+                         # not be typed a 'Regulatory authorisation' or featured as a regulator move.
+                         r"|reporter'?s notebook|\bop.?ed\b|guest (post|essay|column)|\banalysis piece\b"
                          r"|research agenda|call to action|position (paper|statement)|in the age of"
                          r"|reimagining|commercial determinant"
                          # non-primary scholarship: bibliometrics, education studies, framework/opinion
