@@ -65,6 +65,11 @@ def main():
     rolling = _load(a.rolling); r_urls = _urls(rolling)
     frozen = _load(a.frozen); f_urls = _urls(frozen)
     added_roll = added_frozen = 0
+    # STATISTICAL RULE — do NOT change to errors-only: EVERY sufficiently-reviewed row (verdict ok AND
+    # wrong/ambiguous) enters the rolling gold, so it stays a representative sample of production and its
+    # accuracy % remains a valid live-precision estimate. Only `promote_to_frozen` rows ALSO enter the
+    # frozen regression gold. Boundary-queue rows are promoted like any other row; their triage value is
+    # read separately via the hit-rate, never by enriching the rolling set for failures.
     for r in reviewed:
         u = r.get("url")
         if u not in r_urls:
