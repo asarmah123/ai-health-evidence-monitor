@@ -2,12 +2,11 @@
   "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 2,
-  "generated_at": "2026-08-24T20:23:37Z",
-  "taxonomy_version": "2.57",
+  "n_warnings": 1,
+  "generated_at": "2026-08-25T08:09:17Z",
+  "taxonomy_version": "2.58",
   "codes": [
-    "E12_gnews_prevalence",
-    "H04_featured_gnews"
+    "E12_gnews_prevalence"
   ],
   "layers_skipped": []
 }
