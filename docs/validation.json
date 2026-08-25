@@ -3,8 +3,8 @@
   "email_trigger": false,
   "n_errors": 0,
   "n_warnings": 1,
-  "generated_at": "2026-08-25T08:09:17Z",
-  "taxonomy_version": "2.58",
+  "generated_at": "2026-08-25T09:21:23Z",
+  "taxonomy_version": "2.59",
   "codes": [
     "E12_gnews_prevalence"
   ],
