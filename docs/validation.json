@@ -2,12 +2,13 @@
   "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 2,
-  "generated_at": "2026-08-28T18:12:31Z",
+  "n_warnings": 3,
+  "generated_at": "2026-08-28T18:28:42Z",
   "taxonomy_version": "2.59",
   "codes": [
     "A13_country_no_region",
-    "E12_gnews_prevalence"
+    "E12_gnews_prevalence",
+    "S06_research_not_health"
   ],
   "layers_skipped": []
 }
