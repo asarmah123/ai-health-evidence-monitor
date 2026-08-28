@@ -4850,7 +4850,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
   <div class="seccap">Curated public sources spanning regulators, HTA bodies, payer organisations, trial registries, peer-reviewed journals and selected industry publications. Representative examples by type; the full list and exact queries are maintained privately.</div>
   <details class="faqi"><summary>Regulators &amp; device authorisations</summary>FDA (openFDA), EMA, MHRA, US Federal Register, PMDA, NMPA, Health Canada, Swissmedic, TGA, MFDS, SFDA, ANVISA, COFEPRIS</details>
   <details class="faqi"><summary>HTA &amp; payer bodies</summary>NICE, CMS, IQWiG, G-BA, HAS, CADTH, PBAC, MSAC, HIRA, AIFA, TLV, Zorginstituut, HITAP, ACE, CONITEC</details>
-  <details class="faqi"><summary>Trials, evidence &amp; journals</summary>ClinicalTrials.gov, PubMed (E-utilities), NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Value in Health, PharmacoEconomics</details>
+  <details class="faqi"><summary>Trials, evidence &amp; journals</summary>ClinicalTrials.gov, EU CTR (EudraCT), PubMed (E-utilities), NEJM AI, Lancet Digital Health, Nature Medicine, JAMIA, medRxiv, Value in Health, PharmacoEconomics</details>
   <details class="faqi"><summary>Research &amp; industry</summary>arXiv (cs.AI / cs.LG / cs.CL), lab &amp; standards blogs; STAT, Endpoints, Fierce, MedTech Dive, MassDevice</details>
   <div class="sec" id="trust">Trust &amp; limitations</div>
   <ul class="principles">
