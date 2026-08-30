@@ -2124,7 +2124,7 @@ MACRO = {
     "United Kingdom": "Europe", "European Union": "Europe", "Germany": "Europe", "France": "Europe",
     "Japan": "Asia-Pacific", "China": "Asia-Pacific", "Australia": "Asia-Pacific",
     "South Korea": "Asia-Pacific", "India": "Asia-Pacific", "Singapore": "Asia-Pacific",
-    "Thailand": "Asia-Pacific", "Canada": "North America",
+    "Thailand": "Asia-Pacific", "Hong Kong": "Asia-Pacific", "Taiwan": "Asia-Pacific",
     "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
     "Belgium": "Europe", "Ireland": "Europe", "Poland": "Europe", "Spain": "Europe",
     "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe", "Austria": "Europe",
@@ -2826,7 +2826,7 @@ def _is_fda_authorisation(i):
 
 
 SPECIALTIES = [
-    ("Radiology & imaging", ["radiolog", "imaging", "mammogra", "ct scan", " mri", "x-ray", "chest"]),
+    ("Radiology & imaging", ["radiolog", "imaging", "mammogra", "ct scan", "mri", "x-ray", "radiograph"]),
     ("Cardiology", ["cardio", "cardiac", "heart", "coronary", "ecg", "echocardiog", "arrhythmia"]),
     ("Oncology", ["oncolog", "cancer", "tumour", "tumor", "carcinoma", "malignan"]),
     ("Ophthalmology", ["ophthalmo", "retina", "diabetic retinopathy", "glaucoma", "fundus"]),
@@ -4235,7 +4235,7 @@ TOPICS = [
      "pred": lambda i: any(w in _topic_text(i) for w in
                           ("cardio", "cardiac", "heart", "coronary", "ecg", "echocardiog", "arrhythmia"))},
     {"slug": "radiology-imaging-ai", "pillar": "Clinical area", "label": "Radiology & imaging AI",
-     "pred": lambda i: any(w in _topic_text(i) for w in ("radiolog", "imaging", "mri", "ct scan", "x-ray", "radiograph"))},
+     "pred": lambda i: any(w in _topic_text(i) for w in ("radiolog", "imaging", "mammogra", "ct scan", "mri", "x-ray", "radiograph"))},
     {"slug": "mental-health-ai", "pillar": "Clinical area", "label": "Mental-health AI",
      "pred": lambda i: any(w in _topic_text(i) for w in ("mental health", "psychiat", "depression", "anxiety"))},
     {"slug": "digital-therapeutics", "pillar": "Clinical area", "label": "Digital therapeutics",
