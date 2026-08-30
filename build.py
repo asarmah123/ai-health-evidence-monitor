@@ -1801,19 +1801,19 @@ def log_history(items, terms, token=None, health=None, o=None):
 # feed-log.jsonl is the DURABLE, item-level Build-A dataset — not a rolling view. Each published item
 # is retained once with its full CONTEMPORANEOUS classification and provenance. The classifier's verdict
 # at first detection is frozen; a genuine later reclassification appends a dated snapshot, so history is
-# reconstructable and never silently overwritten. Build A says "this document was detected and classified
-# as X"; Build B, after primary-source verification, says "this establishes event Y" — the epistemic
-# boundary is kept: NO Build-B conclusion field ever lives here.
+# reconstructable and never silently overwritten. The monitor records only "this document was detected and
+# classified as X" — a contemporaneous subject/classification claim, never a verified market-access
+# conclusion (verification is out of scope for this repo).
 SCHEMA_VERSION = 3
 
 
 # ── Technology resolution (schema 3) ─────────────────────────────────────────────────────────────
-# Build A's forward-trajectory layer: resolve each observation to a technology × market so the corpus
+# The monitor's forward-trajectory layer: resolve each observation to a technology × market so the corpus
 # forms observation-grade trajectories, not just classified documents. RESOLUTION ≠ CONCLUSION — a
 # `technology_id` asserts only "this observation APPEARS to concern Technology X in Market Y"; it is
 # never a verified market-access finding. Deterministic (device names / FDA·CPT·UDI·MTG identifiers /
-# aliases), explicitly `unresolved` when uncertain, never guessed. The registry is Build A's OWN
-# reference data (like feeds.yaml) — NOT Build B's watchlist. See coverage-intelligence/AB_CROSSWALK.md.
+# aliases), explicitly `unresolved` when uncertain, never guessed. The registry is the monitor's OWN
+# reference data (like feeds.yaml) — a subject reference, not a verified conclusion.
 MARKET_CODES = {
     "United States": "us", "United Kingdom": "uk", "Germany": "de", "France": "fr", "Japan": "jp",
     "Canada": "ca", "Australia": "au", "Netherlands": "nl", "Italy": "it", "Spain": "es",
@@ -1823,7 +1823,7 @@ MARKET_CODES = {
 
 
 def market_of(item):
-    """Short market code from the item's resolved country (Build B markets: us/uk/de/fr/…).
+    """Short market code from the item's resolved country (us/uk/de/fr/…).
     Empty when the country is unknown — never guessed."""
     return MARKET_CODES.get(item.get("country") or "", "")
 
@@ -1834,7 +1834,7 @@ _OBS_TYPE = {"regulation": "regulatory_observation", "access": "reimbursement_ob
 
 
 def observation_type_of(item):
-    """Coarse observation class — deliberately COARSER than Build B's verified closed vocabulary."""
+    """Coarse observation class — a deliberately coarse subject label, not a verified closed vocabulary."""
     return _OBS_TYPE.get(item.get("layer", ""), "other_observation")
 
 
@@ -1853,7 +1853,7 @@ def _norm_registry(raw):
 
 
 def load_tech_registry(token=None):
-    """Build A's OWN technology reference (like feeds.yaml) — never Build B's watchlist. Fetched from the
+    """The monitor's OWN technology reference (like feeds.yaml) — a subject reference. Fetched from the
     private data repo (local `data/` or root fallback); graceful [] if unavailable, so resolution simply
     returns `unresolved` and the build never breaks."""
     text = None
@@ -1923,7 +1923,7 @@ def _canonical_url(item):
 
 def _content_hash(item):
     """Deterministic content fingerprint at detection time (title|source|url) — a reproducibility
-    anchor, NOT a raw snapshot. Build A records identity; raw-source capture is Build B's job."""
+    anchor, NOT a raw snapshot. The monitor records identity only; raw-source capture is out of scope."""
     import hashlib
     basis = "|".join([(item.get("title") or ""), (item.get("source") or ""), (item.get("url") or "")])
     return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:16]

@@ -498,7 +498,7 @@ def test_persistent_record_schema():
     assert rec["date"] != rec["first_detected"] != rec["retrieved_at"]
     # provenance
     assert rec["content_hash"] and rec["canonical_url"] == "https://www.cms.gov/ntap-ai-2026"
-    assert rec["snapshot_ref"] is None            # Build A anchors identity; raw capture is Build B's job
+    assert rec["snapshot_ref"] is None            # the monitor anchors identity only; raw capture is out of scope
     # full contemporaneous classification, frozen and mirrored into history[0]
     assert rec["historical_classification_available"] is True
     fc = rec["first_classification"]
@@ -551,17 +551,17 @@ def test_no_silent_overwrite_append_only():
     assert rec3["classification_history"][1]["stage"] == "regulation" and rec3["classification_history"][1]["rank_score"] == 10
 
 
-def test_ab_bridge_discovery_input():
-    """Integration: source item → Build A → persistent record → a valid Build B DISCOVERY input.
-    The record must expose everything B's discovery layer needs to stage a candidate (identity,
-    canonical link, publication date, detection date, content hash, and the Build-A classification),
-    while carrying NO verified-event conclusion — B still runs its own primary-source verification."""
+def test_persistent_record_is_valid_discovery_input():
+    """Integration: source item → the monitor → persistent record exposing everything a downstream
+    discovery/verification layer would need to stage a candidate (identity, canonical link, publication
+    date, detection date, content hash, and the classification), while carrying NO verified-event
+    conclusion — verification is out of scope and done elsewhere."""
     out, _, _ = build.build_detection_records("", [_corpus_item()], "2026-08-21", "2026-08-21T09:00:00Z")
     rec = _json.loads(out.strip())
     for field in ("id", "canonical_url", "date", "first_detected", "content_hash", "first_classification"):
         assert rec.get(field) is not None, f"discovery input missing {field}"
     assert rec["first_classification"]["stage"] and rec["first_classification"]["topics"]
-    # boundary held: Build A asserts detection+classification only, not a verified event
+    # boundary held: detection + classification only, not a verified event
     assert "verified_event_type" not in rec and "trajectory_state" not in rec
 
 
