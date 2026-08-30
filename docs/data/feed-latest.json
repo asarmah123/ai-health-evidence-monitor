@@ -1,7 +1,7 @@
 {
- "generated_at": "2026-08-30T08:30:15Z",
+ "generated_at": "2026-08-30T08:42:39Z",
  "taxonomy_version": "2.59",
- "count": 86,
+ "count": 85,
  "fields": [
   "id",
   "title",
@@ -843,30 +843,6 @@
    "date": "2026-08-27",
    "score": 1,
    "topics": "ai-clinical-studies;oncology-ai"
-  },
-  {
-   "id": "2181e0147a65",
-   "title": "The Week In Health:Clinic Expansion, AI Governance, Chronic Care",
-   "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxNLUpNNV9HS0FPWDBDQjZOcUhqajBwd3p3Xzc4a0NRSWNlTmxuZE1UcGxFVlhUXzg2SGNwSE1JLU9qdkxKTzFVVG1ENE5VRDhtM0o5WHVDcmg2ZEtLVmFWMDZqMl9ZWUpMaXdjeUxZZ2UtekRUWTRQZ0tIajZCaGwwQVA2TnppNllMYWNlMVQ2dVpuVm5aNUlsUTBn?oc=5",
-   "resolved_url": "",
-   "source": "Mexico Business News",
-   "publisher_url": "https://mexicobusiness.news",
-   "via_gnews": "yes",
-   "feed": "LATAM — device authorisation (ANVISA / COFEPRIS)",
-   "source_type": "Other",
-   "stage": "industry",
-   "evidence_type": "Industry news",
-   "evidence_strength": "Market signal",
-   "evidence_maturity": "",
-   "healthcare_relevance": "Adjacent AI",
-   "ai_modality": "",
-   "decision_type": "",
-   "payer_type": "",
-   "region": "",
-   "country": "",
-   "date": "2026-08-27",
-   "score": 1,
-   "topics": ""
   },
   {
    "id": "313b1c76d202",
