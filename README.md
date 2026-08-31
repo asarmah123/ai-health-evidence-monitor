@@ -17,6 +17,8 @@ Built for **HEOR and market-access professionals** who need regulatory, evidenti
 - **No language model at runtime.** Classification, ranking and dating are deterministic and reproducible — the same inputs produce the same output.
 - **Primary sources first** — official regulator, HTA and registry APIs and feeds wherever available, supplemented by selected industry publications where no primary feed exists.
 - **No causal or predictive claims** — it reports what changed and how unusual it is versus a recent baseline, never why or what's next.
+- **Signals, not verdicts** — every row is an automated, rule-based classification of a public source, labelled as a *signal* (e.g. market/policy signal) and never a confirmed coding, coverage or payment determination. Each row links to its primary source; verify there before acting.
+- **Links and metadata only** — the monitor stores headlines, source links, dates and its own classification metadata. It does **not** reproduce full source article bodies or proprietary code descriptions (e.g. long-form CPT text) — those stay at the source.
 
 ---
 

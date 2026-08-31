@@ -2615,3 +2615,41 @@ def test_promote_reviews_builds_valid_gold_row():
     # the promoted row is gradeable, and the classifier agrees with the reviewed label
     res = run_precision.grade([row])
     assert res["accuracy"]["stage"] == 1.0 and res["accuracy"]["strength"] == 1.0
+
+
+def test_technology_resolution_gold():
+    """Resolution factuality (the axis precision/dedup gold do not cover): the deterministic resolver must
+    (1) map a device-specific observation to the RIGHT technology_id, and (2) NOT resolve generic/policy
+    items — a false-positive tag is a factuality error. Registry entries here are the kind DISCOVERED from
+    the monitor's own corpus (names/aliases/identifiers); runtime matching stays deterministic (no LLM)."""
+    raw = [
+        {"id": "aidoc", "name": "Aidoc", "aliases": ["Aidoc BriefCase"], "identifiers": []},
+        {"id": "diagnos-cara", "name": "CARA System", "aliases": ["DIAGNOS"], "identifiers": []},
+        {"id": "suki", "name": "Suki", "aliases": ["Suki AI"], "identifiers": []},
+        {"id": "tempus", "name": "Tempus", "aliases": [], "identifiers": []},
+        {"id": "heartflow-ffrct", "name": "HeartFlow FFRct", "aliases": ["HeartFlow"], "identifiers": ["MTG32"]},
+    ]
+    registry = build._norm_registry(raw)
+
+    # (1) device-specific items the monitor caught → resolve to the right id
+    positives = [
+        ("CMS approves Medicare add-on payment for Aidoc CT triage AI", "aidoc"),
+        ("DIAGNOS Receives Saudi FDA Medical Device License for CARA System", "diagnos-cara"),
+        ("Tempus AI receives FDA clearance for pulmonary hypertension tool", "tempus"),
+        ("Suki launches AI clinical dictation tool", "suki"),
+        ("NICE MTG32: HeartFlow FFRct analysis for estimating FFR", "heartflow-ffrct"),
+    ]
+    for blob, expect in positives:
+        r = build.resolve_technology({"title": blob}, registry)
+        assert r["technology_match_status"] == "resolved" and r["technology_id"] == expect, (blob, r)
+
+    # (2) generic / policy items → MUST stay unresolved (no fabricated technology tag)
+    negatives = [
+        "NICE Listens: hearing the public's views on AI in health and care",
+        "How AI-enabled Software as Medical Devices are Reshaping Regulatory Routes",
+        "Primary care's AI opportunity depends on new payment models",
+        "South Korea certifies top AI digital medical device companies to speed approvals",
+    ]
+    for blob in negatives:
+        r = build.resolve_technology({"title": blob}, registry)
+        assert r["technology_match_status"] == "unresolved", (blob, r)
