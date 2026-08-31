@@ -1,15 +1,14 @@
 {
   "ok": false,
-  "email_trigger": true,
+  "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 4,
-  "generated_at": "2026-08-30T17:10:30Z",
+  "n_warnings": 3,
+  "generated_at": "2026-08-31T19:22:51Z",
   "taxonomy_version": "2.59",
   "codes": [
-    "A08_specialty_divergence",
     "A13_country_no_region",
     "E12_gnews_prevalence",
-    "S06_research_not_health"
+    "H04_featured_gnews"
   ],
   "layers_skipped": []
 }
