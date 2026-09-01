@@ -1,14 +1,13 @@
 {
   "ok": false,
-  "email_trigger": true,
+  "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 4,
-  "generated_at": "2026-09-01T09:45:44Z",
+  "n_warnings": 3,
+  "generated_at": "2026-09-01T17:08:47Z",
   "taxonomy_version": "2.59",
   "codes": [
     "A08_specialty_divergence",
-    "E12_gnews_prevalence",
-    "H04_featured_gnews"
+    "E12_gnews_prevalence"
   ],
   "layers_skipped": []
 }
