@@ -184,7 +184,7 @@ is the stable regression *contract*; the rolling set is the evolving measurement
 ## PUBLISH → RECALL PROBES (curated gold) — *Are known events being detected?*
 
 - **In place:** `evals/run_recall.py` + `evals/build_a/known_events.yaml` (~32 events), run **weekly** in
-  the private repo (`coverage-data`) over the append-only `feed-log.jsonl`. Read-only; never touches the
+  the private data repo over the append-only `feed-log.jsonl`. Read-only; never touches the
   build.
 - **How it works:** for each recent, monitorable gold event, checks whether a corpus item matched within
   the detection window; reports **probe recall** (detected / scoreable, excluding pre-log events) and

@@ -507,7 +507,7 @@ def test_persistent_record_schema():
     assert fc["clinical_area"] == ["Cardiology"] and fc["topics"] == ["cms-coverage", "ntap-activity"]
     assert fc["rank_score"] == 8 and fc["taxonomy_version"] == build.TAXONOMY_VERSION
     assert rec["classification_history"] == [fc]
-    # NO Build-B conclusion fields leak into Build A
+    # no downstream verified-conclusion fields leak into the monitor record
     assert not ({"coverage_status", "verified_event_type", "payment_established", "trajectory_state"}
                 & set(rec) & set(fc))
 
@@ -561,7 +561,7 @@ def test_persistent_record_is_valid_discovery_input():
     for field in ("id", "canonical_url", "date", "first_detected", "content_hash", "first_classification"):
         assert rec.get(field) is not None, f"discovery input missing {field}"
     assert rec["first_classification"]["stage"] and rec["first_classification"]["topics"]
-    # boundary held: detection + classification only, not a verified event
+    # boundary held: detection + classification only, not a downstream market-access conclusion
     assert "verified_event_type" not in rec and "trajectory_state" not in rec
 
 
