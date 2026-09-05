@@ -1,4 +1,4 @@
-# Evaluation & quality system — Build A
+# Evaluation & quality system — AI-in-Health evidence monitor
 
 Authoritative reference for how the AI-in-Health evidence monitor is evaluated: every eval described in
 place (file + function), how the whole system fits together, and what remains to be done.
@@ -183,8 +183,8 @@ is the stable regression *contract*; the rolling set is the evolving measurement
 
 ## PUBLISH → RECALL PROBES (curated gold) — *Are known events being detected?*
 
-- **In place:** `evals/run_recall.py` + `evals/build_a/known_events.yaml` (~32 events), run **weekly** in
-  the private data repo over the append-only `feed-log.jsonl`. Read-only; never touches the
+- **In place:** `run_recall.py` + the curated `known_events.yaml` gold set (~32 events), run **weekly**
+  privately over the append-only `feed-log.jsonl`. Read-only; never touches the
   build.
 - **How it works:** for each recent, monitorable gold event, checks whether a corpus item matched within
   the detection window; reports **probe recall** (detected / scoreable, excluding pre-log events) and

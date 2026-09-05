@@ -1,7 +1,7 @@
 __pycache__/
 .venv/
 
-# Private data & internal notes — pulled from the private repo or kept local; never public.
+# Private data & internal notes — kept local / private; never public.
 feeds.yaml
 tech_registry.yaml
 coverage.yaml

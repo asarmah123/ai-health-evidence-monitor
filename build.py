@@ -254,7 +254,7 @@ def get(url, timeout=25):
 # ------------------------------------------------------------- private store
 # The public repo holds code and the rendered site. Everything that represents
 # curation or accumulated work — the source list, the commentary cache, the
-# trend history and other private data — lives in a PRIVATE repo and is pulled in
+# trend history and other private data — lives in private storage and is pulled in
 # at build time. With no token, the build falls back to local files so you can
 # still develop and test offline.
 
@@ -267,7 +267,7 @@ def _gh_headers(token, raw=True):
 
 
 def private_get(path, token):
-    """Fetch a file from the private repo. Returns (text, sha) or (None, None).
+    """Fetch a file from private storage. Returns (text, sha) or (None, None).
 
     Transient network failures (SSL resets, connection drops, timeouts) are retried with backoff —
     the private config/history fetch is on the build's critical path, so a single blip must not
@@ -295,7 +295,7 @@ def private_get(path, token):
 
 
 def private_put(path, text, token, sha=None, msg=None):
-    """Write a file back to the private repo. Needs Contents: read & write."""
+    """Write a file back to private storage. Needs Contents: read & write."""
     if not token:
         return False
     try:
@@ -1687,7 +1687,7 @@ def _history_wide_csv(hist):
     """Flatten the history rows into a wide, Excel-ready CSV — one row per build, one column
     per metric (stage.*, region.*, topic.*, term.*, qa.*, …). Stable column set across builds;
     list values (e.g. silent sources) become ';'-joined. Leads with a BOM so Excel opens it
-    cleanly. Written to the private repo each build so verifying/analysing the series is just
+    cleanly. Written to private storage each build so verifying/analysing the series is just
     'download one file, open in Excel' — no tooling, no token, no scripts."""
     import csv, io
     seen = {p: [] for p in _HIST_NESTED.values()}
@@ -1719,7 +1719,7 @@ def _history_wide_csv(hist):
 def log_history(items, terms, token=None, health=None, o=None):
     """One row per build: per-layer, per-region, per-clinical-area and per-topic counts,
     counts for each tracked term, the QA outcome, and a compact per-source health snapshot.
-    Persisted to the private data repo via the GitHub Contents API (SHA-based update) — no
+    Persisted to private storage via the GitHub Contents API (SHA-based update) — no
     git push from the Action, so no merge/HEAD state. This is the substrate the Phase-2
     time-series, momentum and per-specialty rollups read; region/clinical counts reuse the
     exact numbers overview_stats renders, so history always matches the published site."""
@@ -1798,7 +1798,7 @@ def log_history(items, terms, token=None, health=None, o=None):
 
 
 # ── Prospective evidence corpus (schema 2) ───────────────────────────────────────────────────────
-# feed-log.jsonl is the DURABLE, item-level Build-A dataset — not a rolling view. Each published item
+# feed-log.jsonl is the DURABLE, item-level prospective dataset — not a rolling view. Each published item
 # is retained once with its full CONTEMPORANEOUS classification and provenance. The classifier's verdict
 # at first detection is frozen; a genuine later reclassification appends a dated snapshot, so history is
 # reconstructable and never silently overwritten. The monitor records only "this document was detected and
@@ -1808,8 +1808,8 @@ SCHEMA_VERSION = 3
 
 
 # ── Technology resolution (schema 3) ─────────────────────────────────────────────────────────────
-# The monitor's forward-trajectory layer: resolve each observation to a technology × market so the corpus
-# forms observation-grade trajectories, not just classified documents. RESOLUTION ≠ CONCLUSION — a
+# The monitor's prospective resolution layer: resolve each observation to a technology × market so the corpus
+# forms observation-grade series, not just classified documents. RESOLUTION ≠ CONCLUSION — a
 # `technology_id` asserts only "this observation APPEARS to concern Technology X in Market Y"; it is
 # never a verified market-access finding. Deterministic (device names / FDA·CPT·UDI·MTG identifiers /
 # aliases), explicitly `unresolved` when uncertain, never guessed. The registry is the monitor's OWN
@@ -1854,7 +1854,7 @@ def _norm_registry(raw):
 
 def load_tech_registry(token=None):
     """The monitor's OWN technology reference (like feeds.yaml) — a subject reference. Fetched from the
-    private data repo (local `data/` or root fallback); graceful [] if unavailable, so resolution simply
+    private storage (local `data/` or root fallback); graceful [] if unavailable, so resolution simply
     returns `unresolved` and the build never breaks."""
     text = None
     try:
@@ -1876,7 +1876,7 @@ def load_tech_registry(token=None):
 
 
 def resolve_technology(item, registry):
-    """Deterministically resolve an observation to a technology from Build A's registry.
+    """Deterministically resolve an observation to a technology from the monitor's registry.
     Returns `{technology_id, technology_match_status, technology_match_confidence}`. RESOLUTION ≠
     CONCLUSION. identifier hit → 0.95 · distinct product name/alias (word-boundary) → 0.9 (≥6 chars) or
     0.75 · >1 distinct technologies → `ambiguous` (id=None) · none → `unresolved` (id=None). Never guessed."""
@@ -1930,7 +1930,7 @@ def _content_hash(item):
 
 
 def item_classification(item, classified_at=None, build_id=None):
-    """One dated CLASSIFICATION snapshot for the prospective dataset — Build A's contemporaneous verdict
+    """One dated CLASSIFICATION snapshot for the prospective dataset — the monitor's contemporaneous verdict
     on a single item. Holds only classification variables (+ its version stamps); identity, the three
     dates and provenance live on the record, so re-versioning history never touches them."""
     _et, _str = item.get("etype"), item.get("strength")
@@ -1972,7 +1972,7 @@ def _classification_changed(prev, cur):
 
 def _legacy_to_record(r):
     """Upgrade a pre-schema (flat, 6-field) detection line to a schema-2 record WITHOUT inventing a
-    classification: the item's contemporaneous Build-A verdict was never stored, so we say so
+    classification: the item's contemporaneous monitor verdict was never stored, so we say so
     explicitly rather than back-fill today's classifier and mislabel it 'historical'."""
     return {
         "schema": SCHEMA_VERSION,
@@ -1998,7 +1998,7 @@ def build_detection_records(existing_text, items, today, retrieved_at=None, regi
         metadata, not a frozen verdict, and never a verified conclusion);
       • a pre-schema line → upgraded once (idempotent), no fabricated classification.
     The six original top-level fields (id/url/title/source/date/first_detected) are preserved. `registry`
-    is Build A's own technology reference (empty → everything `unresolved`). Returns
+    is the monitor's own technology reference (empty → everything `unresolved`). Returns
     (out_text, new_count, reclassified_count)."""
     retrieved_at = retrieved_at or today
     registry = registry or []
@@ -2063,14 +2063,14 @@ def build_detection_records(existing_text, items, today, retrieved_at=None, regi
 
 
 def log_detections(items, token=None):
-    """Append-only PROSPECTIVE EVIDENCE CORPUS (schema 3) — the durable, item-level Build-A dataset and
-    forward-trajectory layer. Each newly published item is recorded ONCE with its full contemporaneous
+    """Append-only PROSPECTIVE EVIDENCE CORPUS (schema 3) — the durable, item-level prospective dataset and
+    resolution layer. Each newly published item is recorded ONCE with its full contemporaneous
     classification, provenance, THREE dates (publication `date`, `first_detected`, `retrieved_at`), and a
     TECHNOLOGY-RESOLUTION layer (technology_id/status/confidence · market · observation_type) so the
     corpus forms technology × market observation trajectories — resolution being a subject claim, never a
     verified conclusion. Classification is write-once + append-only; resolution is re-derived each build
     (improves as the registry grows). Pre-schema lines are upgraded once with no fabricated
-    classification. Persisted to the private repo (local `data/` fallback); never published. Never fatal."""
+    classification. Persisted to private storage (local `data/` fallback); never published. Never fatal."""
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     retrieved_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     path = ROOT / "data" / "feed-log.jsonl"

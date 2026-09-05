@@ -464,7 +464,8 @@ def test_litigation_digest_bucket():
 
 # --- prospective evidence corpus (feed-log schema 2) --------------------------
 # A durable, item-level dataset: each item retained once with its contemporaneous classification
-# and provenance; write-once + append-only; the epistemic Build A/B boundary is enforced.
+# and provenance; write-once + append-only; the boundary between monitor signals and any downstream
+# verified conclusions is enforced.
 import json as _json
 
 
@@ -484,7 +485,7 @@ def _corpus_item(**over):
 def test_persistent_record_schema():
     """A newly published item becomes a full schema-2 record: identity + THREE distinct dates
     (publication `date`, `first_detected`, `retrieved_at`) + provenance + a frozen first_classification
-    that carries the full Build-A verdict (stage, modality, reimbursement_pathway, topics, score …)."""
+    that carries the monitor's full verdict (stage, modality, reimbursement_pathway, topics, score …)."""
     out, new, recl = build.build_detection_records("", [_corpus_item()], "2026-08-21", "2026-08-21T09:00:00Z")
     assert (new, recl) == (1, 0)
     rec = _json.loads(out.strip())
@@ -1963,7 +1964,7 @@ if __name__ == "__main__":
 
 
 # --- technology resolution (schema 3) -----------------------------------------
-# Build A's forward-trajectory layer. Resolution is a SUBJECT claim ("appears to concern Technology X"),
+# The monitor's prospective resolution layer. Resolution is a SUBJECT claim ("appears to concern Technology X"),
 # never a verified conclusion; deterministic; explicitly `unresolved`/`ambiguous`, never guessed.
 _TEST_REG = build._norm_registry([
     {"id": "heartflow-ffrct", "name": "HeartFlow FFRct", "aliases": ["HeartFlow"], "identifiers": ["MTG32"]},
