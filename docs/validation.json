@@ -2,10 +2,11 @@
   "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 1,
-  "generated_at": "2026-09-09T17:00:02Z",
+  "n_warnings": 2,
+  "generated_at": "2026-09-10T16:53:35Z",
   "taxonomy_version": "2.59",
   "codes": [
+    "A08_specialty_divergence",
     "E12_gnews_prevalence"
   ],
   "layers_skipped": []
