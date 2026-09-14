@@ -1072,6 +1072,25 @@
    "expect_strength": "Secondary evidence",
    "expect_decision_type": "",
    "expect_payer_type": ""
+  },
+  {
+   "title": "Ghana, China push AI innovation in healthcare",
+   "source": "Modern Ghana",
+   "url": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPOVh0MVkydzFtb0lLN1dDN2t1NXRnbVZlQjZKVzNlRXZOWk1hVkFjUDlyVFNMQ2w0RmI0NHluUkcxTWdMUFNJS2x6eUlmMkZhang2RHZvVXgtZGJudXNOeGVsRTBXcEJjeDgtcGpRNlVNcVZickZQS2N1RUdVTEJRZS1Hc1NIZ01uUkVzSDhJLUluQ0JD0gGTAUFVX3lxTE4xSnNQay1lUVR5a1lKUnkwZDRNbTNTQjVJSkRtU3daZkkxMy1iTmRJRV90NzhYdzFUSk1fbG5wcDBMVnAxVGlBUzlkd1hzWXJJeXRyUC1ubDZiYzQtemNJSFo5SnJic1NwRFB2d21KaUg0QTU1ZVF2bEt1UGhJTTN6bzFlN3hOQUpXd1JQUE5DcHFKYw?oc=5",
+   "declared_layer": "",
+   "gnews": false,
+   "stratum_stage": "industry",
+   "stratum_source_type": "Other",
+   "reviewed_on": "2026-09-14",
+   "reviewer": "weekly-review",
+   "note": "",
+   "expect_stage": "industry",
+   "expect_source_type": "Other",
+   "expect_region": "Middle East & Africa; Asia-Pacific",
+   "expect_evidence_type": "Industry news",
+   "expect_strength": "Market signal",
+   "expect_decision_type": "",
+   "expect_payer_type": ""
   }
  ]
 }
