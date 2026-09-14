@@ -66,6 +66,12 @@ def main():
             "boundary": why.startswith("boundary:"),          # was this flagged by the low-confidence queue?
             "verdict": "",                                     # reviewer fills: ok | wrong | ambiguous
             "title": i.get("title", ""), "source": i.get("source", ""), "url": i.get("url", ""),
+            # Carry the two fields the classifier NEEDS to re-derive stage faithfully at promote/precision
+            # time. Without them the promoted gold row re-classifies with an empty declared_layer and its
+            # `stage` collapses (a scoring artifact, not a real regression). `_declared_layer` is the feed's
+            # pre-refiner stage (best); fall back to the final `layer` if the export stripped the underscore key.
+            "declared_layer": i.get("_declared_layer", i.get("layer", "")),
+            "gnews": bool(i.get("gnews")),
             "current": {f: i.get(f if f != "source_type" else "source_type", i.get("evidence_strength") if f == "strength" else "")
                         for f in FACETS},
             **{f"expect_{f}": i.get(f, "") for f in ("stage", "source_type", "region")},
