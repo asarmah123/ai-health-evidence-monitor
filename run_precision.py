@@ -38,7 +38,8 @@ def grade(gold):
     mism = []
     for g in gold:
         raw = {"title": g.get("title", ""), "source": g.get("source", ""), "url": g.get("url", ""),
-               "declared_layer": g.get("declared_layer", ""), "gnews": bool(g.get("gnews"))}
+               "declared_layer": g.get("declared_layer", ""), "gnews": bool(g.get("gnews")),
+               "geo_country": g.get("geo_country", "")}   # structured trial/registry geography the build captures
         got = build.classify_for_eval(raw)
         for f in FACETS:
             exp = g.get("expect_" + f, "")

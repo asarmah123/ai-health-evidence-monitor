@@ -655,7 +655,9 @@ _HEOR_RE = re.compile(r"\bcosts?\b|cost.?effectiv|cost.?util|cost.?benefit|cost.
                       r"|\bhta\b|health technology assessment|reimburs|coverage (decision|determination|polic|recommend)"
                       r"|\bpayer\b|pharmacoeconom|\bpric(e|ing)\b|affordab|disinvest|\bappraisal\b"
                       r"|decision.analytic|resource (use|utili[sz]ation|cost|consumption)"
-                      r"|real.world (evidence|cost|data|outcome)|\brwe\b|joint clinical assessment|market access")
+                      r"|real.world (evidence|cost|data|outcome)|\brwe\b|joint clinical assessment|market access"
+                      r"|ai.?augmented evidence"   # B2: value/evidence-competency HEOR content lacking a cost keyword
+                      r"|quantitative medicine")   # model-informed drug-development / decision-science value discipline
 
 
 def refine_heor_layer(items):
@@ -740,7 +742,10 @@ _METHOD_DEV_RE = re.compile(r"foundation model|self.supervised|pre.?train(ing|ed
                             r"|software (package|toolkit|library)|\br package\b|python (package|library|toolkit)"
                             r"|open.source (tool|package|framework|library)|retrieval.augmented|\brag\b"
                             r"|benchmark(ing)? (method|framework|dataset|suite)|stress.test|red.team(ing)?"
-                            r"|jailbreak|adversarial (attack|robustness|example)|fabricated (disease|condition)")
+                            r"|jailbreak|adversarial (attack|robustness|example)|fabricated (disease|condition)"
+                            # B3: agent / citation-reliability methods papers are research, not clinical
+                            # (NOT bare "large language model" — that over-caught a clinical LLM-assisted study)
+                            r"|\bcoding agent\b|citation (reliab|accuracy|integrity)")
 _CLINICAL_VALID_RE = re.compile(
     r"\bpatient|\btrial\b|\bcohort\b|real.world|diagnostic accuracy|\bprospective|randomi[sz]ed"
     r"|\bscreening\b|\bhospital|point.of.care|deployed|clinical (outcome|validation|trial|dialogue"
@@ -756,9 +761,18 @@ def refine_method_papers(items):
         if source_type(i) not in ("Preprint / research", "Journal / evidence"):
             continue
         ti = i.get("title", "").lower().replace("-", " ")
-        if _METHOD_DEV_RE.search(ti) and not _CLINICAL_VALID_RE.search(ti):
+        # 'hospital data/information/IT' is a data-engineering context, not a clinical SETTING — strip it
+        # before the clinical-validation test so an infra/methods paper ('coding agent … hospital data
+        # warehouse') is not held in clinical by the bare 'hospital' token.
+        ti_clin = _INFRA_HOSPITAL_RE.sub(" ", ti)
+        if _METHOD_DEV_RE.search(ti) and not _CLINICAL_VALID_RE.search(ti_clin):
             i["layer"] = "research"
     return items
+
+
+# 'hospital data / information system / IT' — a data-engineering context, distinct from a clinical
+# hospital setting; used to keep the bare 'hospital' clinical-validation token from firing on infra papers.
+_INFRA_HOSPITAL_RE = re.compile(r"hospital (data|information|it\b|record)\w*")
 
 
 # The regulatory stream should reflect regulatory ACTIONS, not merely originate near regulation.
@@ -796,6 +810,38 @@ def refine_regulation_layer(items):
         if not _REG_SIGNAL_RE.search(text):
             i["layer"] = "industry"   # launch / opinion / consumer story via a regulator-named query
     return items
+
+
+# Out-of-scope / non-primary exclusions: items that reach an evidence/access stage but are NOT
+# device-attributed primary evidence. Dropped entirely (→ '(excluded)') without disturbing their
+# pre-refiner evidence-type facets. Each pattern is narrow and verified against the frozen set.
+_SENTINEL_ALGO_RE = re.compile(r"algorithm defined in", re.I)   # FDA-Sentinel computable phenotype
+_PR_WIRE_SRC_RE = re.compile(r"pr newswire|business ?wire|globe ?newswire|prweb|accesswire|einnews|newswire\.com", re.I)
+_QUICK_REVIEW_RE = re.compile(r"\bquick review\b", re.I)        # lightweight non-substantive review format
+
+
+def _is_out_of_scope(i):
+    src = i.get("source", "")
+    ti = i.get("title", "")
+    # (a) FDA-Sentinel case-definition 'algorithm' — an epidemiological computable phenotype, not an AI device
+    if "sentinel" in src.lower() and _SENTINEL_ALGO_RE.search(ti):
+        return True
+    # (b) a coverage/payment CLAIM carried only by a press-release wire is not a primary payer record (golden rule)
+    if _PR_WIRE_SRC_RE.search(src) and i.get("layer") in ("access", "regulation"):
+        return True
+    # (c) lightweight 'quick review' format — not a substantive evidence contribution
+    if _QUICK_REVIEW_RE.search(ti):
+        return True
+    return False
+
+
+def refine_out_of_scope_exclusions(items):
+    """Drop items that reached an evidence/access stage but are not device-attributed primary evidence:
+    FDA-Sentinel case-definition 'algorithms' (epidemiological phenotypes, not AI devices), coverage/
+    payment claims carried only by a press-release wire (not a primary payer source, per the golden
+    rule), and lightweight 'quick review' formats. Evidence-type facets are computed upstream and
+    preserved on the excluded record."""
+    return [i for i in items if not _is_out_of_scope(i)]
 
 
 def refine_commentary_layer(items):
@@ -953,6 +999,7 @@ def refine_industry_to_access(items):
 # eval both call it, guaranteeing the eval grades exactly what ships. Does NOT include the relevance
 # gate (which only drops non-health items) or the de-dup/collapse (which drop but never re-stage).
 _CLASSIFICATION_REFINERS = (
+    ("refine_out_of_scope_exclusions", "drop non-primary / out-of-scope items (Sentinel phenotypes, PR-wire coverage claims, quick reviews)"),
     ("refine_access_layer", "reimbursement precision: reclassify non-coverage access items"),
     ("refine_heor_layer", "HEOR precision: reclassify non-economic AI reviews to clinical"),
     ("refine_clinical_to_heor", "clinical economic evaluations → HEOR (category-2 boundary)"),
@@ -1061,15 +1108,14 @@ def classify_for_eval(raw):
     if not kept:
         # the refiner chain excluded the item (e.g. opinion/commentary is not evidence) — a real,
         # gradeable outcome. Report a sentinel stage; other facets keep their pre-refiner values.
-        return {"stage": "(excluded)", "source_type": i["stype"], "region": "",
+        return {"stage": "(excluded)", "source_type": i["stype"], "region": region_of(i, institutional_only=True),
                 "evidence_type": etype, "strength": strength,
                 "decision_type": decision, "payer_type": payer}
     i = kept[0]
-    country = country_of(i) or ""
     return {
         "stage": i["layer"],
         "source_type": i["stype"],
-        "region": (MACRO.get(country, "") if country else ""),
+        "region": region_of(i),
         "evidence_type": etype,
         "strength": strength,
         "decision_type": decision,
@@ -2124,7 +2170,7 @@ MACRO = {
     "United Kingdom": "Europe", "European Union": "Europe", "Germany": "Europe", "France": "Europe",
     "Japan": "Asia-Pacific", "China": "Asia-Pacific", "Australia": "Asia-Pacific",
     "South Korea": "Asia-Pacific", "India": "Asia-Pacific", "Singapore": "Asia-Pacific",
-    "Thailand": "Asia-Pacific", "Hong Kong": "Asia-Pacific", "Taiwan": "Asia-Pacific",
+    "Thailand": "Asia-Pacific", "Hong Kong": "Asia-Pacific", "Taiwan": "Asia-Pacific", "Malaysia": "Asia-Pacific",
     "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
     "Belgium": "Europe", "Ireland": "Europe", "Poland": "Europe", "Spain": "Europe",
     "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe", "Austria": "Europe",
@@ -2133,7 +2179,7 @@ MACRO = {
     "Saudi Arabia": "Middle East & Africa", "United Arab Emirates": "Middle East & Africa",
     "Israel": "Middle East & Africa", "South Africa": "Middle East & Africa",
     "Egypt": "Middle East & Africa", "Turkey": "Europe", "Nigeria": "Middle East & Africa",
-    "Kenya": "Middle East & Africa", "Qatar": "Middle East & Africa",
+    "Kenya": "Middle East & Africa", "Qatar": "Middle East & Africa", "Ghana": "Middle East & Africa",
     "Brazil": "Latin America", "Mexico": "Latin America", "Argentina": "Latin America",
     "Colombia": "Latin America", "Chile": "Latin America",
 }
@@ -2277,7 +2323,10 @@ _EV_SYS = re.compile(r"systematic review|scoping review|narrative review|literat
 # review articles, not primary studies. Title-keyed to avoid summary-teaser false positives.
 _EV_REVIEW = re.compile(r"future directions|future perspectives|paradigm shift|research progress"
                         r"|advances and challenges|challenges and (future|opportunities|perspectives)"
-                        r"|innovations, challenges|current applications|\ban overview\b|current status and")
+                        r"|innovations, challenges|current applications|\ban overview\b|current status and"
+                        # forward-looking capability/competence essays (viewpoint-style HEOR/field pieces
+                        # framed as "the next core competence …") are narrative reviews, not value evidence
+                        r"|core competenc|next frontier|state of the art in")
 _EV_ECON = re.compile(r"cost.?effective|cost.?util|cost.?benefit|budget impact|economic evaluation"
                       r"|\bqaly\b|pharmacoeconom|willingness.to.pay|value assessment")
 _EV_RWE = re.compile(r"real.world|registry.based|observational|\brwe\b|post.?market|pharmacovigilance"
@@ -2692,20 +2741,25 @@ _CTGOV_GEO = {"Korea, Republic of": "South Korea", "Iran, Islamic Republic of": 
               "Czechia": "Czech Republic", "Taiwan": "Taiwan", "Hong Kong": "Hong Kong"}
 
 
-def country_of(i):
+def country_of(i, find_all=False):
     """Best-effort country/jurisdiction for an item. Structured metadata (a trial's location country
-    from ClinicalTrials.gov) wins; then unambiguous source substrings; then content; then source name."""
-    if i.get("geo_country"):
-        return i["geo_country"]
+    from ClinicalTrials.gov) wins; then unambiguous source substrings; then content; then source name.
+    With find_all=True, ignore the single-jurisdiction shortcuts and instead return the LIST of every
+    country NAMED IN THE TITLE, ordered by first appearance (used by region_of for multi-region
+    headlines like 'Ghana, China …'). Title-only and content-based — never query geography."""
+    if not find_all:
+        if i.get("geo_country"):
+            return i["geo_country"]
     src = i.get("source", "")
-    if any(k in src for k in ("FDA", "CMS")):
-        return "United States"
-    if "NICE" in src:
-        return "United Kingdom"
-    if "EMA" in src:
-        return "European Union"
-    if "DiGA" in src:
-        return "Germany"
+    if not find_all:
+        if any(k in src for k in ("FDA", "CMS")):
+            return "United States"
+        if "NICE" in src:
+            return "United Kingdom"
+        if "EMA" in src:
+            return "European Union"
+        if "DiGA" in src:
+            return "Germany"
     # content first (most specific); then fall back to the source name — national regulator / HTA /
     # payer sources encode their own geography (e.g. 'Canada — CADTH'), so items get placed even when
     # the headline omits the country. Trade-press / journal source names carry no country token.
@@ -2727,6 +2781,7 @@ def country_of(i):
         ("India", ["cdsco", "india"]),
         ("Singapore", ["hsa singapore", "singapore", "agency for care effectiveness", "nuhs", "singhealth", "synapxe"]),
         ("Thailand", ["hitap", "thailand", "thai fda"]),
+        ("Malaysia", ["malaysia"]),   # B4
         ("Canada", ["cadth", "health canada", "canada"]),
         ("Switzerland", ["swissmedic", "switzerland"]),
         ("Italy", ["aifa", "italy"]),
@@ -2742,6 +2797,7 @@ def country_of(i):
         ("Austria", ["aihta", "austria", "austrian"]),
         ("Saudi Arabia", ["sfda", "saudi"]),
         ("South Africa", ["sahpra", "south africa"]),
+        ("Ghana", ["ghana"]),   # B4
         ("United Arab Emirates", ["uae", "united arab emirates", "mohap", "dubai health", "abu dhabi"]),
         ("Israel", ["israel", "israeli"]),
         ("Brazil", ["anvisa", "conitec", "brazil", "brasil"]),
@@ -2755,6 +2811,19 @@ def country_of(i):
             if any(k in text for k in keys):
                 return label
         return None
+    if find_all:
+        # every country whose key appears IN THE TITLE, ordered by first appearance; distinct labels.
+        title = (i.get("title", "") or "").lower()
+        hits = []
+        for label, keys in checks:
+            positions = [title.find(k) for k in keys if k in title]
+            if positions:
+                hits.append((min(positions), label))
+        ordered = []
+        for _, label in sorted(hits):
+            if label not in ordered:
+                ordered.append(label)
+        return ordered
     # content wins. Source-name geography is a *native-feed* convenience only (a body's own feed
     # encodes its jurisdiction). It is NEVER applied to Google-News items: a query's country is
     # query_geography, not content_geography — a WHO/global story found via an APAC query is not
@@ -2765,6 +2834,44 @@ def country_of(i):
     if i.get("gnews") or "news.google.com" in i.get("url", ""):
         return None
     return _match(src.lower())
+
+
+# Institutional geography: a named regulator / payer / HTA body or statutory programme unambiguously
+# fixes a jurisdiction even in a Google-News headline (e.g. 'Medicare', 'FDA', 'NICE', 'DiGA'). A BARE
+# country NAME in a gnews headline does NOT — that is query geography, not content geography (audit E9).
+# Body/programme tokens ONLY (never topic words like 'reimbursement'/'coverage', which name no jurisdiction).
+_AUTHORITY_GEO_RE = re.compile(
+    r"\bntap\b|medicare|medicaid|510\(k\)|de novo|\bfda\b|\bcms\b|\bnice\b|\bnhs\b|\bmhra\b|ukca"
+    r"|\bema\b|ce.?mark|eudamed|european commission|\beu ai act\b|\bdiga\b|bfarm|g-ba|\bnub\b"
+    r"|pmda|mhlw|chuikyo|nmpa|nhsa|\btga\b|pbac|msac|mfds|hira|\bneca\b|cdsco|hitap|cadth"
+    r"|health canada|swissmedic|aifa|\btlv\b|zorginstituut|\bkce\b|ncpe|hiqa|aotmit|redets|aemps"
+    r"|fimea|amgros|aihta|sfda|sahpra|anvisa|conitec|cofepris|anmat|haute autorite|cnedimts")
+
+
+def region_of(i, institutional_only=False):
+    """Macro-region for an item. When the TITLE names 2+ countries in DIFFERENT macro-regions
+    (e.g. 'Ghana, China push AI …' → 'Middle East & Africa; Asia-Pacific'), return them '; '-joined
+    in first-appearance order — the honest placement for a genuinely cross-region headline, matching
+    the boundary-review 'ambiguous geography' flag. Otherwise the single macro-region of country_of();
+    single-country items are byte-for-byte unchanged.
+
+    institutional_only=True (used for EXCLUDED / non-event items): a Google-News headline whose only
+    geo signal is a bare country name yields no region — an incidental country mention in a non-event
+    piece is not a jurisdiction (E9). A named body/programme (Medicare, FDA, NICE…) still anchors it."""
+    regions = []
+    for label in country_of(i, find_all=True):
+        r = MACRO.get(label)
+        if r and r not in regions:
+            regions.append(r)
+    if len(regions) >= 2:
+        return "; ".join(regions)
+    c = country_of(i) or ""
+    region = MACRO.get(c, "") if c else ""
+    if institutional_only and region and (i.get("gnews") or "news.google.com" in i.get("url", "")):
+        blob = (i.get("title", "") + " " + i.get("summary", "")).lower()
+        if not _AUTHORITY_GEO_RE.search(blob):
+            return ""   # bare-country mention in a non-event gnews headline — not content geography
+    return region
 
 
 def _body_role_counts(items):
@@ -4689,7 +4796,7 @@ def render(items, hubs, dead, built, overview="", cov_html="", trend_html="", he
         i["score"], i["why"] = rank_score(i)
         _c = country_of(i) or ""
         i["country"] = _c
-        i["region"] = MACRO.get(_c, "") if _c else ""
+        i["region"] = region_of(i)
         i["stype"] = source_type(i)
         i["etype"], i["strength"] = classify_evidence(i)
         i["relevance"] = healthcare_relevance(i)
