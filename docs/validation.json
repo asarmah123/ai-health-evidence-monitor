@@ -3,11 +3,11 @@
   "email_trigger": false,
   "n_errors": 0,
   "n_warnings": 2,
-  "generated_at": "2026-10-01T18:41:43Z",
+  "generated_at": "2026-10-02T18:12:08Z",
   "taxonomy_version": "2.59",
   "codes": [
-    "A08_specialty_divergence",
-    "E12_gnews_prevalence"
+    "E12_gnews_prevalence",
+    "H04_featured_gnews"
   ],
   "layers_skipped": []
 }
