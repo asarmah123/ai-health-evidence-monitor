@@ -1,23 +1,23 @@
 {
-  "build_id": "37513579529",
-  "generated_at": "2026-10-06T18:46:21Z",
+  "build_id": "37672452897",
+  "generated_at": "2026-10-07T19:12:40Z",
   "taxonomy_version": "2.59",
-  "git_commit": "eae1c54aa44ea36ab3e3d9042cafdf005f7abbcf",
-  "items_published": 119,
-  "sources_contributing": 44,
+  "git_commit": "3f3c4339afd929b1b046430b0d7e2c5f0700e3ef",
+  "items_published": 114,
+  "sources_contributing": 41,
   "sources_expected": 103,
   "silent_sources": 0,
   "errored_sources": 0,
-  "undated_items": 0,
-  "geography_placed": 33,
-  "geography_completeness_pct": 27.7,
-  "native_url_pct": 68.1,
-  "gnews_redirect_items": 38,
+  "undated_items": 1,
+  "geography_placed": 37,
+  "geography_completeness_pct": 32.5,
+  "native_url_pct": 64.9,
+  "gnews_redirect_items": 40,
   "qa": {
-    "input": 119,
-    "published": 119,
+    "input": 114,
+    "published": 114,
     "dropped": 0,
-    "future_dates_blanked": 0
+    "future_dates_blanked": 1
   },
   "qa_passed": true
 }
