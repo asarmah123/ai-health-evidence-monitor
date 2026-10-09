@@ -2,8 +2,8 @@
   "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 2,
-  "generated_at": "2026-10-08T19:10:13Z",
+  "n_warnings": 3,
+  "generated_at": "2026-10-09T18:39:33Z",
   "taxonomy_version": "2.59",
   "codes": [
     "A08_specialty_divergence",
