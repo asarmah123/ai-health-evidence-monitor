@@ -3,10 +3,10 @@
   "email_trigger": false,
   "n_errors": 0,
   "n_warnings": 3,
-  "generated_at": "2026-11-02T22:06:20Z",
+  "generated_at": "2026-11-03T19:57:28Z",
   "taxonomy_version": "2.59",
   "codes": [
-    "E09_dead_link",
+    "A13_country_no_region",
     "E11_title_source_tag",
     "E12_gnews_prevalence"
   ],
