@@ -2,10 +2,11 @@
   "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 2,
-  "generated_at": "2026-11-04T20:15:58Z",
+  "n_warnings": 3,
+  "generated_at": "2026-11-05T20:28:40Z",
   "taxonomy_version": "2.59",
   "codes": [
+    "E09_dead_link",
     "E11_title_source_tag",
     "E12_gnews_prevalence"
   ],
