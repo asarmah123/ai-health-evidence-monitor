@@ -1,12 +1,11 @@
 {
   "ok": false,
-  "email_trigger": true,
+  "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 4,
-  "generated_at": "2026-11-12T20:38:31Z",
+  "n_warnings": 3,
+  "generated_at": "2026-11-13T20:17:13Z",
   "taxonomy_version": "2.59",
   "codes": [
-    "A08_specialty_divergence",
     "E11_title_source_tag",
     "E12_gnews_prevalence"
   ],
