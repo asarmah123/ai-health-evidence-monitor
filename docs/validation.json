@@ -1,13 +1,16 @@
 {
   "ok": false,
-  "email_trigger": false,
+  "email_trigger": true,
   "n_errors": 0,
-  "n_warnings": 3,
-  "generated_at": "2026-11-17T21:30:09Z",
+  "n_warnings": 6,
+  "generated_at": "2026-11-18T21:05:07Z",
   "taxonomy_version": "2.59",
   "codes": [
+    "A08_specialty_divergence",
+    "A13_country_no_region",
     "E11_title_source_tag",
-    "E12_gnews_prevalence"
+    "E12_gnews_prevalence",
+    "H04_featured_gnews"
   ],
   "layers_skipped": []
 }
