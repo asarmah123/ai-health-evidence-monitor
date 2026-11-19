@@ -110,6 +110,15 @@ def main():
 
     today = dt.date.today().isoformat()
     L = [f"# Classification precision — {today}", ""]
+    # Honesty caveat (do not remove): these numbers are REGRESSION STABILITY against the classifier's own
+    # human-corrected gold, not accuracy on fresh content. A high number means the classifier still reproduces
+    # labels it was tuned to — NOT that it classifies new items correctly. The real current-accuracy signal is
+    # the weekly stratified-sample review (sample_for_review.py → verdicts); promote that review each week so
+    # these gold sets keep growing and the two numbers converge.
+    L += ["> **Read this as regression stability, not current accuracy.** It measures whether the classifier",
+          "> still reproduces its own human-corrected gold (frozen + rolling) — high = *stable*, not *accurate",
+          "> on new content*. Current accuracy comes from the weekly fresh-sample review; promote it to keep the",
+          "> gold growing.", ""]
     for name, res in sets.items():
         L += render(name, res)
 

@@ -355,8 +355,11 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
             if B._FILENAME_TITLE_RE.search(i.get("title", "")):
                 R.err("Evidence", "E08_filename_title", "Item title looks like an ingestion artefact",
                       i.get("title", "")[:80])
-            # E11: a leftover " | Journal/Source" tag is a title-cleaning miss (should have been stripped)
-            if " | " in i.get("title", ""):
+            # E11: a leftover " | Journal/Source" tag is a title-cleaning miss. Only flag a TAG-like trailing
+            # segment (a short source/journal/date suffix) — not a legitimate pipe inside the headline text
+            # (e.g. a press-release title "… UPTUNITY™ | Aneurysm, a New AI-Enabled System …"), which is content.
+            _m11 = re.search(r"\s\|\s([^|]+)$", i.get("title", ""))
+            if _m11 and (len(_m11.group(1).split()) <= 4 or re.search(r"\b\d{4}\b", _m11.group(1))):
                 R.warn("Evidence", "E11_title_source_tag", "Title still carries a ' | source' tag",
                        i.get("title", "")[:80])
 

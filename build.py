@@ -618,7 +618,12 @@ _INSURER_RE = re.compile(r"\bseguros\b|\binsurer\b|insurance (market|compan|firm
 _STRONG_PAYER_RE = re.compile(r"\bcms\b|medicare|medicaid|\bnice\b|cadth|\bhiqa\b|reimburs|\bcpt\b"
                               r"|\bhcpcs\b|\bntap\b|formulary|\bhta\b|\bcoding\b|budget impact|cost.?effective")
 _INDUSTRY_SIGNAL_RE = re.compile(r"partner|launch|\braise[sd]?\b|\bround\b|acqui|merger|revenue|deploy"
-                                 r"|rollout|roll out|commercial|\bdeal\b|collaborat|\bpact\b|series [a-e]\b")
+                                 r"|rollout|roll out|commercial|\bdeal\b|collaborat|\bpact\b|series [a-e]\b"
+                                 # commercial IP-license / investment deals are company news, NOT a regulatory
+                                 # licence: a "term sheet", a tech-licensing agreement, an exclusive/worldwide
+                                 # license to a technology, or an equity stake → industry (Telo Genomics case).
+                                 r"|term sheet|licensing (agreement|deal)|exclusive .{0,25}licen[sc]e"
+                                 r"|worldwide licen[sc]e|equity (stake|investment)")
 
 
 def refine_access_layer(items):
@@ -1179,7 +1184,7 @@ def fetch_rss(sources, now, default_days):
             if when is not None and when < cutoff:
                 continue
             link = e.get("link")
-            title = clean(e.get("title", ""), 200)
+            title = _strip_title_date_tag(clean(e.get("title", ""), 200))
             if not link or not title:
                 continue
             items.append({
@@ -1225,7 +1230,7 @@ def fetch_arxiv(cfg, cutoff, cap):
         when = when_from(e)
         if when is not None and when < cutoff:
             continue
-        title = clean(e.get("title", ""), 200)
+        title = _strip_title_date_tag(clean(e.get("title", ""), 200))
         blob = (title + " " + e.get("summary", "")).lower()
         score = sum(1 for t in terms if t in blob)
         scored.append((score, {
@@ -1437,6 +1442,15 @@ def _strip_gnews_source_tag(raw_title):
     title = re.sub(r"\s+\|\s+[^|]{1,60}$", "", raw_title)             # " | Source"
     title = re.sub(r"\s+-\s+(?![^|]*\s-\s)[^|]{1,60}$", "", title)    # " - Publisher" (hyphens ok)
     return title
+
+
+# A trailing " | <date>" is never part of a real headline (e.g. "HTAi Review | November 2, 2026") — it's a
+# newsletter/section date tag. Unlike the publisher strip (gnews-only), this is safe to apply to EVERY feed
+# because a date suffix is unambiguous and a legitimate headline never ends in a bare " | <date>".
+_TITLE_DATE_TAG_RE = re.compile(
+    r"\s+\|\s+(?:\w+\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+\w+\.?\s+\d{4}|\d{4}-\d{2}-\d{2})\s*$")
+def _strip_title_date_tag(title):
+    return _TITLE_DATE_TAG_RE.sub("", title)
 
 
 def fetch_gnews(sources, now, default_days):
@@ -2171,6 +2185,8 @@ MACRO = {
     "Japan": "Asia-Pacific", "China": "Asia-Pacific", "Australia": "Asia-Pacific",
     "South Korea": "Asia-Pacific", "India": "Asia-Pacific", "Singapore": "Asia-Pacific",
     "Thailand": "Asia-Pacific", "Hong Kong": "Asia-Pacific", "Taiwan": "Asia-Pacific", "Malaysia": "Asia-Pacific",
+    "Pakistan": "Asia-Pacific", "Bangladesh": "Asia-Pacific", "Sri Lanka": "Asia-Pacific",
+    "Indonesia": "Asia-Pacific", "Philippines": "Asia-Pacific", "Vietnam": "Asia-Pacific", "New Zealand": "Asia-Pacific",
     "Switzerland": "Europe", "Italy": "Europe", "Sweden": "Europe", "Netherlands": "Europe",
     "Belgium": "Europe", "Ireland": "Europe", "Poland": "Europe", "Spain": "Europe",
     "Norway": "Europe", "Finland": "Europe", "Denmark": "Europe", "Austria": "Europe",
