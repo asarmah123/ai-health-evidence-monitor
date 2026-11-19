@@ -31,6 +31,11 @@ WARN_EMAIL_THRESHOLD = 4        # email fires on ANY error, or on this many warn
 _CLOCK_SKEW_DAYS = 1            # a date within this many days ahead of the build is not "future"
 _LINK_SAMPLE = 8               # external URLs sampled for reachability per build (keeps the build fast)
 _GNEWS_MAX_PCT = 15            # warn if more than this % of published items still use unresolved google URLs
+# Publishers that block datacenter IPs at their own domain (Cloudflare 403), so CI can ONLY read them via
+# Google News — their gnews share is irreducible (a native feed would 403). The E12 prevalence warning is
+# about *reducible* gnews reliance (publishers we could move to a native feed), so these are excluded from
+# the threshold test while still reported in the total. Kept in sync with the gnews: notes in feeds.yaml.
+_GNEWS_IP_BLOCKED = {"mobihealthnews", "healthcare it news", "massdevice"}
 _STALE_DAYS = 45              # a dated item materially older than this (vs build) is unusually old for a daily feed
 _STALE_MAX = 6               # warn only if MORE than this many items are stale (a few slow native feeds are fine)
 _IMPLAUSIBLE_YEAR = 2015     # a published date before this is almost certainly a parse error, not a real date
@@ -393,12 +398,16 @@ def run_validation(items, o, health, meta, B, rendered_html=None):
         # resolver failed or coverage leans too hard on Google News (a provenance-quality signal the
         # single featured-story check H04 can't see). Non-blocking warn.
         gnews = [i for i in items if "news.google.com" in (i.get("url") or "")]
-        if items and 100 * len(gnews) / len(items) > _GNEWS_MAX_PCT:
+        # reducible = gnews items whose publisher does NOT block datacenter IPs (so a native feed is possible).
+        reducible = [i for i in gnews if (i.get("source", "") or "").strip().lower() not in _GNEWS_IP_BLOCKED]
+        irreducible = len(gnews) - len(reducible)
+        if items and 100 * len(reducible) / len(items) > _GNEWS_MAX_PCT:
             R.warn("Evidence", "E12_gnews_prevalence",
-                   f"{len(gnews)}/{len(items)} items ({100*len(gnews)//len(items)}%) are Google-News-sourced "
-                   f"(>{_GNEWS_MAX_PCT}%): the article URL isn't recoverable from Google News RSS (only an opaque "
-                   f"redirect), but publisher name + homepage are preserved. Consider native feeds to raise "
-                   f"article-link provenance.")
+                   f"{len(reducible)}/{len(items)} items ({100*len(reducible)//len(items)}%) use a Google-News "
+                   f"redirect that COULD be moved to a native feed (>{_GNEWS_MAX_PCT}%) — the article URL isn't "
+                   f"recoverable from Google News RSS. Add native feeds for these publishers to raise provenance. "
+                   f"({len(gnews)} gnews total; {irreducible} are from IP-blocked publishers that can only be read "
+                   f"via Google News, so they're excluded from this threshold.)")
 
     # ================= LAYER L — link / provenance integrity =================
     def check_provenance():
