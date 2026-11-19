@@ -2,13 +2,12 @@
   "ok": false,
   "email_trigger": true,
   "n_errors": 0,
-  "n_warnings": 6,
-  "generated_at": "2026-11-18T21:05:07Z",
+  "n_warnings": 5,
+  "generated_at": "2026-11-19T19:35:25Z",
   "taxonomy_version": "2.59",
   "codes": [
     "A08_specialty_divergence",
-    "A13_country_no_region",
-    "E11_title_source_tag",
+    "C02_study_outside_evidence",
     "E12_gnews_prevalence",
     "H04_featured_gnews"
   ],
