@@ -1,12 +1,10 @@
 {
-  "ok": false,
+  "ok": true,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 1,
-  "generated_at": "2026-11-20T20:55:14Z",
+  "n_warnings": 0,
+  "generated_at": "2026-11-21T19:55:53Z",
   "taxonomy_version": "2.59",
-  "codes": [
-    "C02_study_outside_evidence"
-  ],
+  "codes": [],
   "layers_skipped": []
 }
