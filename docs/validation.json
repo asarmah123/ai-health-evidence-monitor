@@ -1,10 +1,13 @@
 {
-  "ok": true,
+  "ok": false,
   "email_trigger": false,
   "n_errors": 0,
-  "n_warnings": 0,
-  "generated_at": "2026-11-21T19:55:53Z",
+  "n_warnings": 2,
+  "generated_at": "2026-11-22T20:07:36Z",
   "taxonomy_version": "2.59",
-  "codes": [],
+  "codes": [
+    "A08_specialty_divergence",
+    "C02_study_outside_evidence"
+  ],
   "layers_skipped": []
 }
